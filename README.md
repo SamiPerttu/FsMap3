@@ -5,6 +5,8 @@ Windows GUI, more detailed documentation, examples and tutorials coming soon.
 
 FsMap3 is a function and combinator library for 3-textures, which are formalized as self-maps in 3-space.
 
+FsMap3 is licensed under the terms of the MIT license.
+
 ### Features
 
 * All textures are cubic cell based. Thanks to a common layout scheme, they can be made to tile on any axis independently.
