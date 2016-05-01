@@ -43,15 +43,15 @@ type Shared<'a>(initialValue : 'a) =
   /// Sets the object.
   member this.set(v) = cell <- box v
 
-  /// Modifies the object with a function, atomically. Retries in case of a collision with another thread.
+  /// Modifies the object atomically with a function. Retries in case of a collision with another thread.
   /// Does not return a value.
   member this.modify(f) = modifyLoop f |> ignore
 
-  /// Modifies the object with a function, atomically. Retries in case of a collision with another thread.
+  /// Modifies the object atomically with a function. Retries in case of a collision with another thread.
   /// Returns the original value ("pre-op").
   member this.pre(f) = modifyLoop(f).x
 
-  /// Modifies the object with a function, atomically. Retries in case of a collision with another thread.
+  /// Modifies the object atomically with a function. Retries in case of a collision with another thread.
   /// Returns the modified value ("post-op").
   member this.post(f) = modifyLoop(f).y
 
@@ -85,16 +85,16 @@ type Int(?initialValue) =
   /// Sets the value of the atom.
   member this.set(v') = v <- v'
 
-  /// Modifies the value with a function. Does not return a value.
+  /// Modifies the value atomically with a function. Does not return a value.
   member this.modify(f) = modifyLoop f |> ignore
 
-  /// Modifies the value with a function. Returns the original value ("pre-op").
+  /// Modifies the value atomically with a function. Returns the original value ("pre-op").
   member this.pre(f) = modifyLoop(f).x
 
-  /// Modifies the value with function. Returns the modified value ("post-op").
+  /// Modifies the value atomically with function. Returns the modified value ("post-op").
   member this.post(f) = modifyLoop(f).y;
 
-  /// Attempts to update the value from v0 to v1. Returns success or failure.
+  /// Attempts to update the value atomically from v0 to v1. Returns success or failure.
   member this.update(v0, v1) = Interlocked.CompareExchange(&v, v1, v0) = v0
 
   override this.ToString() = sprintf "Atom.Int(%A)" !this
@@ -138,13 +138,13 @@ type Float(?initialValue) =
   /// Sets the value of the atom.
   member this.set(v') = ignore <| Interlocked.Exchange(&v, v')
 
-  /// Modifies the value with a function. Returns the original value ("pre-op").
+  /// Modifies the value atomically with a function. Returns the original value ("pre-op").
   member this.pre(f) = modifyLoop(f).x
 
-  /// Modifies the value with function. Returns the modified value ("post-op").
+  /// Modifies the value atomically with function. Returns the modified value ("post-op").
   member this.post(f) = modifyLoop(f).y;
 
-  /// Attempts to update the value from v0 to v1. Returns success or failure.
+  /// Attempts to update the value atomically from v0 to v1. Returns success or failure.
   member this.update(v0, v1) = Interlocked.CompareExchange(&v, v1, v0) = v0
 
   override this.ToString() = sprintf "Atom.Float(%A)" !this

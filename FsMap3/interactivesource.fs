@@ -127,10 +127,10 @@ type ParameterAction =
   /// If categorical, randomize.
   | Jolt of amount : float
   /// If ordered, modify (untransformed) value fractionally by delta (delta <> 0).
-  /// If categorical, cycle value in the indicated direction.
+  /// If categorical, cycle value in the direction indicated by delta.
   | Modify of delta : float
   /// Modify existing transformed float with the function. Pick the closest legal value.
-  /// In the absence of a previous value, pick a random value.
+  /// In the absence of a previous value, transform a random value.
   | ModifyFloat of f : (float -> float)
   /// Attempt to select a transformed float. Pick the closest legal value.
   | SelectFloat of x : float
@@ -201,14 +201,15 @@ type InteractiveSource(seed) =
       | Someval(v) ->
         match choices with
         | Some(c) ->
-          (if delta > 0.0 then Fun.find else Fun.findBack) 1u (maxValue - 1u)
-            (fun offset -> c.weight((v + offset) % maxValue) > 0.0)
-            (fun offset -> (v + offset) % maxValue) (always v)
+          let wrap x = if x > maxValue then x - maxValue else x
+          (if delta > 0.0 then Fun.find else Fun.findBack) 1u maxValue
+            (fun offset -> c.weight(wrap (v + offset)) > 0.0)
+            (fun offset -> wrap (v + offset)) (always v)
         | None ->
           match sign delta, v with
-          | 1, Eq(maxValue) -> 0u
-          | -1, 0u -> maxValue
-          | s, _ -> v + uint s
+          |  1, Eq(maxValue) -> 0u
+          | -1, 0u           -> maxValue
+          |  s, _            -> v + uint s
       | Noneval -> pickAny()
 
   member private this.chooseOrdered(dna : Dna, i, choices : Choices<_> Option, floatTransform : (uint -> float) option) =
@@ -245,8 +246,9 @@ type InteractiveSource(seed) =
           tryPick(v)
       | _ -> pickAny()
     | ModifyFloat f ->
-      match existing, floatTransform with
-      | Someval(v), Some(transform) ->
+      match floatTransform with
+      | Some(transform) ->
+        let v = match existing with | Someval(v) -> v | Noneval -> pickAny()
         Fun.binarySearchClosest 0u maxValue transform (f (transform v))
       | _ -> pickAny()
     | SelectFloat x ->

@@ -120,7 +120,7 @@ let softmix3 (a : float32) (v : Vec3f) (u : Vec3f) =
 /// Scatters vector components by a wavified fade function.
 let scatterf (amount : Vec3f) (offset : Vec3f) (fade : float32 -> float32) =
   let amount = amount * 0.5f
-  let wavef = Fade.sinefy fade
+  let wavef = Fade.sinefyr fade
   fun (v : Vec3f) -> (v * amount + offset).map(wavef)
 
 
@@ -214,27 +214,38 @@ let bimapd (displaceShape : Map3) (binop : Vec3f -> Vec3f -> Vec3f) (f : Map3) (
 
 
 /// Applies a binary operation to two basis functions.
-let binaryBasis (binop : Vec3f -> Vec3f -> Vec3f) (frequencyFactor : float32) (f : Basis3) (g : Basis3) (frequency : float32) (v : Vec3f) =
-  binop (f (frequency * frequencyFactor) v) (g frequency v)
+let binaryBasis (binop : Vec3f -> Vec3f -> Vec3f) (frequencyFactor : float32) (f : Basis3) (g : Basis3) (frequency : float32) =
+  let f = f (frequency * frequencyFactor)
+  let g = g frequency
+  fun (v : Vec3f) ->
+    binop (f v) (g v)
 
 
 /// Applies a binary operation to two basis functions and a displacement scaled by wavelength to the second basis.
-let binaryBasisd (binop : Vec3f -> Vec3f -> Vec3f) (displaceShape : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) (frequency : float32) (v : Vec3f) =
+let binaryBasisd (binop : Vec3f -> Vec3f -> Vec3f) (displaceShape : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) (frequency : float32) =
   let frequency' = frequency * frequencyFactor
-  let u = f frequency' v
-  binop u (g frequency (v + displaceShape u / frequency'))
+  let f = f frequency'
+  let g = g frequency
+  fun (v : Vec3f) ->
+    let u = f v
+    binop u (g (v + displaceShape u / frequency'))
 
 
 /// Applies a displacement scaled by wavelength from the first basis to the second.
-let displaceBasis (response : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) (frequency : float32) (v : Vec3f) =
+let displaceBasis (response : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) (frequency : float32) =
   let frequency' = frequency * frequencyFactor
-  let d = response (f frequency' v)
-  g frequency (v + d / frequency')
+  let f = f frequency'
+  let g = g frequency
+  fun (v : Vec3f) ->
+    let d = response (f v)
+    g (v + d / frequency')
 
 
 /// Shapes a basis with a map.
-let shapeBasis (f : Map3) (g : Basis3) =
-  fun frequency v -> g frequency v |> f
+let shapeBasis (f : Map3) (g : Basis3) frequency =
+  let g = g frequency
+  fun (v : Vec3f) ->
+    f (g v)
 
 
 /// Layers a ("application") on b ("base") in a manner similar to Map3.swiss.
@@ -259,7 +270,7 @@ let layeri width (persist : float32) (fade : float32 -> float32) (m : Map3 array
   R / W
 
 
-/// Reflects components by shaping them with the wave function (e.g., sin, triangle).
+/// Reflects components by shaping them with the wave function (e.g., sin, tri).
 /// Parameter a is the number of reflections.
 let reflect (wave : float32 -> float32) (a : float32) = shape (fun x -> wave(x * a * G pi))
 
@@ -267,14 +278,14 @@ let reflect (wave : float32 -> float32) (a : float32) = shape (fun x -> wave(x *
 /// Reflects components by shaping them with a fade function fashioned into a periodic function.
 /// Parameter a is the number of reflections.
 let reflectf (fade : float32 -> float32) (a : float32) =
-  let wave = Fade.sinefy fade
+  let wave = Fade.sinefyr fade
   shape(fun x -> wave (a * 0.5f * x))
 
 
 /// Reflects a vector proportional to its magnitude using a fade function fashioned into a periodic function.
 /// Parameter a is the number of reflections.
 let reflectNormf (fade : float32 -> float32) (a : float32) =
-  let wave = Fade.sinefy fade
+  let wave = Fade.sinefyr fade
   fun (v : Vec3f) ->
     let m = v.length
     if m > 0G then
@@ -360,34 +371,12 @@ let normalize (f : Map3) =
   let mS = Vec3f(2G) / (MR - mR)
   fun v -> ((f v - mM) * mS).map(clamp11)
 
-
-/// Discovers component ranges of a basis by random sampling of frequencies and stratified sampling
-/// of points inside the unit cube. Always returns a non-empty range for each component, for convenience.
-let basisRange (f : Basis3) =
-  let dimension = 16
-  let sampleZ (z : int) =
-    let mutable minV = Vec3f(infinityf)
-    let mutable maxV = Vec3f(-infinityf)
-    let rnd = Rnd(z)
-    for x = 0 to dimension - 1 do
-      for y = 0 to dimension - 1 do
-        let v = f (rnd.expf(2.0f, 1024.0f)) ((Vec3f(G x, G y, G z) + rnd.vec3f()) / G dimension)
-        minV <- Vec3f.minimize minV v
-        maxV <- Vec3f.maximize maxV v
-    Pair(minV, maxV)
-  let mutable minV = Vec3f(infinityf)
-  let mutable maxV = Vec3f(-infinityf)
-  for (Pair(v0, v1)) in Array.Parallel.map sampleZ [| 0 .. dimension - 1 |] do
-    minV <- Vec3f.minimize minV v0
-    maxV <- Vec3f.maximize maxV v1
-  let epsilon = 1.0e-3f
-  (minV - abs minV * epsilon - Vec3f(epsilon), maxV + abs maxV * epsilon + Vec3f(epsilon))
-
-
+  
 /// Normalizes each component of a basis to [-1, 1]. Estimates the range by sampling.
 /// Clamps values outside the estimated range.
 let normalizeBasis (f : Basis3) : Basis3 =
-  let mR, MR = basisRange f
+  // Instantiate the basis with an arbitrary high frequency.
+  let mR, MR = range (f 200.0f)
   let mM = average mR MR
   let mS = Vec3f(2G) / (MR - mR)
   fun frequency v -> ((f frequency v - mM) * mS).map(clamp11)
@@ -448,7 +437,6 @@ let fourier (f : float32) =
     (pv + Vec3f(phi)).map(sinr)
 
 
-
 /// Slightly more complicated basis function. Still quite fast.
 let packetw (wavef : float32 -> float32) (f : float32) =
   let h = manglef64 f
@@ -468,127 +456,100 @@ let packetw (wavef : float32 -> float32) (f : float32) =
     let phiz = v *. vz
     px * wavef(phix + po.x) + py * wavef(phiy + po.y) + pz * wavef(phiz + po.z)
 
+
 /// Packet basis function with the default, sine, wave function.
 let packet (f : float32) = packetw sinr f
 
-/// Packet basis function using a wave function derived from a fade function.
-let packetf (fade : float32 -> float32) (f : float32) = packetw (Fade.sinefy fade) f
 
+/// Packet basis function using a wave function derived from a fade function.
+let packetf (fade : float32 -> float32) (f : float32) = packetw (Fade.sinefyr fade) f
 
     
 /// Basic fractalizer. Samples many octaves of basis g.
 /// Roughness is the attenuation for each doubling of frequency (typically < 1).
 /// Lacunarity (lacunarity > 0) is the wavelength scaling of successive octaves.
-let fractal (roughness : float32) (lacunarity : float32) (initialFrequency : float32) (octaves : int) (g : Basis3) (v : Vec3f) =
-  // Compute roughness per octave.
+let fractal (roughness : float32) (lacunarity : float32) (initialFrequency : float32) (octaves : int) (g : Basis3) =
+  // Roughness per octave.
   let r = roughness ** (-log2 lacunarity)
-  let mutable result = Vec3f.zero
-  let mutable F = initialFrequency
-  // Initialize weight so the weights sum to unity.
-  let mutable w = 1.0f / geometricSum octaves 1.0f r
-  for i = 1 to octaves do
-    result <- result + w * g F (v + Vec3f.fromSeed(mangle32 (i + manglef (float F))))
-    w <- w * r
-    F <- F / lacunarity
-  result
-
+  // Set initial weight to make the weights sum to unity.
+  let w0 = 1.0f / geometricSum octaves 1.0f r
+  // Instantiate basis functions.
+  let g = Array.init octaves (fun i -> g (initialFrequency / pow lacunarity i))
+  fun (v : Vec3f) ->
+    let mutable result = Vec3f.zero
+    let mutable F = initialFrequency
+    let mutable w = w0
+    for i = 0 to g.last do
+      result <- result + w * g.[i] (v + Vec3f.fromSeed(mangle32 (i + manglef (float F))))
+      w <- w * r
+      F <- F / lacunarity
+    result
 
 
 /// Fractalizes basis g. Displaces successive samples with the walk operator.
-let fractald (roughness : float32) (lacunarity : float32) (highpass : float32) (mix : MixOp) (walk : WalkOp) (initialFrequency : float32) (octaves : int) (g : Basis3) (v : Vec3f) =
+let fractald (roughness : float32) (lacunarity : float32) (highpass : float32) (mix : MixOp) (walk : WalkOp) (initialFrequency : float32) (octaves : int) (g : Basis3) =
   assert (roughness > 0.0f && lacunarity > 0.0f && highpass >= 0.0f && highpass < 1.0f && initialFrequency > 0.0f)
   let r = roughness ** (-log2 lacunarity)
-  let mutable F = initialFrequency
-  // Set the largest octave weight to 1.
-  let mutable w = if r <= 1.0f then 1.0f else 1.0f / pow r (octaves - 1)
-  let mutable d = Vec3f.zero
-  let mutable value = Mix.start
-  let mutable h = 1.0f - highpass
-  let scaling = 1.0f / lacunarity
-  for i = 1 to octaves do
-    let a = g F (v + d)
-    value <- mix value (w * h) a
-    F <- F * scaling
-    w <- w * r
-    h <- sqrt h
-    d <- walk d F a
-  Mix.result value
-
+  // Set the initial weight so the most important octave has unity weight.
+  let w0 = if r <= 1.0f then 1.0f else 1.0f / pow r (octaves - 1)
+  let g = Array.init octaves (fun i -> g (initialFrequency / pow lacunarity i))
+  fun (v : Vec3f) ->
+    let mutable F = initialFrequency
+    let mutable w = w0
+    let mutable d = Vec3f.zero
+    let mutable value = Mix.start
+    let mutable h = 1.0f - highpass
+    for i = 0 to g.last do
+      let a = g.[i] (v + d)
+      value <- mix value (w * h) a
+      F <- F / lacunarity
+      w <- w * r
+      h <- sqrt h
+      d <- walk d F a
+    Mix.result value
 
 
 /// Fractalizes basis g. Displacement is applied starting from the most detailed octave.
 /// This tends to produce a billowy appearance, as opposed to creases.
-let fractaldi roughness lacunarity lowpass mix walk initialFrequency octaves g v =
-  fractald roughness (1.0f / lacunarity) lowpass mix walk (initialFrequency / pow lacunarity (octaves - 1)) octaves g v
+let fractaldi roughness lacunarity lowpass mix walk initialFrequency octaves g =
+  fractald roughness (1.0f / lacunarity) lowpass mix walk (initialFrequency / pow lacunarity (octaves - 1)) octaves g
 
 
-
-/// "Swiss knife" fractalizer. Combines octaves with layering and displacement. Parameters:
-/// roughness > 0            sample weighting factor for each doubling of frequency (typically < 1)
-/// 0 < lacunarity < 1       wavelength scaling of successive octaves (standard noise look: lacunarity = 0.5)
-/// overFade                 overlay fade curve
-/// overWidth > 0            absolute difference from current overlay where sample influence goes to zero
-///                          (typically in [0.5, 3])
-/// 0 <= overPersist <= 1    persistence of current overlay value to the next octave
-/// minFrequency > 0         minimum frequency
-/// octaves > 1              number of octaves sampled
-/// 0 <= octave0 < octaves   first octave sampled; preceding octaves are sampled next in descending order, then following octaves in ascending order
-/// g                        the procedural basis sampled (perlin, radial, cubex, camo, leopard, fourier, packet, worley or jigsaw)
-let swiss roughness (lacunarity : float32) (walk : WalkOp) (overFade : float32 -> float32) overWidth overPersist minFrequency octaves octave0 (g : Basis3) (v : Vec3f) =
-  enforce (octaves > 1) "Map3.swiss: Number of octaves must be greater than 1."
-  let maxFrequency = minFrequency / pow lacunarity (octaves - 1)
-  // We kickstart displacement from an initial sample.
-  let mutable F = 0.01f + xerp minFrequency maxFrequency (fract (float32 octave0 / float32 (octaves - 1) + 0.5f))
-  let mutable d = walk Vec3f.zero F (g F (v + Vec3f.fromSeed(manglef (float F))))
-  let mutable R = Vec3f.zero
-  let mutable O = Vec3f.zero
-  let mutable W = 0.0f
-  for i = 0 to octaves - 1 do
-    let octave = if i > octave0 then i else octave0 - i
-    F <- xerp minFrequency maxFrequency (float32 octave / float32 (octaves - 1))
-    let T = Vec3f.fromSeed(mangle32 (i + manglef (float F)))
-    let u = g F (v + T + d)
-    let o = if i = 0 then 1.0f else overFade <| max 0.0f (1.0f - (abs (O - u)).sum / overWidth)
-    let w = o * roughness ** log2(F)
-    R <- R + u * w
-    W <- W + w
-    d <- walk d F u
-    O <- if i = 0 then u else lerp O u (1.0f - overPersist)
-  R / W
-
-
-
-/// Creates a lowpass, variable displaced version of a fractalized map.
-/// Filtering parameters for each point are drawn from another map.
-let multid roughness lacunarity minDisplace maxDisplace minTwist maxTwist minFrequency minOctaves maxOctaves (h : Map3) (g : Basis3) (v0 : Vec3f) =
+/// Creates a lowpass, variable displaced and twisted version of a fractalized map.
+/// The aforementioned parameters for each point are drawn from map h.
+let multid roughness lacunarity minDisplace maxDisplace minTwist maxTwist initialFrequency minOctaves maxOctaves (mix : MixOp) (h : Map3) (g : Basis3) =
   enforce (0.0f < lacunarity && lacunarity < 1.0f) "Map3.multid: 0 < lacunarity < 1."
-  let u = (h v0).map(map11to01 >> clamp01)
-  let octaves = lerp minOctaves maxOctaves u.x
-  let displace = xerp minDisplace maxDisplace u.y
-  let twist = lerp minTwist maxTwist u.z
-  let maxFrequency = minFrequency / (lacunarity ** octaves)
-  let mutable i = 0
-  let mutable x = Vec3f.zero
-  let mutable W = 0.0f
-  let mutable F = minFrequency
-  let mutable v = v0
-  let mutable rotation = Quaternionf.one
-  while F < maxFrequency do
-    // Apply lowpass attenuation.
-    let B = dexerp minFrequency maxFrequency F
-    let P = 1.0f - squared (squared B)
-    let r = roughness ** log2 (floor F)
-    let w = r * P
-    let y = g F (v + Vec3f.fromSeed(mangle32 (i + manglef (float F))))
-    F <- F / lacunarity
-    let L2 = y.length2
-    if L2 * twist > 1.0e-9f then
-      let L = sqrt L2
-      rotation <- Quaternionf(Vec3f(y.y, y.z, -y.x) / L, L * twist) * rotation
-    v <- v + P * displace / F * y * rotation
-    x <- x + w * y
-    W <- W + w
-    i <- i + 1
-  if W > 0.0f then x / W else Vec3f.zero
 
+  let g = Array.init (int maxOctaves) (fun i -> g (initialFrequency / pow lacunarity i))
+  let r = roughness ** (-log2 lacunarity)
+  // Set the initial weight so the most important octave has unity weight.
+  let w0 = if r <= 1.0f then 1.0f else 1.0f / pow r (int maxOctaves - 1)
+
+  fun (v : Vec3f) ->
+    let u = (h v).map(map11to01 >> clamp01)
+    let octaves = lerp minOctaves maxOctaves u.x
+    let displace = xerp minDisplace maxDisplace u.y
+    let twist = lerp minTwist maxTwist u.z
+
+    let mutable w = w0
+    let mutable F = initialFrequency
+    let mutable v = v
+    let mutable rotation = Quaternionf.one
+    let mutable value = Mix.start
+
+    for i = 0 to int octaves - 1 do
+      // Fade out smoothly the final octave.
+      let P = Fade.smooth(delerp01 (octaves - 1.0f) (octaves - 2.0f) (float32 i))
+      if P > 0.0f then
+        let y = g.[i] (v + Vec3f.fromSeed(mangle32 (i + manglef (float F))))
+        let L2 = y.length2
+        if L2 * twist > 1.0e-9f then
+          let L = sqrt L2
+          rotation <- Quaternionf(Vec3f(y.y, y.z, -y.x) / L, L * twist) * rotation
+        v <- v + displace / F * y * rotation
+        value <- mix value (w * P) y
+      F <- F / lacunarity
+      w <- w * r
+
+    Mix.result value
 

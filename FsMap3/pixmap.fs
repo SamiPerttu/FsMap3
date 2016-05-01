@@ -232,15 +232,17 @@ type IPixmapSource =
 
 
 
-type PixmapSource =
+type PixmapSource() =
 
-  static member nullSource = {
+  static let zeroSource = {
     new IPixmapSource with
       member this.start(_, _) = ()
       member this.getPixel(_, _, _, _) = Vec3f.zero
       member this.finish() = ()
       member this.postFx(_) = ()
     }
+
+  static member zero = zeroSource
 
   static member toPixmap(source : IPixmapSource, width, height, ?rowReadyCallback : int -> unit) =
     let callback = rowReadyCallback >? ignore

@@ -429,7 +429,7 @@ let inline expTaylor (x : 'a) : 'a =
   1G + x * (1G + Q 1 2 * x * (1G + Q 1 3 * x * (1G + Q 1 4 * x * (1G + Q 1 5 * x * (1G + Q 1 6 * x * (1G + Q 1 7 * x))))))
 
 /// 7th order Taylor approximation of the sine function at the origin. Quite good accuracy in [-pi/2, pi/2].
-let inline sinTaylor x =
+let inline sinTaylor (x : 'a) : 'a =
   let x2 = squared x
   x * (1G - x2 * Q 1 6 * (1G - x2 * Q 1 20 * (1G - x2 * Q 1 42)))
 
@@ -449,24 +449,24 @@ let inline cosFast (x : 'a) : 'a =
 /// Sine function scaled to [0, 1].
 let inline sin0 (x : 'a) : 'a = (sin x + 1G) * Q 1 2
 
-/// Sine function with a period of unity. The argument is thus phase in revolutions.
+/// Sine function with a period of unity. The argument is thus phase in cycles.
 let inline sinr (x : 'a) : 'a = sin(x * G tau)
 
-/// Sine function scaled to [0, 1] with a period of unity. The argument is thus phase in revolutions.
+/// Sine function scaled to [0, 1] with a period of unity. The argument is thus phase in cycles.
 let inline sinr0 (x : 'a) : 'a = (sinr x + 1G) * Q 1 2
 
 /// Cosine function scaled to [0, 1].
 let inline cos0 (x : 'a) : 'a = (cos x + 1G) * Q 1 2
 
-/// Cosine function with a period of unity. The argument is thus phase in revolutions.
+/// Cosine function with a period of unity. The argument is thus phase in cycles.
 let inline cosr (x : 'a) : 'a = cos(x * G tau)
 
-/// Cosine function scaled to [0, 1] with a period of unity. The argument is thus phase in revolutions.
+/// Cosine function scaled to [0, 1] with a period of unity. The argument is thus phase in cycles.
 let inline cosr0 (x : 'a) : 'a = (cosr x + 1G) * Q 1 2
 
 /// Triangle wave. The argument is phase in radians.
 /// The shape approximates the sine function.
-let inline triangle x =
+let inline tri x =
   let x = fract(x * Q 1 tau - Q 1 4) in abs (x - Q 1 2) * 4G - 1G
 
 /// The average of the two arguments.
@@ -615,8 +615,8 @@ let inline nullValue<'a> = Unchecked.defaultof<'a>
 
 
 /// Sends a task to the .NET thread pool for execution.
-let inline scheduleTask (f : _ -> unit) =
-  System.Threading.ThreadPool.QueueUserWorkItem(System.Threading.WaitCallback(f)) |> ignore
+let inline scheduleTask (f : unit -> unit) =
+  System.Threading.ThreadPool.QueueUserWorkItem(System.Threading.WaitCallback(fun _ -> f())) |> ignore
 
 /// Sends a function call with a single argument to the .NET thread pool for execution.
 let inline scheduleCall (f : 'a -> unit) (argument : 'a) =
@@ -636,6 +636,7 @@ let unionLabel (x : 'a) =
 
 
 /// Regular expression active pattern. Captures matched groups into a list.
+/// Note that .NET maintain a cache of compiled regular expressions that accelerates use cases like this.
 let (|Regex|_|) pattern input =
   let m = System.Text.RegularExpressions.Regex.Match(input, pattern)
   if m.Success then Some(List.tail [for group in m.Groups -> group.Value]) else None
@@ -825,7 +826,7 @@ type ``[]``<'a> with
   /// Fills the array with items from an indexed function.
   member inline a.fill(f : int -> _) = for i = 0 to a.last do a.[i] <- f i
   /// Fills the array with a constant value.
-  member inline a.fill(x) = Array.fill a 0 a.Length x
+  member inline a.fill(x) = Array.fill a 0 a.size x
   /// Swaps two array items. Does not check that the indices differ.
   member inline a.swap(i, j) = let tmp = a.[i] in a.[i] <- a.[j] ; a.[j] <- tmp
   /// Modifies array items according to a function - performing, effectively, an in-place map operation.
@@ -850,12 +851,13 @@ type EmptyArray<'a>() =
   static member val item : 'a[] = [| |]
 
 
+
 // Array module extensions.
 module Array =
   /// Creates an empty array.
   let inline createEmpty<'a> = EmptyArray<'a>.item
   /// Fills the whole array with a value.
-  let inline setAll (a : 'a array) (v : 'a) = Array.fill a 0 a.Length v
+  let inline setAll (a : 'a array) (v : 'a) = Array.fill a 0 a.size v
   /// Scrubs the whole array with the default value of the item type.
   let inline scrub (a : 'a array) = setAll a Unchecked.defaultof<'a>
 

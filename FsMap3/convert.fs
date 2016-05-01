@@ -53,7 +53,7 @@ let inline float11u (interval : Interval) (a : uint) =
 
 
 
-/// Converts a pair of uint32 arguments to a uniformly distributed unit 3-vector
+/// Converts a pair of int32s to a uniformly distributed unit 3-vector
 /// using the Lambert cylindrical equal-area projection.
 let unitVec3 (a : int) (b : int) =
   // Due to accuracy and distribution issues, we do not attempt to generate vectors very close to Z axis poles.
@@ -63,7 +63,7 @@ let unitVec3 (a : int) (b : int) =
   Vec3f(r * cos theta |> float32, r * sin theta |> float32, z |> float32)
 
 
-/// Converts a trio of uint32 arguments to a uniformly distributed unit 4-vector (returned as a quaternion).
+/// Converts a trio of int32s to a uniformly distributed unit 4-vector (returned as a quaternion).
 let unitQuaternion (a : int) (b : int) (c : int) =
   // Algorithm sourced from Shoemake, K., Uniform Random Rotations, Graphics Gems III, 1992.
   let u1 = float01 Closed a
@@ -74,7 +74,7 @@ let unitQuaternion (a : int) (b : int) (c : int) =
   Quaternionf(sqrt1U1 * sinr(u2) |> float32, sqrt1U1 * cosr(u2) |> float32, sqrtU1 * sinr(u3) |> float32, sqrtU1 * cosr(u3) |> float32)
 
 
-/// Converts a uint32 to a sample from the geometric distribution Geom(p)
+/// Converts an int32 to a sample from the geometric distribution Geom(p)
 /// where p is the probability of success (p > 0).
 let geometric (p : float) (a : int) =
   if p >= 1.0 then
@@ -83,7 +83,7 @@ let geometric (p : float) (a : int) =
     int (log(float01 RightClosed a) / log(1.0 - p))
 
 
-/// Converts a uint32 to a sample from the Poisson distribution Pois(lambda).
+/// Converts an int32 to a sample from the Poisson distribution Pois(lambda).
 let poisson (lambda : float) =
   let p0 = exp(-lambda)
   fun (a : int) ->

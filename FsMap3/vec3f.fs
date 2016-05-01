@@ -25,8 +25,8 @@ module Vector3Extensions =
     /// Returns the length of the vector.
     member inline v.length = v.Length()
 
-    /// Absolute norm, also called L1-norm.
-    member inline v.absNorm = abs v.x + abs v.y + abs v.z
+    /// L1-norm aka Manhattan norm.
+    member inline v.norm1 = abs v.x + abs v.y + abs v.z
 
     /// Maximum norm.
     member inline v.maxNorm = max3 (abs v.x) (abs v.y) (abs v.z)
@@ -73,7 +73,10 @@ module Vector3Extensions =
     /// Returns a vector with components replaced with their signs.
     member inline v.sign = v.map(signum)
 
+    /// Returns whether all components of the vector fulfill the predicate.
     member inline v.forAll(f) = f v.x && f v.y && f v.z
+
+    /// Returns whether all components of the vector are finite.
     member inline v.isFinite = v.forAll(isFinite)
 
     /// Indexed component access.
@@ -138,7 +141,7 @@ module Vector3Extensions =
       let m = 0x3ff
       // The constant is 1 / m.
       let Z = (max - min) * 0.0009775171065f
-      Vector3(float32 ((seed >>> 20) &&& m) * Z + min, float32 ((seed >>> 10) &&& m) * Z + min, float32 (seed &&& m) * Z + min)
+      Vector3((seed >>> 20) &&& m |> float32, (seed >>> 10) &&& m |> float32, seed &&& m |> float32) * Z + Vector3(min)
 
     /// Builds a vector in the unit cube from an integer seed. Each component has 10 bits of precision.
     static member inline fromSeed(seed : int) = Vector3.fromSeed(seed, 0.0f, 1.0f)
@@ -189,8 +192,8 @@ type Vec3f = struct
   /// The length of the vector.
   member inline v.length = sqrt v.length2
 
-  /// Absolute norm, also called L1-norm.
-  member inline v.absNorm = abs v.x + abs v.y + abs v.z
+  /// L1-norm aka Manhattan norm.
+  member inline v.norm1 = abs v.x + abs v.y + abs v.z
 
   /// Maximum norm.
   member inline v.maxNorm = max3 (abs v.x) (abs v.y) (abs v.z)

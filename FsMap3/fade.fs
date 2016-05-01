@@ -7,7 +7,7 @@ open Common
 
 
 /// Linear fade.
-let inline linear x = x
+let inline line x = x
 
 /// 2nd power fade.
 let inline power2 (x : 'a) : 'a = squared x
@@ -30,6 +30,13 @@ let inline power (p : 'a) (x : 'a) : 'a = abs x ** p
 /// Discontinuous step fade. Value jumps from zero to one halfway through.
 let inline step (x : 'a) : 'a = if x < G 0.5 then 0G else 1G
 
+/// First order continuous fade that is linear except near the endpoints.
+/// The slope of the linear part is 4/3.
+let inline smoothLine (x : 'a) : 'a =
+  if x < Q 1 5 then squared x * (Q 50 6 * x + Q 5 6)
+  elif x < Q 4 5 then x * Q 4 3 - Q 1 6
+  else let x = 1G - x in 1G - squared x * (Q 50 6 * x + Q 5 6)
+
 /// Sine fade based on a Taylor series approximation. Not completely accurate.
 let inline sine (x : 'a) : 'a = (1G - sinTaylor ((G 0.5 - x) * G 3.14110099335114)) * G 0.5
 
@@ -46,7 +53,7 @@ let inline super (x : 'a) : 'a = let x2 = x * x in x2 * x2 * (35G - 84G * x + (7
 let inline hump (x : 'a) : 'a = x * x * (x - 3G) + 3G * x
 
 /// Cubic fade whose first and second derivatives vanish at x = 0. spike'(1) = 3.
-let inline spike (x : 'a) : 'a = x * x * x
+let inline spike (x : 'a) : 'a = cubed x
 
 /// A cubic fade that starts and ends at a slope but has a plateau in the middle.
 let inline shelf (x : 'a) : 'a = ((4G * x - 6G) * x + 3G) * x
@@ -67,10 +74,10 @@ let inline sigmoid (a : 'a) : 'a -> 'a =
     else
       1G - ((1G - x) * 2G) ** power * G 0.5
 
-/// A quarter circle fade that slopes upwards. Inverse of downarc.
+/// A quarter circle fade that slopes upwards. Inverse of Fade.downarc.
 let inline uparc (x : 'a) : 'a = 1G - sqrt(max 0G (1G - squared x))
 
-/// A quarter circle fade that slopes downwards. Inverse of uparc.
+/// A quarter circle fade that slopes downwards. Inverse of Fade.uparc.
 let inline downarc (x : 'a) : 'a = sqrt(max 0G (2G * x - squared x))
 
 /// Skewed fade, starts faster ("skew left") if a < 0 or slower ("skew right") if a > 0.
@@ -83,8 +90,8 @@ let inline skew (a : 'a) : 'a -> 'a =
 /// Saturated linear fade that reaches 1 at 0 <= 1 - a <= 1.
 let inline saturate (a : 'a) (x : 'a) : 'a = let b = 1G - a in if x < b then x / b else 1G
 
-/// A number of sine waves as a fade (cycles > 0). As a peculiarity, Fade.wave _ 0.5 = 0.5.
-/// Fade.wave 1 is equivalent to Fade.sine.
+/// A number of sine waves as a fade (cycles > 0), oscillating between 0 and 1.
+/// As a peculiarity, Fade.wave _ 0.5 = 0.5. Fade.wave 1 is equivalent to Fade.sine.
 let inline wave (cycles : int) (x : 'a) : 'a = sinr0(x * (G cycles - G 0.5) - G 0.25)
 
 /// Another wavy fade (cycles > 0). The waves in this one are scaled to maintain their proportions.
@@ -94,12 +101,6 @@ let inline worm (cycles : int) (x : 'a) : 'a =
   (1G - scale) * x + scale * wave cycles x
 
 
-
-/// Cuts off the range [0, x0] from a fade function. The value at x0 is translated to 0.
-let inline cut (x0 : 'a) (f : 'a -> 'a) : 'a -> 'a =
-  let y0 = f x0
-  let Z = 1G / (1G - y0)
-  fun x -> (f (lerp x0 1G x) - y0) * Z
 
 /// Creates a fade from an arbitrary function with argument range [x0, x1]. Function values are translated such
 /// that the endpoint values become 0 and 1. Any values outside the range are clamped.
@@ -139,17 +140,25 @@ let inline cat (f : 'a -> 'a) (g : 'a -> 'a) (x : 'a) : 'a =
 
 /// Turns a fade into a wave function with a period of unity. The wave phase is similar to sinr.
 /// Stitches together the wave from 4 copies of the fade.
-let inline sinefy (f : 'a -> 'a) (x : 'a) : 'a =
+let inline sinefyr (f : 'a -> 'a) (x : 'a) : 'a =
   let x = x * 4G
   let ix = floor x
   match int ix &&& 3 with | 0 -> f(x - ix) | 1 -> f(1G - x + ix) | 2 -> -f(x - ix) | _ -> -f(1G - x + ix)
 
+/// Turns a fade into a wave function with a period of tau. The wave phase is similar to sin.
+/// Stitches together the wave from 4 copies of the fade.
+let inline sinefy (f : 'a -> 'a) (x : 'a) = sinefyr f (x * Q 1 tau)
+
 /// Turns a fade into a wave function with a period of unity. The wave phase is similar to cosr.
 /// Stitches together the wave from 2 copies of the fade.
-let inline cosify (f : 'a -> 'a) (x : 'a) : 'a =
+let inline cosifyr (f : 'a -> 'a) (x : 'a) : 'a =
   let x = x * 2G
   let ix = floor x
   match int ix &&& 1 with | 0 -> 1G - 2G * f(x - ix) | _ -> 2G * f(x - ix) - 1G
+
+/// Turns a fade into a wave function with a period of tau. The wave phase is similar to cos.
+/// Stitches together the wave from 2 copies of the fade.
+let inline cosify (f : 'a -> 'a) (x : 'a) = cosifyr f (x * Q 1 tau)
 
 /// Mirrors a fade into a bump centered at 0, with a radius of support and height of 1.
 let inline bump (f : 'a -> 'a) (x : 'a) : 'a = f (max 0G (1G - abs x))

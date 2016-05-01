@@ -30,7 +30,8 @@ type Vec3 = struct
 
   member inline v.reduceWith(projection, f) = f (f (projection v.x) (projection v.y)) (projection v.z)
 
-  member inline v.absNorm = abs v.x + abs v.y + abs v.z
+  /// L1-norm aka Manhattan norm.
+  member inline v.norm1 = abs v.x + abs v.y + abs v.z
 
   member inline v.maxNorm = max3 (abs v.x) (abs v.y) (abs v.z)
 

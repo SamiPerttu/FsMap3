@@ -22,8 +22,8 @@ type Vec4f = struct
   /// The length of the vector.
   member inline v.length = sqrt v.length2
 
-  /// Absolute norm, also called L1-norm.
-  member inline v.absNorm = abs v.x + abs v.y + abs v.z + abs v.w
+  /// L1-norm aka Manhattan norm.
+  member inline v.norm1 = abs v.x + abs v.y + abs v.z + abs v.w
 
   /// Maximum norm.
   member inline v.maxNorm = max4 (abs v.x) (abs v.y) (abs v.z) (abs v.w)

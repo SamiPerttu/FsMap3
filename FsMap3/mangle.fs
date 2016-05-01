@@ -130,10 +130,11 @@ let mangleString (s : string) =
   stream32end h
 
 
+
 type MCONF =
   static member inline DBITS = 12
   static member inline QBITS = 12
-  
+
 // Array of random direction 3-vectors.
 let directionArray = Array.init (1 <<< MCONF.DBITS) (fun i -> Convert.unitVec3 (mangle32 i) (mangle32b i))
 

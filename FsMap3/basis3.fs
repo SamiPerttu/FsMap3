@@ -5,12 +5,14 @@ open Common
 open Mangle
 
 
-/// Basis functions are 3-textures that accept a frequency argument.
+/// Basis functions accept a frequency argument. Invoking a basis with a frequency
+/// triggers the creation of a map for that particular frequency. For that reason,
+/// in a 3-texture, all basis functions should be converted to maps before use.
 type Basis3 = float32 -> Vec3f -> Vec3f
 
 
 /// BasisData contains all kinds of information used during basis function calculations.
-/// We employ thread-local storage to minimize allocation of these objects.
+/// We employ thread-local allocators to minimize allocation of these objects.
 [<NoComparison; NoEquality>]
 type BasisData =
   {
@@ -56,12 +58,12 @@ type BasisData =
     mutable z0 : int
     mutable z1 : int
 
-    // Worley basis axis expansion order.
+    /// Worley basis axis expansion order.
     search : Pair<float32, int> array
-    // Current closest cell weight for the colored Worley basis.
+    /// Current closest cell weight for the colored Worley basis.
     mutable worleyWeight : float32
-
-    mutable allocator : ThreadLocalAllocator<BasisData>
+    /// Allocator where this object should be released after use.
+    mutable allocator : Allocator<BasisData>
   }
 
   /// X coordinate of the cell at offset jx.
@@ -110,7 +112,7 @@ type BasisData =
   /// Hashes an X axis offset. The second argument can be used to combine axial hashes.
   member this.hashX(jx, h) =
     let x = this.x(jx)
-    this.fh + mangle32 (x ^^^ h)
+    this.fh + mangle32fast (x ^^^ h)
 
   /// Hashes an X axis offset.
   member inline this.hashX(jx) = this.hashX(jx, 0)
@@ -124,7 +126,7 @@ type BasisData =
   member inline this.hashY(jy) = this.hashY(jy, 0)
 
   /// Hashes a Z axis offset. The second argument can be used to combine axial hashes.
-  member inline this.hashZ(jz, h) =
+  member this.hashZ(jz, h) =
     // This is Mangle.mangle32c inlined.
     let u = this.z(jz) + h |> uint
     let u = u ^^^ (u >>> 16)
@@ -191,133 +193,220 @@ type BasisData =
     }
 
 
-let threadLocalBasisData = ThreadLocalAllocator<BasisData>.create(BasisData.create, fun allocator data -> data.allocator <- allocator)
+let threadLocalBasisData = new System.Threading.ThreadLocal<Allocator<BasisData>>(fun _ ->
+                             Allocator.create(BasisData.create, fun allocator data -> data.allocator <- allocator))
+
+
+/// Layout-specific data for a single frequency.
+[<NoComparison; NoEquality>]
+type LayoutInstance =
+  {
+    f : float32
+    hash : int
+    fix : int
+    fiy : int
+    fiz : int
+    offset : Vec3f
+    rotation : Quaternionf
+    runf : LayoutInstance -> Vec3f -> BasisData
+  }
+  member this.run(v : Vec3f) = this.runf this v
 
 
 (*
-Given frequency and 3-point, a basis layout makes available:
+Given a frequency and a 3-point, a basis layout makes available:
 
 -hash of the frequency.
 -coordinates of the 3-cell where the point is located.
 -fractional position inside the 3-cell.
 -hash value and coordinates of any other 3-cell.
 *)
-type LayoutFunction = float32 -> Vec3f -> BasisData
+type LayoutFunction = float32 -> LayoutInstance
 
 
-
-/// Standard, high-quality layout. Each frequency has a distinct cell grid offset
-/// and rotation.
-let hifiLayout (f : float32) (v : Vec3f) =
-  let data = threadLocalBasisData.allocate()
+/// Standard, high quality layout. Each frequency has a distinct cell grid offset and rotation.
+let hifiLayout (f : float32) =
   let fh = manglef64 f
   let a = mangle64 fh
-  let v = v * mangle12Rotation (int a)
-  let v = f * v + Vec3f.fromSeed(int (fh >>> 32))
-  let vf = v.map(floor)
-  data.fh <- int fh
-  data.d <- v - vf
-  data.noTileX(int vf.x)
-  data.noTileY(int vf.y)
-  data.noTileZ(int vf.z)
-  data
+  let b = mangle64 a
+  {
+    LayoutInstance.f = f
+    hash = int fh
+    fix = 0
+    fiy = 0
+    fiz = 0
+    offset = Vec3f.fromSeed(int (fh >>> 32))
+    rotation = Convert.unitQuaternion (int a) (int (a >>> 32)) (int b)
+    runf = fun (instance : LayoutInstance) (v : Vec3f) ->
+      let data = (!threadLocalBasisData).allocate()
+      let v = instance.f * (v * instance.rotation) + instance.offset
+      let vi = v.map(floor)
+      data.fh <- instance.hash
+      data.d <- v - vi
+      data.noTileX(int vi.x)
+      data.noTileY(int vi.y)
+      data.noTileZ(int vi.z)
+      data
+  }
 
 
 /// Constant orientation layout. Each frequency has a distinct cell grid offset.
-let offsetLayout (f : float32) (v : Vec3f) =
-  let data = threadLocalBasisData.allocate()
+let offsetLayout (f : float32) =
   let fh = manglef64 f
-  let v = f * v + Vec3f.fromSeed(int (fh >>> 32))
-  let vf = v.map(floor)
-  data.fh <- int fh
-  data.d <- v - vf
-  data.noTileX(int vf.x)
-  data.noTileY(int vf.y)
-  data.noTileZ(int vf.z)
-  data
+  {
+    LayoutInstance.f = f
+    hash = int fh
+    fix = 0
+    fiy = 0
+    fiz = 0
+    offset = Vec3f.fromSeed(int (fh >>> 32))
+    rotation = Quaternionf.zero
+    runf = fun (instance : LayoutInstance) (v : Vec3f) ->
+      let data = (!threadLocalBasisData).allocate()
+      let v = instance.f * v + instance.offset
+      let vi = v.map(floor)
+      data.fh <- instance.hash
+      data.d <- v - vi
+      data.noTileX(int vi.x)
+      data.noTileY(int vi.y)
+      data.noTileZ(int vi.z)
+      data
+  }
 
 
-/// Layout that passes the parameters through as is.
-let passLayout (f : float32) (v : Vec3f) =
-  let data = threadLocalBasisData.allocate()
+/// Layout that does no processing of the coordinates.
+let passLayout (f : float32) =
   let fh = manglef64 f
-  let v = f * v
-  let vf = v.map(floor)
-  data.fh <- int fh
-  data.d <- v - vf
-  data.noTileX(int vf.x)
-  data.noTileY(int vf.y)
-  data.noTileZ(int vf.z)
-  data
+  {
+    LayoutInstance.f = f
+    hash = int fh
+    fix = 0
+    fiy = 0
+    fiz = 0
+    offset = Vec3f.zero
+    rotation = Quaternionf.zero
+    runf = fun (instance : LayoutInstance) (v : Vec3f) ->
+      let data = (!threadLocalBasisData).allocate()
+      let v = instance.f * v
+      let vi = v.map(floor)
+      data.fh <- instance.hash
+      data.d <- v - vi
+      data.noTileX(int vi.x)
+      data.noTileY(int vi.y)
+      data.noTileZ(int vi.z)
+      data
+  }
 
 
 /// A tiling layout. This layout tiles 3-space with copies of the unit cube.
-/// The frequency is truncated to an integer to tile correctly. The full frequency is still used to seed
+/// The frequency is rounded to an integer to tile correctly. The full frequency is still used to seed
 /// the frequency hash, so that every distinct frequency has a unique appearance and cell grid offset.
-let tileLayout (f : float32) (v : Vec3f) =
-  let data = threadLocalBasisData.allocate()
+let tileLayout (f : float32) =
   let fi = maxi 1 (int (round f))
   let fh = manglef64 f
-  let v = float32 fi * (v + Vec3f.fromSeed(int (fh >>> 32)))
-  let vf = v.map(floor)
-  data.fh <- int fh
-  data.d <- v - vf
-  data.tileX(fi, int vf.x)
-  data.tileY(fi, int vf.y)
-  data.tileZ(fi, int vf.z)
-  data
+  {
+    LayoutInstance.f = float32 fi
+    hash = int fh
+    fix = fi
+    fiy = fi
+    fiz = fi
+    offset = Vec3f.fromSeed(int (fh >>> 32))
+    rotation = Quaternionf.zero
+    runf = fun (instance : LayoutInstance) (v : Vec3f) ->
+      let data = (!threadLocalBasisData).allocate()
+      let v = instance.f * v + instance.offset
+      let vi = v.map(floor)
+      data.fh <- instance.hash
+      data.d <- v - vi
+      data.tileX(instance.fix, int vi.x)
+      data.tileY(instance.fiy, int vi.y)
+      data.tileZ(instance.fiz, int vi.z)
+      data
+  }
 
 
 /// This layout tiles the X dimension only by repeating the unit interval.
-/// The X frequency is rounded to the nearest integer to tile correctly. Each frequency
-/// has a distinct cell grid offset.
-let tileXLayout (f : float32) (v : Vec3f) =
-  let data = threadLocalBasisData.allocate()
-  let fx = maxi 1 (int (round f))
+/// The X frequency is rounded to the nearest integer to tile correctly.
+/// Each frequency has a distinct cell grid offset.
+let tileXLayout (f : float32) =
+  let fi = maxi 1 (int (round f))
   let fh = manglef64 f
-  let v = Vec3f(float32 fx, f, f) * (v + Vec3f.fromSeed(int (fh >>> 32)))
-  let vf = v.map(floor)
-  data.fh <- int fh
-  data.d <- v - vf
-  data.tileX(fx, int vf.x)
-  data.noTileY(int vf.y)
-  data.noTileZ(int vf.z)
-  data
+  {
+    LayoutInstance.f = float32 fi
+    hash = int fh
+    fix = fi
+    fiy = 0
+    fiz = 0
+    offset = Vec3f.fromSeed(int (fh >>> 32))
+    rotation = Quaternionf.zero
+    runf = fun (instance : LayoutInstance) (v : Vec3f) ->
+      let data = (!threadLocalBasisData).allocate()
+      // We round the frequency on all axes to maintain aspect ratio.
+      let v = instance.f * v + instance.offset
+      let vi = v.map(floor)
+      data.fh <- instance.hash
+      data.d <- v - vi
+      data.tileX(instance.fix, int vi.x)
+      data.noTileY(int vi.y)
+      data.noTileZ(int vi.z)
+      data
+  }
 
 
 /// This layout tiles the Y dimension only by repeating the unit interval.
-/// The Y frequency is rounded to the nearest integer to tile correctly. Each frequency
-/// has a distinct cell grid offset.
-let tileYLayout (f : float32) (v : Vec3f) =
-  let data = threadLocalBasisData.allocate()
-  let fy = maxi 1 (int (round f))
+/// The Y frequency is rounded to the nearest integer to tile correctly.
+/// Each frequency has a distinct cell grid offset.
+let tileYLayout (f : float32) =
+  let fi = maxi 1 (int (round f))
   let fh = manglef64 f
-  let v = Vec3f(f, float32 fy, f) * (v + Vec3f.fromSeed(int (fh >>> 32)))
-  let vf = v.map(floor)
-  data.fh <- int fh
-  data.d <- v - vf
-  data.noTileX(int vf.x)
-  data.tileY(fy, int vf.y)
-  data.noTileZ(int vf.z)
-  data
+  {
+    LayoutInstance.f = float32 fi
+    hash = int fh
+    fix = 0
+    fiy = fi
+    fiz = 0
+    offset = Vec3f.fromSeed(int (fh >>> 32))
+    rotation = Quaternionf.zero
+    runf = fun (instance : LayoutInstance) (v : Vec3f) ->
+      let data = (!threadLocalBasisData).allocate()
+      // We round the frequency on all axes to maintain aspect ratio.
+      let v = instance.f * v + instance.offset
+      let vi = v.map(floor)
+      data.fh <- instance.hash
+      data.d <- v - vi
+      data.noTileX(int vi.x)
+      data.tileY(instance.fiy, int vi.y)
+      data.noTileZ(int vi.z)
+      data
+  }
 
 
 /// This layout tiles the Z dimension only by repeating the unit interval.
-/// The Z frequency is rounded to the nearest integer to tile correctly. Each frequency
-/// has a distinct cell grid offset.
-let tileZLayout (f : float32) (v : Vec3f) =
-  let data = threadLocalBasisData.allocate()
-  let fz = maxi 1 (int (round f))
+/// The Z frequency is rounded to the nearest integer to tile correctly.
+/// Each frequency has a distinct cell grid offset.
+let tileZLayout (f : float32) =
+  let fi = maxi 1 (int (round f))
   let fh = manglef64 f
-  let v = Vec3f(f, f, float32 fz) * (v + Vec3f.fromSeed(int (fh >>> 32)))
-  let vf = v.map(floor)
-  data.fh <- int fh
-  data.d <- v - vf
-  data.noTileX(int vf.x)
-  data.noTileY(int vf.y)
-  data.tileZ(fz, int vf.z)
-  data
-
+  {
+    LayoutInstance.f = float32 fi
+    hash = int fh
+    fix = 0
+    fiy = 0
+    fiz = fi
+    offset = Vec3f.fromSeed(int (fh >>> 32))
+    rotation = Quaternionf.zero
+    runf = fun (instance : LayoutInstance) (v : Vec3f) ->
+      let data = (!threadLocalBasisData).allocate()
+      // We round the frequency on all axes to maintain aspect ratio.
+      let v = instance.f * v + instance.offset
+      let vi = v.map(floor)
+      data.fh <- instance.hash
+      data.d <- v - vi
+      data.noTileX(int vi.x)
+      data.noTileY(int vi.y)
+      data.tileZ(instance.fiz, int vi.z)
+      data
+  }
 
 
 type Layout =

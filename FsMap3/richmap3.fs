@@ -47,10 +47,10 @@ type RichMap3 =
     let minSlope = maxSlope * 0.01f
     let minDeviation = 0.03f
     if rich.info.slope99 > maxSlope || rich.info.slope99 < minSlope || rich.info.deviation < minDeviation then
-      Log.infof "Map was rejected. 99%% slope %d | maximum permitted slope %d | deviation %f | minimum permitted deviation %f" (int maxSlope) (int rich.info.slope99) minDeviation rich.info.deviation
+      Log.infof "Map was rejected. 99%% slope %d (maximum %d) | deviation %f (minimum %f)" (int rich.info.slope99) (int maxSlope) rich.info.deviation minDeviation
       false
     else
-      Log.infof "Map was accepted. 99%% slope %d | maximum permitted slope %d | deviation %f | minimum permitted deviation %f" (int maxSlope) (int rich.info.slope99) minDeviation rich.info.deviation
+      Log.infof "Map was accepted. 99%% slope %d (maximum %d) | deviation %f (minimum %f)" (int rich.info.slope99) (int maxSlope) rich.info.deviation minDeviation
       true
 
   /// Generates a RichMap3. The palette and 2-window are generated separately here.
@@ -61,7 +61,7 @@ type RichMap3 =
     let centerY = dna.float32("View Center Y", clerp)
     let centerZ = dna.float32("View Center Z", clerp)
     let center = Vec3f(centerX, centerY, centerZ)
-    let zoom = dna.float32("Zoom", xerp 1.0e-4f 1.0e4f)
+    let zoom = dna.float32("View Zoom", xerp 1.0e-4f 1.0e4f)
     let offset = Vec3f(centerX - 0.5f / zoom, centerY - 0.5f / zoom, centerZ)
     let aspectRatio = 1.0f
     let permutation = dna.data("Color permutation", 48)

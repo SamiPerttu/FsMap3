@@ -20,38 +20,42 @@ let leopard (layout : LayoutFunction)
             (fade : float32 -> float32)
             (shading : float32)
             (radius : float32)
-            (frequency : float32)
-            (v : Vec3f) =
+            (frequency : float32) =
+
   assert (radius > 0.0f)
   let R2 = squared radius
   let Ri = 1.0f / radius
-  let data = layout frequency v
-  data.scan(radius)
-  let mutable value = Mix.start
-  for jx = data.x0 to data.x1 do
-    let hx = data.hashX(jx)
-    for jy = data.y0 to data.y1 do
-      let hxy = data.hashY(jy, hx)
-      for jz = data.z0 to data.z1 do
-        let mutable h = data.hashZ(jz, hxy)
-        for __ = 1 to count h do
-          h <- mangle32fast h
-          let P = data.d - Vec3f.fromSeed(h) - Vec3f(float32 jx, float32 jy, float32 jz)
-          let d2 = P.length2
-          if d2 < R2 then
-            let d = sqrt d2 * Ri
-            let w = fade (1.0f - d)
-            value <- mix value w (color h * P.map(fun x -> lerp 1.0f (1.0f + shading) (x * Ri)))
-  data.release()
-  Mix.result value
+
+  let layoutInstance = layout frequency
+
+  fun (v : Vec3f) ->
+    let data = layoutInstance.run v
+    data.scan(radius)
+    let mutable value = Mix.start
+    for jx = data.x0 to data.x1 do
+      let hx = data.hashX(jx)
+      for jy = data.y0 to data.y1 do
+        let hxy = data.hashY(jy, hx)
+        for jz = data.z0 to data.z1 do
+          let mutable h = data.hashZ(jz, hxy)
+          for __ = 1 to count h do
+            h <- mangle32fast h
+            let P = data.d - Vec3f.fromSeed(h) - Vec3f(float32 jx, float32 jy, float32 jz)
+            let d2 = P.length2
+            if d2 < R2 then
+              let d = sqrt d2 * Ri
+              let w = fade (1.0f - d)
+              value <- mix value w (color h * (1G + shading * Ri * P))
+    data.release()
+    Mix.result value
 
 
 /// Default leopard pattern with the standard cell layout and the smooth fade function.
-let inline leopardd radius frequency v = leopard hifiLayout unityCount Mix.sum anyColor Fade.smooth 0.0f radius frequency v
+let inline leopardd radius frequency = leopard hifiLayout unityCount Mix.sum anyColor Fade.smooth 0.0f radius frequency
 
 
 /// Leopard pattern with the standard cell layout.
-let inline leopardf fade radius frequency v = leopard hifiLayout unityCount Mix.sum anyColor fade 0.0f radius frequency v
+let inline leopardf fade radius frequency = leopard hifiLayout unityCount Mix.sum anyColor fade 0.0f radius frequency
 
 
 
@@ -65,28 +69,32 @@ let geopard (layout : LayoutFunction)
             (radius : float32)
             (curvature : float32)
             (pattern : Atlas3)
-            (frequency : float32)
-            (v : Vec3f) =
+            (frequency : float32) =
+
   assert (radius > 0.0f)
   let R2 = squared radius
   let Ri = 1.0f / radius
-  let data = layout frequency v
-  data.scan(radius)
-  let mutable value = Mix.start
-  for jx = data.x0 to data.x1 do
-    let hx = data.hashX(jx)
-    for jy = data.y0 to data.y1 do
-      let hxy = data.hashY(jy, hx)
-      for jz = data.z0 to data.z1 do
-        let mutable h = data.hashZ(jz, hxy)
-        for __ = 1 to count h do
-          h <- mangle32fast h
-          let P = data.d - Vec3f.fromSeed(h) - Vec3f(float32 jx, float32 jy, float32 jz)
-          let d2 = P.length2
-          if d2 < R2 then
-            let d = sqrt d2 * Ri
-            let w = fade (1.0f - d)
-            value <- mix value w (pattern h (P * (Ri * (1.0f - curvature + curvature * 2.0f * d))))
-  data.release()
-  Mix.result value
+
+  let layoutInstance = layout frequency
+
+  fun (v : Vec3f) ->
+    let data = layoutInstance.run v
+    data.scan(radius)
+    let mutable value = Mix.start
+    for jx = data.x0 to data.x1 do
+      let hx = data.hashX(jx)
+      for jy = data.y0 to data.y1 do
+        let hxy = data.hashY(jy, hx)
+        for jz = data.z0 to data.z1 do
+          let mutable h = data.hashZ(jz, hxy)
+          for __ = 1 to count h do
+            h <- mangle32fast h
+            let P = data.d - Vec3f.fromSeed(h) - Vec3f(float32 jx, float32 jy, float32 jz)
+            let d2 = P.length2
+            if d2 < R2 then
+              let d = sqrt d2 * Ri
+              let w = fade (1.0f - d)
+              value <- mix value w (pattern h (P * (Ri * (1.0f - curvature + curvature * 2.0f * d))))
+    data.release()
+    Mix.result value
 

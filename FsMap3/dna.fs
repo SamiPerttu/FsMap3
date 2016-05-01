@@ -10,7 +10,7 @@ from raw 32-bit data values. Given parameter data, the output of a generator is 
 Raw data is provided by DnaSource objects. These can implement pseudo-random data, replicated data,
 or sophisticated sampling and optimization methods. DnaSource has a feedback mechanism for guiding evolution.
 
-As parameters are drawn, their details are recorded in the genotype, including (optionally) tree structure
+As parameters are drawn, their details are recorded in the genotype, including tree structure
 and parameter grouping. The details can be printed or visualized easily (e.g., see the DnaView type).
 
 One of the advantages of the approach is that implementation of generators is easy: only the generator function
@@ -43,11 +43,9 @@ open Convert
 open Mangle
 
 
-(*
-Tree address is encoded in a 64-bit integer. It contains a 1 "guard" bit followed by 4 bits per level of sibling number
-information. Levels 0 to 15 are supported. If the level is too large (this should be rare in practice), then the address
-is set to the special null address.
-*)
+/// Tree address is encoded in a 64-bit integer. It contains a 1 "guard" bit followed by 4 bits per level of sibling number
+/// information. Levels 0 to 15 are supported. If the level is too large (this should be rare in practice), then the address
+/// is set to the special null address.
 type ParameterAddress = struct
   val x : uint64
 
@@ -689,7 +687,7 @@ type [<ReferenceEquality>] Dna =
 
 
 
-/// Dna injectors can be used to impose additional constraints to genotype generation on the go.
+/// Dna injectors impose additional constraints to genotype generation on the go.
 /// Injectors are added by generators. They will be consulted for parameter values before the source.
 and [<AbstractClass>] DnaInjector() =
   abstract choose : Dna * int -> uint Optionval

@@ -8,22 +8,35 @@ open FeatureCount
 open CellColor
 
 
-// Ignoring signedness, there are 13 basic Worley cell distance (d0, d1, d2) weight patterns:
+// Ignoring signedness, there are 13 basic Worley cell distance (d0, d1, d2) weight patterns.
 let worleyPattern =
   [|
-    Vec3f(1.0f, 0.0f, 0.0f)   // 0  cells
-    Vec3f(1.0f, 1.0f, 0.0f)   // 1  cells with some subcells
-    Vec3f(1.0f, 1.0f, 1.0f)   // 2  cells with more subcells
-    Vec3f(-1.0f, 1.0f, 0.0f)  // 3  Voronoi
-    Vec3f(-1.0f, 1.0f, 1.0f)  // 4  Voronoi + added diamond-like detail
-    Vec3f(0.0f, -1.0f, 1.0f)  // 5  more detailed Voronoi with somewhat web-like appearance
-    Vec3f(-1.0f, -1.0f, 1.0f) // 6  most detailed Voronoi (this is the only pattern not guaranteed to be positive)
-    Vec3f(1.0f, -1.0f, 1.0f)  // 7  crystal pattern
-    Vec3f(1.0f, 0.0f, 1.0f)   // 8  less sharp crystal pattern
-    Vec3f(0.0f, 1.0f, 1.0f)   // 9  least sharp crystal pattern
-    Vec3f(0.0f, 1.0f, 0.0f)   // 10 crystals with plateaus
-    Vec3f(0.0f, 0.0f, 1.0f)   // 11 web-like polygons
-    Vec3f(-1.0f, 0.0f, 1.0f)  // 12 weird web-like pattern
+    Vec3f(1.0f, 0.0f, 0.0f)   //  0-1  cells
+    Vec3f(-1.0f, 0.0f, 0.0f)
+    Vec3f(1.0f, 1.0f, 0.0f)   //  2-3  cells with some subcells
+    Vec3f(-1.0f, -1.0f, 0.0f)
+    Vec3f(1.0f, 1.0f, 1.0f)   //  4-5  cells with more subcells
+    Vec3f(-1.0f, -1.0f, -1.0f)
+    Vec3f(-1.0f, 1.0f, 0.0f)  //  6-7  Voronoi
+    Vec3f(1.0f, -1.0f, 0.0f)
+    Vec3f(-1.0f, 1.0f, 1.0f)  //  8-9  Voronoi + added diamond-like detail
+    Vec3f(1.0f, -1.0f, -1.0f)
+    Vec3f(0.0f, -1.0f, 1.0f)  // 10-11 more detailed Voronoi with somewhat web-like appearance
+    Vec3f(0.0f, 1.0f, -1.0f)
+    Vec3f(-1.0f, -1.0f, 1.0f) // 12-13 most detailed Voronoi (this is the only even pattern not guaranteed to have positive value)
+    Vec3f(1.0f, 1.0f, -1.0f)
+    Vec3f(1.0f, -1.0f, 1.0f)  // 14-15 crystal pattern
+    Vec3f(-1.0f, 1.0f, -1.0f)
+    Vec3f(1.0f, 0.0f, 1.0f)   // 16-17 less sharp crystal pattern
+    Vec3f(-1.0f, 0.0f, -1.0f)
+    Vec3f(0.0f, 1.0f, 1.0f)   // 18-19 least sharp crystal pattern
+    Vec3f(0.0f, -1.0f, -1.0f)
+    Vec3f(0.0f, 1.0f, 0.0f)   // 20-21 crystals with plateaus
+    Vec3f(0.0f, -1.0f, 0.0f)
+    Vec3f(0.0f, 0.0f, 1.0f)   // 22-23 web-like polygons
+    Vec3f(0.0f, 0.0f, -1.0f)
+    Vec3f(-1.0f, 0.0f, 1.0f)  // 24-25 weird web-like pattern
+    Vec3f(1.0f, 0.0f, -1.0f)
   |]
 
 
@@ -46,7 +59,7 @@ let cellNorm1 =
   let Z = 0.654f
   { new CellDistance with
     member __.scalar(x) = x
-    member __.vector(v) = v.absNorm
+    member __.vector(v) = v.norm1
     member __.normalize(d) = Z * d
     member __.normalizationFactor = Z
   }
@@ -210,12 +223,15 @@ let worleyBasis (cell : BasisData) (count : FeatureCount) maxDistance (distance 
 
 
 /// Worley basis. Components contain Worley patterns p0, p1 and p2.
-let worley (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance : CellDistance) (fade : float32 -> float32) (frequency : float32) (v : Vec3f) =
-  let data = layout frequency v
-  worleyBasis data count (1.0f / distance.normalizationFactor) distance v
-  let d = Vec3f(data.d0, data.d1, data.d2).map(min 1.0f >> fade)
-  data.release()
-  Vec3f(d *. worleyPattern.[p0], d *. worleyPattern.[p1], d *. worleyPattern.[p2])
+let worley (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance : CellDistance) (fade : float32 -> float32) (frequency : float32) =
+  let layoutInstance = layout frequency
+
+  fun (v : Vec3f) ->
+    let data = layoutInstance.run v
+    worleyBasis data count (1.0f / distance.normalizationFactor) distance v
+    let d = Vec3f(data.d0, data.d1, data.d2).map(min 1.0f >> fade)
+    data.release()
+    Vec3f(d *. worleyPattern.[p0], d *. worleyPattern.[p1], d *. worleyPattern.[p2])
 
 
 /// Default Worley basis with the default layout function and unity Poisson feature distribution.
@@ -330,17 +346,25 @@ let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (dist
 
 
 
-// The following 8 weight patterns look appropriate in the colored Worley basis.
+/// These weight patterns look appropriate in the colored Worley basis.
 let camoPattern =
   [|
-    Vec3f(1.0f, 0.0f, 0.0f)   // 0 cells
-    Vec3f(1.0f, 1.0f, 0.0f)   // 1 cells with some subcells
-    Vec3f(1.0f, 1.0f, 1.0f)   // 2 cells with more subcells
-    Vec3f(-1.0f, 1.0f, 0.0f)  // 3 Voronoi
-    Vec3f(-1.0f, 1.0f, 1.0f)  // 4 Voronoi + added diamond-like detail
-    Vec3f(1.0f, 0.0f, 1.0f)   // 5 less sharp crystal pattern
-    Vec3f(0.0f, 1.0f, 1.0f)   // 6 least sharp crystal pattern
-    Vec3f(0.0f, 1.0f, 0.0f)   // 7 crystals with plateaus
+    Vec3f(1.0f, 0.0f, 0.0f)   //  0-1  cells
+    Vec3f(-1.0f, 0.0f, 0.0f)
+    Vec3f(1.0f, 1.0f, 0.0f)   //  2-3  cells with some subcells
+    Vec3f(-1.0f, -1.0f, 0.0f)
+    Vec3f(1.0f, 1.0f, 1.0f)   //  4-5  cells with more subcells
+    Vec3f(-1.0f, -1.0f, -1.0f)
+    Vec3f(-1.0f, 1.0f, 0.0f)  //  6-7  Voronoi
+    Vec3f(1.0f, -1.0f, 0.0f)
+    Vec3f(-1.0f, 1.0f, 1.0f)  //  8-9  Voronoi + added diamond-like detail
+    Vec3f(1.0f, -1.0f, -1.0f)
+    Vec3f(1.0f, 0.0f, 1.0f)   // 10-11 less sharp crystal pattern
+    Vec3f(-1.0f, 0.0f, -1.0f)
+    Vec3f(0.0f, 1.0f, 1.0f)   // 12-13 least sharp crystal pattern
+    Vec3f(0.0f, -1.0f, -1.0f)
+    Vec3f(0.0f, 1.0f, 0.0f)   // 14-15 crystals with plateaus
+    Vec3f(0.0f, -1.0f, 0.0f)
   |]
 
 
@@ -348,37 +372,16 @@ let camoPattern =
 /// Worley colored generator. Components contain camo weight patterns p0, p1 and p2
 /// multiplied by closest cell color. Color fading distance between closest cells
 /// is 0 < a < 1. It is typically a small value, somewhere around [0.02, 0.2].
-let camo (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance : CellDistance) (color : CellColor) (fade : float32 -> float32) a frequency v =
-  let data = layout frequency v
-  worleyColorBasis data count 1.0f distance color (3.0f / a) v
-  // The colored basis stores normalized distances.
-  let d = Vec3f(data.d0, data.d1, data.d2).map(fun d -> fade (max 0.0f (1.0f - d)))
-  data.release()
-  data.worleyColor * Vec3f(d *. camoPattern.[p0], d *. camoPattern.[p1], d *. camoPattern.[p2])
+let camo (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance : CellDistance) (color : CellColor) (fade : float32 -> float32) a frequency =
+  let layoutInstance = layout frequency
 
+  fun (v : Vec3f) ->
+    let data = layoutInstance.run v
+    worleyColorBasis data count 1.0f distance color (3.0f / a) v
+    // The colored basis stores normalized distances.
+    let d = Vec3f(data.d0, data.d1, data.d2).map(fun d -> fade (max 0.0f (1.0f - d)))
+    let worleyColor = data.worleyColor
+    data.release()
+    worleyColor * Vec3f(d *. camoPattern.[p0], d *. camoPattern.[p1], d *. camoPattern.[p2])
 
-
-
-let measureDistances (seed : int) (distance : CellDistance) =
-
-  let n = 2000000
-
-  let mutable D0 = 0.0
-  let mutable D1 = 0.0
-  let mutable D2 = 0.0
-  let rnd = Rnd(seed)
-
-  for __ = 1 to n do
-
-    let v = rnd.vec3f()
-    let cell = hifiLayout (rnd.expf(2.0f, 128.0f)) v
-    worleyBasis cell unityCount 100.0f distance v
-
-    D0 <- D0 + float cell.d0
-    D1 <- D1 + float cell.d1
-    D2 <- D2 + float cell.d2
-
-  printfn "Average d0: %f | 1/d0: %f" (D0 / float n) (float n / D0)
-  printfn "Average d1: %f | 1/d1: %f" (D1 / float n) (float n / D1)
-  printfn "Average d2: %f | 1/d2: %f" (D2 / float n) (float n / D2)
 

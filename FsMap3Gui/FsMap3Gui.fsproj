@@ -5,14 +5,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>c2558c7c-a53f-44b6-8149-f735d87106bf</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <RootNamespace>FsMap3</RootNamespace>
-    <AssemblyName>FsMap3</AssemblyName>
+    <ProjectGuid>fed75364-9d77-41cc-9d93-54f9c1f97369</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>FsMap3Gui</RootNamespace>
+    <AssemblyName>FsMap3Gui</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
-    <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Name>FsMap3</Name>
+    <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
+    <Name>FsMap3Gui</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -22,7 +22,9 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
-    <DocumentationFile>bin\Debug\FSolidTexture.XML</DocumentationFile>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DocumentationFile>bin\Debug\FsMap3Gui.XML</DocumentationFile>
+    <Prefer32Bit>true</Prefer32Bit>
     <NoWarn>52</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -30,9 +32,12 @@
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>
+    </DefineConstants>
     <WarningLevel>5</WarningLevel>
-    <DocumentationFile>bin\Release\FSolidTexture.XML</DocumentationFile>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DocumentationFile>bin\Release\FsMap3Gui.XML</DocumentationFile>
+    <Prefer32Bit>false</Prefer32Bit>
     <NoWarn>52</NoWarn>
     <OtherFlags>--crossoptimize+ --checked-</OtherFlags>
   </PropertyGroup>
@@ -54,67 +59,34 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="common.fs" />
-    <Compile Include="mat.fs" />
-    <Compile Include="bits.fs" />
-    <Compile Include="pretty.fs" />
-    <Compile Include="tome.fs" />
-    <Compile Include="log.fs" />
-    <Compile Include="grid.fs" />
-    <Compile Include="vec2f.fs" />
-    <Compile Include="poisson.fs" />
-    <Compile Include="vec3f.fs" />
-    <Compile Include="vec3.fs" />
-    <Compile Include="vec4f.fs" />
-    <Compile Include="quaternion.fs" />
-    <Compile Include="fade.fs" />
-    <Compile Include="convert.fs" />
-    <Compile Include="mangle.fs" />
-    <Compile Include="fun.fs" />
-    <Compile Include="darray.fs" />
-    <Compile Include="allocator.fs" />
-    <Compile Include="hopscotch.fs" />
-    <Compile Include="rnd.fs" />
-    <Compile Include="wset.fs" />
-    <Compile Include="dna.fs" />
-    <Compile Include="dnaparameter.fs" />
-    <Compile Include="yamlsource.fs" />
-    <Compile Include="interactivesource.fs" />
-    <Compile Include="potential.fs" />
-    <Compile Include="color.fs" />
-    <Compile Include="walk.fs" />
-    <Compile Include="mix.fs" />
-    <Compile Include="cellcolor.fs" />
-    <Compile Include="featurecount.fs" />
-    <Compile Include="basis3.fs" />
-    <Compile Include="map3.fs" />
-    <Compile Include="atlas3.fs" />
-    <Compile Include="map3info.fs" />
-    <Compile Include="perlin.fs" />
-    <Compile Include="cubex.fs" />
-    <Compile Include="radial.fs" />
-    <Compile Include="leopard.fs" />
-    <Compile Include="peacock.fs" />
-    <Compile Include="worley.fs" />
-    <Compile Include="capflow.fs" />
-    <Compile Include="impflow.fs" />
-    <Compile Include="julia.fs" />
-    <Compile Include="orbit.fs" />
-    <Compile Include="atom.fs" />
-    <Compile Include="concurrent.fs" />
-    <Compile Include="pixmap.fs" />
-    <Compile Include="fadedna.fs" />
-    <Compile Include="map3dna.fs" />
-    <Compile Include="richmap3.fs" />
-    <Compile Include="ray.fs" />
-    <Compile Include="profile.fs" />
+    <None Include="App.config" />
+    <Compile Include="benchmark.fs" />
+    <Compile Include="wpf.fs" />
+    <Compile Include="dnagui.fs" />
+    <Compile Include="pixmapgui.fs" />
+    <Compile Include="raygui.fs" />
+    <Compile Include="map3gui.fs" />
+    <Compile Include="explorer.fs" />
+    <None Include="demo.fsx" />
+    <Compile Include="main.fs" />
     <Content Include="packages.config" />
+    <None Include="appbar.magnify.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="appbar.cursor.move.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="appbar.diagram.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
     </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
@@ -122,6 +94,15 @@
       <HintPath>..\packages\System.Numerics.Vectors.4.1.1-beta-23516\lib\net46\System.Numerics.Vectors.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Xaml" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FsMap3\FsMap3.fsproj">
+      <Name>FsMap3</Name>
+      <Project>{c2558c7c-a53f-44b6-8149-f735d87106bf}</Project>
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
