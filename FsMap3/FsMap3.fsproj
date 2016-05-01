@@ -22,7 +22,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
-    <DocumentationFile>bin\Debug\FSolidTexture.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\FsMap3.XML</DocumentationFile>
     <NoWarn>52</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -32,7 +32,7 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
-    <DocumentationFile>bin\Release\FSolidTexture.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\FsMap3.XML</DocumentationFile>
     <NoWarn>52</NoWarn>
     <OtherFlags>--crossoptimize+ --checked-</OtherFlags>
   </PropertyGroup>
