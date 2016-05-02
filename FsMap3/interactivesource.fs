@@ -201,7 +201,7 @@ type InteractiveSource(seed) =
       | Someval(v) ->
         match choices with
         | Some(c) ->
-          let wrap x = if x > maxValue then x - maxValue else x
+          let wrap x = if x > maxValue then x - maxValue - 1u else x
           (if delta > 0.0 then Fun.find else Fun.findBack) 1u maxValue
             (fun offset -> c.weight(wrap (v + offset)) > 0.0)
             (fun offset -> wrap (v + offset)) (always v)
