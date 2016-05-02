@@ -15,7 +15,7 @@ open Map3Dna
 open Map3Gui
 
 
-type ExplorerViewMode = Full | Center | Half | Quarter
+type ExplorerViewMode = FullView | CenterView | HalfView | QuarterView
 
 
 
@@ -23,7 +23,19 @@ type ExplorerMutateMode = Everything | ColorsEffects | ScalesOffsets | Details |
 
 
 
-type ExplorerTool = ZoomTool | MutateTool | PanTool
+type ExplorerTool = PanTool | ZoomTool | MutateTool | JoltTool
+
+
+
+type View =
+  static member internal transform(?centerX : ParameterAction, ?centerY : ParameterAction, ?centerZ : ParameterAction, ?zoom : ParameterAction) =
+    fun (rnd : Rnd) (dna : Dna) i ->
+      match dna.[i].name, centerX, centerY, centerZ, zoom with
+      | "View Center X", Some(centerX), _, _, _ -> centerX
+      | "View Center Y", _, Some(centerY), _, _ -> centerY
+      | "View Center Z", _, _, Some(centerZ), _ -> centerZ
+      | "View Zoom", _, _, _, Some(zoom) -> zoom
+      | _ -> Retain
 
 
 
@@ -51,7 +63,7 @@ type ExplorerView<'a> =
     this.agent.Post(fun _ -> f(); true)
 
   static member create(mainMode, deepSeed : 'a, deepGenerator, pixmapGenerator, deepFilter, grid : Grid, visible : bool, previewLevels) : 'a ExplorerView =
-    let image = Image(Visibility = match visible with | true -> Visibility.Visible | false -> Visibility.Collapsed)
+    let image = Image(SnapsToDevicePixels = true, Visibility = match visible with | true -> Visibility.Visible | false -> Visibility.Collapsed)
     let view = PixmapView(image, previewLevels = previewLevels)
     grid.add(image, 0, 0)
     image.Margin <- Thickness(0.0)
@@ -79,13 +91,10 @@ type ExplorerView<'a> =
         let zoomFactor = this.zoomFactor.pre(always 1.0f)
         // Pan or zoom the view if requested.
         if panDelta.length2 > 0.0f || zoomFactor <> 1.0f then
-          this.controller.alter(fun _ dna i ->
-            if dna.[i].name = "View Center X" then ModifyFloat (fun x -> x + float panDelta.x)
-            elif dna.[i].name = "View Center Y" then ModifyFloat (fun y -> y + float panDelta.y)
-            elif dna.[i].name = "View Center Z" then ModifyFloat (fun z -> z + float panDelta.z)
-            elif dna.[i].name = "View Zoom" then ModifyFloat (fun zoom -> zoom * float zoomFactor)
-            else Retain
-            )
+          this.controller.alter(View.transform(centerX = ModifyFloat (fun x -> x + float panDelta.x),
+                                               centerY = ModifyFloat (fun y -> y + float panDelta.y),
+                                               centerZ = ModifyFloat (fun z -> z + float panDelta.z),
+                                               zoom = ModifyFloat (fun zoom -> zoom * float zoomFactor)))
         else
           // Otherwise, process the next message.
           let! msg = inbox.Receive()
@@ -99,6 +108,75 @@ type ExplorerView<'a> =
     shape.Margin <- Thickness(0.0)
     shape.HorizontalAlignment <- HorizontalAlignment.Left
     shape.VerticalAlignment <- VerticalAlignment.Top
+
+
+
+type View with
+  static member internal mutationPredicate(rnd : Rnd, view : ExplorerView<_>, mutateMode : ExplorerMutateMode) =
+      let shouldRetainAlways name = name = "Generator" || name = "Layout" || name.StartsWith("View")
+      let mutateMode = match mutateMode with | Random -> rnd.choose(1.0, ColorsEffects, 1.0, ScalesOffsets, 1.0, Details, 1.0, Everything) | x -> x
+      // Mosaic view uses a smaller mutation rate.
+      let mR = match view.mainMode with
+               | HalfView -> rnd.exp(0.5, 2.0)
+               | _ -> rnd.exp(0.25, 0.5)
+      match mutateMode with
+      | ColorsEffects ->
+        fun (rnd : Rnd) (dna : Dna) i ->
+          let name = dna.[i].name
+          let parentName = dna.parentParameter(i).map(fun p -> p.name) >? ""
+          if shouldRetainAlways name then
+            Retain
+          elif name = "Color space" then
+            rnd.choose(2.0, Retain, 1.0 * mR, Randomize)
+          elif name.StartsWith("Color") || name.StartsWith("Hue") || name.StartsWith("Saturation") || name = "Gamma skew" then
+            Jolt(rnd.exp(0.01, 1.0))
+          elif name = "Shape" || parentName = "Shape" then
+            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
+          elif name = "Cell color" || parentName = "Cell color" then
+            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
+          else Retain
+      | ScalesOffsets ->
+        fun rnd (dna : Dna) i ->
+          let name = dna.[i].name
+          if shouldRetainAlways name then
+            Retain
+          elif name = "X offset" || name = "Y offset" || name = "Z offset" then
+            rnd.choose(1.5, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
+          elif name = "Frequency" || name = "Frequency factor" || name = "Flow frequency factor" then
+            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
+          elif name = "Lacunarity" then
+            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
+          else Retain
+      | Details ->
+        fun rnd (dna : Dna) i ->
+          let name = dna.[i].name
+          let parentName = dna.parentParameter(i).map(fun p -> p.name) >? ""
+          if shouldRetainAlways name then
+            Retain
+          elif name = "Roughness" then
+            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.05, 0.5)))
+          elif name = "Octaves" then
+            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.05, 0.3)))
+          elif name = "Layer hardness" || name = "Layer width" || name = "Rotate width" then
+            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
+          elif name = "Walk operator" || name = "Displace amount" || name = "Basis displace amount" || name = "Rotate amount" || parentName = "Displace response" || name = "Basis displace response" then
+            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
+          elif parentName = "Mix operator" || parentName = "Shape" || parentName = "Features per cell" || parentName = "Potential function" || parentName = "Basis" then
+            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
+          elif name.EndsWith("fade") || name.EndsWith("shading") || name.EndsWith("radius") then
+            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
+          else Retain
+      | Everything | _ ->
+        let mutationFrequency = rnd.exp(0.02, 0.2)
+        fun rnd (dna : Dna) i ->
+          let name = dna.[i].name
+          if shouldRetainAlways name then
+            Retain
+          elif rnd.boolean(mutationFrequency) then
+            Jolt(rnd.exp(0.01, 1.0))
+          else
+            Retain
+
 
 
 
@@ -124,12 +202,10 @@ type StatusLine =
 /// Interactive Map3 explorer.
 type Explorer =
 
-  static member start(?initialR) =
+  static member start(?initialDnaSource) =
 
     /// Minimum resolution of each quarter view.
     let minimumR = 16
-    /// Initial resolution of each quarter view. Half view is double this. Full view is four times this.
-    let initialR = initialR >? 160
     /// View border thickness.
     let viewBorder = 2
     /// How many pixels user has to move the mouse before it is recognized as zooming.
@@ -145,13 +221,25 @@ type Explorer =
 
     let rnd = Rnd(timeSeed())
 
-    let initialCanvasWidth = initialR * 4 + viewBorder * 2
-    let initialCanvasHeight = initialCanvasWidth
-
     let currentCanvasWidth = ref 0
     let currentCanvasHeight = ref 0
 
-    let window = Window(Title = "Map3 Explorer", ResizeMode = ResizeMode.CanResize, SizeToContent = SizeToContent.Manual, Topmost = false, WindowStartupLocation = WindowStartupLocation.CenterScreen)
+    /// Current user action.
+    let userAction = ref Idle
+
+    /// Which PixmapViews are visible depends on the mode.
+    let guiMode = ref ExplorerViewMode.FullView
+
+    /// Current tool.
+    let toolMode = ref ExplorerTool.MutateTool
+
+    /// Current default layout.
+    let layoutMode = ref Layout.Hifi
+
+    /// Current mutation mode.
+    let mutateMode = ref Everything
+
+    let window = Window(Title = "Map3 Explorer", ResizeMode = ResizeMode.CanResize, Width = 1024.0, Height = 512.0, SizeToContent = SizeToContent.Manual, Topmost = false, WindowStartupLocation = WindowStartupLocation.CenterScreen)
 
     let canvas = Grid(Background = Brushes.Black, ClipToBounds = true, Margin = Thickness(0.0, 0.0, 0.0, 0.0))
     canvas.ColumnDefinitions.Add(ColumnDefinition())
@@ -161,23 +249,29 @@ type Explorer =
 
     let mapSeed = Map3.zero
     let richSeed = { RichMap3.map = mapSeed; center = Vec3f(0.5f); zoom = 1.0f; aspectRatio = 1.0f; info = Map3Info.create(mapSeed) }
-    let deepGenerator = RichMap3.generate generateExplorerMap
-    let pixmapGenerator = RichMap3.pixmapGenerator
+    let deepGenerator = RichMap3.generate(generateExplorerMap)
+    let pixmapGenerator extraTransform = RichMap3.pixmapGenerator extraTransform
     let deepFilter = RichMap3.filterDetail
 
-    let fullView = ExplorerView.create(Full, richSeed, deepGenerator, pixmapGenerator, deepFilter, canvas, true, 4)
+    let fullView = ExplorerView.create(FullView, richSeed, deepGenerator, pixmapGenerator identity, deepFilter, canvas, true, 4)
 
-    let centerView = ExplorerView.create(Center, richSeed, deepGenerator, pixmapGenerator, deepFilter, canvas, false, 4)
+    let centerView = ExplorerView.create(CenterView, richSeed, deepGenerator, pixmapGenerator identity, deepFilter, canvas, false, 4)
 
+    let halfXY i = (i % 2, i / 2)
     let halfView = Array.init hN (fun i ->
-      ExplorerView.create(Half, richSeed, deepGenerator, pixmapGenerator, deepFilter, canvas, false, 4)
+      ExplorerView.create(HalfView, richSeed, deepGenerator, pixmapGenerator identity, deepFilter, canvas, false, 4)
       )
 
+    let quarterXY i = (i % 4, i / 4)
     let quarterView = Array.init qN (fun i ->
-      ExplorerView.create(Quarter, richSeed, deepGenerator, pixmapGenerator, deepFilter, canvas, false, 3)
+      let x, y = quarterXY i
+      let mosaicTransform (v : Vec3f) = Vec3f((v.x + float32 x) / 4.0f, (v.y + float32 y) / 4.0f, v.z)
+      ExplorerView.create(QuarterView, richSeed, deepGenerator, pixmapGenerator mosaicTransform, deepFilter, canvas, false, 3)
       )
 
-    for view in halfView do
+    let halfQuarterView = Array.append halfView quarterView
+
+    for view in halfQuarterView do
       view.createFocusShape(canvas)
 
     let dragShape = Rectangle(Visibility = Visibility.Collapsed, Stroke = Wpf.brush(0.0), Opacity = 0.3, StrokeThickness = 1.0, Fill = Brushes.Blue, SnapsToDevicePixels = true)
@@ -208,118 +302,115 @@ type Explorer =
         fullView.image.Width <- float (R * 4)
         fullView.image.Height <- float (R * 4)
         fullView.image.Margin <- Thickness(Left = float (x0 + viewBorder), Top = float (y0 + viewBorder))
-        fullView.view.renderWidth.set(R * 4)
-        fullView.view.renderHeight.set(R * 4)
+        fullView.view.setRenderSize(R * 4, R * 4)
 
         centerView.image.Width <- float (R * 2)
         centerView.image.Height <- float (R * 2)
         centerView.image.Margin <- Thickness(Left = float (x0 + R + viewBorder), Top = float (y0 + R + viewBorder))
-        centerView.view.renderWidth.set(R * 2)
-        centerView.view.renderHeight.set(R * 2)
+        centerView.view.setRenderSize(R * 2, R * 2)
 
         halfView |> Array.iteri (fun i view ->
           let image = view.image
           image.Width <- float (R * 2)
           image.Height <- float (R * 2)
-          let x = i % 2
-          let y = i / 2
+          let x, y = halfXY i
           image.Margin <- Thickness(Left = float (x0 + x * R * 2 + viewBorder), Top = float (y0 + y * R * 2 + viewBorder))
           let shape = !view.focusShape
           shape.Width <- float ((R + viewBorder) * 2)
           shape.Height <- float ((R + viewBorder) * 2)
-          let x = i % 2
-          let y = i / 2
           shape.Margin <- Thickness(Left = float (x0 + x * R * 2), Top = float (y0 + y * R * 2))
-          view.view.renderWidth.set(R * 2)
-          view.view.renderHeight.set(R * 2)
-          )
+          view.view.setRenderSize(R * 2, R * 2)
+         )
 
         quarterView |> Array.iteri (fun i view ->
           let image = view.image
           image.Width <- float R
           image.Height <- float R
-          let x = i % 4
-          let y = i / 4
-          image.Margin <- Thickness(Left = float (x0 + x * (R + 1)), Top = float (y0 + y * (R + 1)))
-          view.view.renderWidth.set(R)
-          view.view.renderHeight.set(R)
+          let x, y = quarterXY i
+          image.Margin <- Thickness(Left = float (x0 + x * R + viewBorder), Top = float (y0 + y * R + viewBorder))
+          let shape = !view.focusShape
+          shape.Width <- float (R + viewBorder * 2)
+          shape.Height <- float (R + viewBorder * 2)
+          shape.Margin <- Thickness(Left = float (x0 + x * R), Top = float (y0 + y * R))
+          view.view.setRenderSize(R, R)
           )
      
     let toolPanel = StackPanel(Orientation = Orientation.Vertical, Width = toolPanelWidth)
     toolPanel.VerticalAlignment <- VerticalAlignment.Top
 
-    /// Current user action. Access from UI thread only.
-    let userAction = ref Idle
+    let iconSize = 26.0
+    let iconMargin = Thickness(1.0)
+    let createIconButton imageFile tip = ToggleButton(Content = Wpf.loadImage(imageFile), withToolTip = tip, Width = iconSize, Height = iconSize, Margin = iconMargin)
 
-    /// Which PixmapViews are visible depends on the mode.
-    let guiMode = ref ExplorerViewMode.Full
-
-    let toolMode = ref ExplorerTool.MutateTool
-
-    let layoutMode = ref Layout.Hifi
-
-    let toolbar = StackPanel(Orientation = Orientation.Horizontal)
-    let toolSize = 26.0
-    let toolMargin = Thickness(1.0)
-    let createToolButton imageFile = ToggleButton(Content = Wpf.loadImage(imageFile), Width = toolSize, Height = toolSize, Margin = toolMargin)
-    let mutateButton = createToolButton "appbar.diagram.png"
-    toolbar.add(mutateButton)
-    let zoomButton = createToolButton "appbar.magnify.png"
-    toolbar.add(zoomButton)
-    let panButton = createToolButton "appbar.cursor.move.png"
-    toolbar.add(panButton)
+    let toolBar = StackPanel(Orientation = Orientation.Horizontal)
+    let panButton = createIconButton "appbar.cursor.move.png" "Pan Tool: drag the view."
+    toolBar.add(panButton)
+    let zoomButton = createIconButton "appbar.magnify.png" "Zoom Tool: select an area to zoom into."
+    toolBar.add(zoomButton)
+    let mutateButton = createIconButton "appbar.diagram.png" "Mutate Tool: make other views mutations of chosen view."
+    toolBar.add(mutateButton)
+    let joltButton = createIconButton "appbar.camera.flash.png" "Jolt Tool: mutate the view."
+    toolBar.add(joltButton)
 
     let setToolMode mode =
-      mutateButton.IsChecked <- Nullable(false)
-      zoomButton.IsChecked <- Nullable(false)
-      panButton.IsChecked <- Nullable(false)
-      match mode with
-      | MutateTool -> mutateButton.IsChecked <- Nullable(true)
-      | ZoomTool -> zoomButton.IsChecked <- Nullable(true)
-      | PanTool -> panButton.IsChecked <- Nullable(true)
+      mutateButton.IsChecked <- Nullable((mode = MutateTool))
+      zoomButton.IsChecked <- Nullable((mode = ZoomTool))
+      panButton.IsChecked <- Nullable((mode = PanTool))
+      joltButton.IsChecked <- Nullable((mode = JoltTool))
       toolMode := mode
 
     mutateButton.PreviewMouseDown.Add(fun args -> setToolMode MutateTool; args.Handled <- true)
     zoomButton.PreviewMouseDown.Add(fun args -> setToolMode ZoomTool; args.Handled <- true)
     panButton.PreviewMouseDown.Add(fun args -> setToolMode PanTool; args.Handled <- true)
+    joltButton.PreviewMouseDown.Add(fun args -> setToolMode JoltTool; args.Handled <- true)
 
-    /// Which (half) view did we maximize last?
-    let minimizeView = ref halfView.[0]
+    let viewBar = StackPanel(Orientation = Orientation.Horizontal)
+    let fullViewButton = createIconButton "fullview.png" "1 Big View"
+    viewBar.add(fullViewButton)
+    let halfViewButton = createIconButton "halfview.png" "2x2 Small Views"
+    viewBar.add(halfViewButton)
+    let quarterViewButton = createIconButton "quarterview.png" "4x4 Mosaic View"
+    viewBar.add(quarterViewButton)
 
-    let mutateMode = ref Everything
+    /// Which half view did we maximize last?
+    let minimizeHalfView = ref halfView.[0]
+    /// Which quarter view did we maximize last?
+    let minimizeQuarterView = ref quarterView.[0]
 
-    let focusView = Atom.Shared(Some(fullView))
-    
+    let focusView = ref (Some(fullView))
+
+    /// Iterates over views. The second argument tells whether the view is visible.
     let iterateViews (f : ExplorerView<_> -> bool -> unit) =
       match !guiMode with
-      | Full ->
+      | FullView ->
         f fullView true
         f centerView false
         for view in halfView do f view false
         for view in quarterView do f view false
-      | Center ->
+      | CenterView ->
         f fullView false
         f centerView true
         for view in halfView do f view false
         for i = 0 to qN - 1 do
-          let x = i % 4
-          let y = i / 4
+          let x, y = quarterXY i
           f quarterView.[i] (min x y > 0 && max x y < 3)
-      | Half ->
+      | HalfView ->
         f fullView false
         f centerView false
         for view in halfView do f view true
         for view in quarterView do f view false
-      | Quarter ->
+      | QuarterView ->
         f fullView false
         f centerView false
         for view in halfView do f view false
         for view in quarterView do f view true
 
     let dnaView = DnaView(viewFilter = fun parameter ->
+      // The layout is generated once at the top level and then injected as a constraint.
       if parameter.name = "Layout" && parameter.level > 0 then
         Hidden
-      elif parameter.name = "View Zoom" || parameter.name.StartsWith("View Center") then
+      // View parameters are manipulated using the view controls.
+      elif parameter.name.StartsWith("View") then
         Hidden
       else Editable
       )
@@ -336,19 +427,19 @@ type Explorer =
     /// Sets focus to the view and displays its Dna.
     let setFocus view' =
       if (!focusView).isNoneOr((<>=) view') then
-        focusView.set(Some(view'))
+        focusView := Some(view')
         Wpf.dispatch(window, fun _ ->
-          for view in halfView do
+          for view in halfQuarterView do
             (!view.focusShape).Visibility <- if view' === view then Visibility.Visible else Visibility.Hidden
           )
       updateDna()
 
     /// Clears focus and resets the Dna view.
     let clearFocus() =
-      focusView.set(None)
+      focusView := None
       updateDna()
       Wpf.dispatch(window, fun _ ->
-        for view in halfView do
+        for view in halfQuarterView do
           (!view.focusShape).Visibility <- Visibility.Hidden
         )
 
@@ -367,10 +458,13 @@ type Explorer =
         )
       )
 
-    let setGuiMode(mode') =
-      if !guiMode <> mode' then
-        guiMode := mode'
+    let setGuiMode mode =
+      if !guiMode <> mode then
+        guiMode := mode
         iterateViews (fun view visible -> view.image.Visibility <- if visible then Visibility.Visible else Visibility.Collapsed)
+        fullViewButton.IsChecked <- Nullable((mode = FullView))
+        halfViewButton.IsChecked <- Nullable((mode = HalfView))
+        quarterViewButton.IsChecked <- Nullable((mode = QuarterView))
 
     dnaView.leftCallback <- fun i value ->
       match !focusView with
@@ -397,38 +491,90 @@ type Explorer =
           )
       | None -> ()
 
+    let maximizeView view =
+      fullView.view.reset()
+      fullView.controller.copyFrom(view.controller)
+      setFocus fullView
+      setGuiMode FullView
+      match view.mainMode with
+      | HalfView -> minimizeHalfView := view
+      | QuarterView -> minimizeQuarterView := view
+      | _ -> ()
+
+    let minimizeView view =
+      let targetView = !minimizeHalfView
+      targetView.view.reset()
+      targetView.controller.copyFrom(view.controller)
+      setFocus targetView
+      setGuiMode HalfView
+
+    let mosaicifyView view =
+      let targetView = !minimizeQuarterView
+      targetView.view.reset()
+      targetView.controller.copyFrom(view.controller)
+      setFocus targetView
+      setGuiMode QuarterView
+
+    fullViewButton.Click.Add(fun _ ->
+      match !guiMode with
+      | HalfView | QuarterView ->
+        match !focusView with
+        | Some(view) -> maximizeView view
+        | None -> clearFocus(); setGuiMode FullView
+      | _ -> ()
+      )
+
+    halfViewButton.Click.Add(fun _ ->
+      match !guiMode with
+      | FullView -> minimizeView fullView
+      | QuarterView ->
+        match !focusView with
+        | Some(view) -> minimizeView view
+        | None -> clearFocus(); setGuiMode HalfView
+      | _ -> ()
+      )
+
+    quarterViewButton.Click.Add(fun _ ->
+      match !guiMode with
+      | FullView -> mosaicifyView fullView
+      | HalfView ->
+        match !focusView with
+        | Some(view) -> mosaicifyView view
+        | None -> clearFocus(); setGuiMode QuarterView
+      | _ -> ()
+      )
 
     // Add context menus and event handlers to images.
     iterateViews (fun view _ ->
 
       let menu = ContextMenu(Placement = Primitives.PlacementMode.Mouse)
 
-      if view.mainMode = Half then
+      if view.mainMode = HalfView || view.mainMode = QuarterView then
         let maximizeItem = MenuItem(Header = "Maximize")
-        maximizeItem.Click.Add(fun _ ->
-          fullView.view.reset()
-          fullView.controller.copyFrom(view.controller)
-          setFocus fullView
-          setGuiMode Full
-          minimizeView := view
-         )
+        maximizeItem.Click.Add(fun _ -> maximizeView view)
         menu.add(maximizeItem)
-      elif view.mainMode = Full then
+      elif view.mainMode = FullView then
         let minimizeItem = MenuItem(Header = "Minimize")
-        minimizeItem.Click.Add(fun _ ->
-          let targetView = !minimizeView
-          targetView.view.reset()
-          targetView.controller.copyFrom(view.controller)
-          setFocus targetView
-          setGuiMode Half
-          )
+        minimizeItem.Click.Add(fun _ -> minimizeView view)
         menu.add(minimizeItem)
+      if view.mainMode = FullView || view.mainMode = HalfView then
+        let mosaicifyItem = MenuItem(Header = "View Mosaic")
+        mosaicifyItem.Click.Add(fun _ -> mosaicifyView view)
+        menu.add(mosaicifyItem)
+
+      let openNewWindow = MenuItem(Header = "Open in New Window..")
+      openNewWindow.Click.Add(fun _ ->
+        if !view.controller.deep <>= richSeed then
+          let dna = !view.controller.dna
+          Explorer.start(DnaData(dna))
+        )
+      menu.add(openNewWindow)
 
       let zoomOut = MenuItem(Header = "Zoom Out")
       zoomOut.Click.Add(fun _ ->
         view.post(fun _ ->
           setFocus view
-          view.controller.alter(fun _ dna i -> if dna.[i].name = "View Zoom" then ModifyFloat(fun zoom -> zoom * 0.5) else Retain)
+          view.controller.alter(View.transform(zoom = ModifyFloat(fun zoom -> zoom * 0.5)))
           )
         )
       menu.add(zoomOut)
@@ -437,7 +583,7 @@ type Explorer =
       resetZoom.Click.Add(fun _ ->
         view.post(fun _ ->
           setFocus view
-          view.controller.alter(fun _ dna i -> if dna.[i].name = "View Zoom" then SelectFloat 1.0 else Retain)
+          view.controller.alter(View.transform(zoom = SelectFloat 1.0))
           )
         )
       menu.add(resetZoom)
@@ -446,7 +592,7 @@ type Explorer =
       resetView.Click.Add(fun _ ->
         view.post(fun _ ->
           setFocus view
-          view.controller.alter(fun _ dna i -> if dna.[i].name = "View Zoom" then SelectFloat 1.0 elif dna.[i].name.StartsWith("View Center") then SelectFloat 0.5 else Retain)
+          view.controller.alter(View.transform(centerX = SelectFloat 0.5, centerY = SelectFloat 0.5, centerZ = SelectFloat 0.5, zoom = SelectFloat 1.0))
           )
         )
       menu.add(resetView)
@@ -521,73 +667,22 @@ type Explorer =
 
         | MutateTool ->
           if (!focusView).isSomeAnd((===) view) then
-            // Mutate other half views.
-            if view.mainMode = Half && !view.controller.deep <>= richSeed then view.post(fun _ ->
-              for targetView in halfView do
+            // Mutate other half or mosaic views.
+            if (view.mainMode = HalfView || view.mainMode = QuarterView) && !view.controller.deep <>= richSeed then view.post(fun _ ->
+              for targetView in (if view.mainMode = HalfView then halfView else quarterView) do
                 if targetView <>= view then
-                  let mutateMode = match !mutateMode with | Random -> rnd.choose(1.0, ColorsEffects, 1.0, ScalesOffsets, 1.0, Details, 1.0, Everything) | x -> x
-                  let mR = rnd.exp(0.5, 2.0)
-                  let predicate =
-                    match mutateMode with
-                    | ColorsEffects ->
-                      fun (rnd : Rnd) (dna : Dna) i ->
-                        let name = dna.[i].name
-                        let parentName = dna.parentParameter(i).map(fun p -> p.name) >? ""
-                        if name = "Generator" || name = "Layout" || name = "View Zoom" || name.StartsWith("View Center") then
-                          Retain
-                        elif name = "Color space" then
-                          rnd.choose(2.0, Retain, 1.0 * mR, Randomize)
-                        elif name = "Color permutation" then
-                          rnd.choose(2.0, Retain, 1.0 * mR, Randomize)
-                        elif name.StartsWith("Color") || name.StartsWith("Hue") || name.StartsWith("Saturation") || name = "Gamma skew" then
-                          Jolt(rnd.exp(0.01, 1.0))
-                        elif name = "Shape" || parentName = "Shape" then
-                          rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-                        elif name = "Cell color" || parentName = "Cell color" then
-                          rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-                        else Retain
-                    | ScalesOffsets ->
-                      fun rnd (dna : Dna) i ->
-                        let name = dna.[i].name
-                        if name = "Generator" || name = "Layout" || name = "View Zoom" || name.StartsWith("View Center") then
-                          Retain
-                        elif name = "X offset" || name = "Y offset" || name = "Z offset" then
-                          rnd.choose(1.5, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-                        elif name = "Frequency" || name = "Frequency factor" || name = "Flow frequency factor" then
-                          rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-                        elif name = "Lacunarity" then
-                          rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-                        else Retain
-                    | Details ->
-                      fun rnd (dna : Dna) i ->
-                        let name = dna.[i].name
-                        let parentName = dna.parentParameter(i).map(fun p -> p.name) >? ""
-                        if name = "Generator" || name = "Layout" || name = "View Zoom" || name.StartsWith("View Center") then
-                          Retain
-                        elif name = "Roughness" then
-                          rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.05, 0.5)))
-                        elif name = "Octaves" then
-                          rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.05, 0.3)))
-                        elif name = "Layer hardness" || name = "Layer width" || name = "Rotate width" then
-                          rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-                        elif name = "Walk operator" || name = "Displace amount" || name = "Basis displace amount" || name = "Rotate amount" || parentName = "Displace response" || name = "Basis displace response" then
-                          rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-                        elif parentName = "Mix operator" || parentName = "Shape" || parentName = "Features per cell" || parentName = "Potential function" || parentName = "Basis" then
-                          rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-                        elif name.EndsWith("fade") || name.EndsWith("shading") || name.EndsWith("radius") then
-                          rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-                        else Retain
-                    | Everything | _ ->
-                      let mutationFrequency = rnd.exp(0.02, 0.2)
-                      fun rnd (dna : Dna) i ->
-                        let name = dna.[i].name
-                        if name = "Generator" || name = "Layout" || name = "View Zoom" || name.StartsWith("View Center") then
-                          Retain
-                        elif rnd.boolean(mutationFrequency) then
-                          Jolt(rnd.exp(0.01, 1.0))
-                        else
-                          Retain
+                  let predicate = View.mutationPredicate(rnd, view, !mutateMode)
                   targetView.controller.mutateFrom(view.controller, predicate)
+              )
+          else
+            setFocus view
+
+        | JoltTool ->
+          if (!focusView).isSomeAnd((===) view) then
+            // Mutate the view.
+            if !view.controller.deep <>= richSeed then view.post(fun _ ->
+              let predicate = View.mutationPredicate(rnd, view, !mutateMode)
+              view.controller.mutateFrom(view.controller, predicate)
               )
           else
             setFocus view
@@ -648,13 +743,9 @@ type Explorer =
             let y0' = lerp y0 y1 (float32 <| delerp itop.y ibottom.y (source.y - size))
             let y1' = lerp y0 y1 (float32 <| delerp itop.y ibottom.y (source.y + size))
             view.post(fun _ ->
-              view.controller.alter(fun _ dna i ->
-                let name = dna.[i].name
-                if name = "View Center X" then SelectFloat (float <| average x0' x1')
-                elif name = "View Center Y" then SelectFloat (float <| average y0' y1')
-                elif name = "View Zoom" then SelectFloat (1.0 / float (y1' - y0'))
-                else Retain
-                )
+              view.controller.alter(View.transform(centerX = SelectFloat (average x0' x1' |> float),
+                                                centerY = SelectFloat (average y0' y1' |> float),
+                                                zoom = SelectFloat (1.0 / float (y1' - y0'))))
               )
           dragShape.Visibility <- Visibility.Collapsed
 
@@ -681,7 +772,7 @@ type Explorer =
 
     let openItem = MenuItem(Header = "_Open..")
     openItem.Click.Add(fun _ ->
-      let view = !focusView >? match !guiMode with | Full -> fullView | Center -> centerView | Half -> halfView.[0] | Quarter -> quarterView.[0]
+      let view = !focusView >? match !guiMode with | FullView -> fullView | CenterView -> centerView | HalfView -> halfView.[0] | QuarterView -> quarterView.[0]
       setFocus view
       let dialog = new Microsoft.Win32.OpenFileDialog(Title = "Load Map File..", Filter = "YAML files (.yaml)|*.yaml")
       let result = dialog.ShowDialog()
@@ -707,7 +798,7 @@ type Explorer =
         if result.HasValue && result.Value = true then
           try
             let source = SerializerSource(!view.controller.dna)
-            source.generate(RichMap3.generate generateExplorerMap) |> ignore
+            source.generate(deepGenerator) |> ignore
             use stream = new System.IO.StreamWriter(dialog.FileName)
             stream.Write(source.yamlString)
             stream.Close()
@@ -745,7 +836,10 @@ type Explorer =
     toolPanel.add(layoutModeBox)
 
     toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 6.0)))
-    toolPanel.add(toolbar)
+    toolPanel.add(viewBar)
+
+    toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 6.0)))
+    toolPanel.add(toolBar)
 
     let splitter = GridSplitter(Width = 5.0, Margin = Thickness(0.0))
     splitter.VerticalAlignment <- VerticalAlignment.Stretch
@@ -777,7 +871,7 @@ type Explorer =
       )
     //window.SizeChanged.Add(fun _ -> layoutCanvas())
     window.Loaded.Add(fun _ ->
-      setToolMode MutateTool
+      setToolMode PanTool
       )
     window.LayoutUpdated.Add(fun _ -> layoutCanvas())
     window.Show()
@@ -786,29 +880,30 @@ type Explorer =
       view.view.start()
       )
 
+    initialDnaSource.apply(fun source ->
+      fullView.controller.generate(true, dnaSource = source)
+      updateDna()
+      )
 
-    
+
+   
 (*
 TODO
 
 -Store generator version info in YAML.
 -Add export in F# source format, i.e., DnaData constructor and function that invokes generator.
--Modify InteractiveSource & stuff so that editing of node graph becomes easier. E.g., delete parent, insert node...
+-Modify InteractiveSource & stuff so that editing of node tree becomes easier. E.g., delete parent, insert node...
 -Never tile pattern atlases, there is no need.
  Possibility: temporary Dna injector.
--Add the planned mosaic GUI mode. I.e., one big picture divided into 4x4 squares which are mutated independently.
 -Add .dds export for 2-D and 3-D textures.
 -Add Map3 display modes: rectangle, depth slices, depth strip, sphere?
 -Supporting Undo? Or maybe History? I guess we just store past Dnas in a global list?
 -Status line. Where do we put this? At the bottom? I think we don't want to use the menu bar for this.
  Instead, we can put something else in the menu bar if necessary.
--Consider replacing right mouse button at Dna parameter with context menu. What do we put in the menu?
- -display range of parameter values in a gradient, pick new value by clicking.
-  (how do we implement this?)
+-Add either hover options or extra buttons to parameters in Dna view:
+ -If in mosaic view, display range of parameter values in a gradient, pick new value by clicking.
  -lock parameter.
  -increase chance of mutation of parameter?
- -randomize value.
--Add tooltips.
 -Main menu bar. We should put more stuff there.
  -Defaults: default normalization mode. default tiling mode.
  -Mutation mode belongs in the tool options!
@@ -817,7 +912,7 @@ TODO
 -Is animation support possible?
 -Cache normalization information (Map3Info). For map identification, it suffices to
  generate a subtree fingerprint from Dna combined with subgenerator ID.
--To make caching of map pixmaps themselves possible, call patterns need to be
+-To make caching of subtree pixmaps themselves possible, call patterns need to be
  fingerprinted as well. These flow downstream from the root. In practice, we could
  affix a downstream fingerprint to Dna that is maintained per level.
 

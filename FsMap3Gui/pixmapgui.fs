@@ -102,6 +102,10 @@ type PixmapView(image : System.Windows.Controls.Image) =
   member val renderWidth = Atom.Int(16) with get, set
   member val renderHeight = Atom.Int(16) with get, set
 
+  member this.setRenderSize(width, height) =
+    this.renderWidth.set(width)
+    this.renderHeight.set(height)
+
   /// How many preview levels to render. Each preview level halves resolution.
   member val previewLevels = 3 with get, set
 
@@ -296,22 +300,24 @@ type PixmapController<'a> =
     this.editSource.mutationPredicate <- predicate
     this.generate(true)
 
-  /// Copies contents of another controller here.
+  /// Copies the contents of another controller here.
   member this.copyFrom(source : PixmapController<_>) =
     let dna = !source.dna
     this.dna.set(dna)
     let deep = !source.deep
     this.deep.set(deep)
+    // The pixmap generator may differ in this controller, so we rerun it here.
     let pixmapSource = this.pixmapGenerator deep
     this.pixmapSource.set(pixmapSource)
     this.pixmapView.setSource(pixmapSource)
     this.editSource.reset()
     this.editSource.observe(dna, this.fitnessCounter.tick)
 
-  /// Makes us a mutation of the contents of another controller.
+  /// Makes us a mutation of the contents of the source, which can be this controller or another controller.
   member this.mutateFrom(source : PixmapController<_>, predicate) =
-    this.editSource.reset()
     let dna = !source.dna
+    // TODO. Do we always want to reset the edit memory?
+    this.editSource.reset()
     this.editSource.observe(dna, this.fitnessCounter.tick)
     this.editSource.mutationPredicate <- predicate
     this.generate(false)
