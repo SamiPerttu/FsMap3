@@ -98,6 +98,15 @@ type Log() =
     Printf.kprintf Log.info format
 
 
+  static member warn(message : string) =
+    let entry = LogEntry.create(Warning, message)
+    Log.send(entry)
+
+
+  static member warnf(format) =
+    Printf.kprintf Log.warn format
+
+
   static member createLogFile(filename : string) =
     let stream = new System.IO.StreamWriter(filename, AutoFlush = true)
     Log.addListener(LogListener(fun (entry : LogEntry) ->

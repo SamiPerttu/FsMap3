@@ -211,7 +211,7 @@ let genUnary (subGen : Dna -> Map3) (dna : Dna) =
     C(0.5, "reflect", unaryShape genReflect),
     C(1.0, "saturate", unaryShape genSaturate),
     C(1.0, "wave packet", unaryShape genWavePacket),
-    C(1.0, "curl", fun _ -> curl (subGen dna) |> normalize)
+    C(1.0, "curl", Map3Info.normalize (fun dna -> let dummy = dna.int("Dummy Curl", 1) in curl (subGen dna)))
     )
 
 
@@ -401,7 +401,7 @@ let rec genBasis maxDepth (dna : Dna) =
       ),
     C(dualWeight, "displace", fun _ ->
       let factor = genFactor()
-      let basis1 = dna.descend("Basis 1", genShapedBasis) |> normalizeBasis
+      let basis1 = dna.descend("Basis 1", Map3Info.normalizeBasis genShapedBasis)
       let basis2 = dna.descend("Basis 2", genBasis maxDepth')
       displaceBasis (genDisplacement 0.2f 1.5f dna) factor basis1 basis2
       ),
@@ -440,7 +440,7 @@ let rec genBasis maxDepth (dna : Dna) =
       let factor = genFactor()
       let rotation = dna.float32("Rotate amount", lerp 2.0f 6.0f)
       let displace = genDisplacement 0.2f 1.5f dna
-      let basis1 = dna.descend("Basis 1", genShapedBasis) |> normalizeBasis
+      let basis1 = dna.descend("Basis 1", Map3Info.normalizeBasis genShapedBasis)
       let basis2 = dna.descend("Basis 2", genBasis maxDepth')
       binaryBasisd (rotate rotation) displace factor basis1 basis2
       ),
@@ -448,7 +448,7 @@ let rec genBasis maxDepth (dna : Dna) =
       let factor = genFactor()
       let mix = genSoftmix3 dna
       let displace = genDisplacement 0.2f 1.5f dna
-      let basis1 = dna.descend("Basis 1", genShapedBasis) |> normalizeBasis
+      let basis1 = dna.descend("Basis 1", Map3Info.normalizeBasis genShapedBasis)
       let basis2 = dna.descend("Basis 2", genBasis maxDepth')
       binaryBasisd mix displace factor basis1 basis2
       ),
@@ -470,7 +470,7 @@ let rec genBasis maxDepth (dna : Dna) =
       let cellColor = genCellColor dna
       let mixOp = genBasisMixOp dna
       let featureCount = genFeatureCount dna
-      let basis1 = dna.descend("Flow basis", genShapedBasis) |> normalizeBasis
+      let basis1 = dna.descend("Flow basis", Map3Info.normalizeBasis genShapedBasis)
       capflow (layoutFunction <| genLayout dna) featureCount mixOp cellColor fade shading length radius basis1 flowFrequency
       ),
     C(dualWeight, "implicit flow", fun _ ->
@@ -481,7 +481,7 @@ let rec genBasis maxDepth (dna : Dna) =
       let cellColor = genCellColor dna
       let mixOp = genBasisMixOp dna
       let featureCount = genFeatureCount dna
-      let basis1 = dna.descend("Flow basis", genShapedBasis) |> normalizeBasis
+      let basis1 = dna.descend("Flow basis", Map3Info.normalizeBasis genShapedBasis)
       impflow (layoutFunction <| genLayout dna) featureCount potential mixOp cellColor fade shading radius basis1 flowFrequency
       ),
     C(dualWeight, "pattern flow", fun _ ->
@@ -492,7 +492,7 @@ let rec genBasis maxDepth (dna : Dna) =
       let featureCount = genFeatureCount dna
       let curvature = dna.float32("Curvature")
       let pattern = genAtlas genPattern dna
-      let basis1 = dna.descend("Flow basis", genShapedBasis) |> normalizeBasis
+      let basis1 = dna.descend("Flow basis", Map3Info.normalizeBasis genShapedBasis)
       patflow (layoutFunction <| genLayout dna) featureCount potential mixOp fade radius curvature pattern basis1 flowFrequency
       )
     )
@@ -559,7 +559,7 @@ let genFractal (subgen : Dna -> Map3) (dna : Dna) =
         let twist = dna.float32("Twist amount", squared >> lerp 0.0f 5.0f)
         let twistV = dna.float32("Twist variability", xerp 1.5f 8.0f)
         let mix = genMixOp dna
-        let multiMap = dna.descend("Multi map", fun dna -> normalize (subgen dna))
+        let multiMap = dna.descend("Multi map", Map3Info.normalize subgen)
         multid (roughness + 0.05f) lacunarity (displace / displaceV) displace (twist / twistV) twist basef 1.0f (float32 octaves + 0.999f) mix multiMap basis
         )
       )

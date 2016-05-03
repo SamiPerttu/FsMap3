@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsMap3", "FsMap3\FsMap3.fsproj", "{C2558C7C-A53F-44B6-8149-F735D87106BF}"
 EndProject
@@ -16,12 +16,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C2558C7C-A53F-44B6-8149-F735D87106BF}.Debug|Any CPU.ActiveCfg = Release|Any CPU
-		{C2558C7C-A53F-44B6-8149-F735D87106BF}.Debug|Any CPU.Build.0 = Release|Any CPU
+		{C2558C7C-A53F-44B6-8149-F735D87106BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C2558C7C-A53F-44B6-8149-F735D87106BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C2558C7C-A53F-44B6-8149-F735D87106BF}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
 		{C2558C7C-A53F-44B6-8149-F735D87106BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C2558C7C-A53F-44B6-8149-F735D87106BF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FED75364-9D77-41CC-9D93-54F9C1F97369}.Debug|Any CPU.ActiveCfg = Release|Any CPU
-		{FED75364-9D77-41CC-9D93-54F9C1F97369}.Debug|Any CPU.Build.0 = Release|Any CPU
+		{FED75364-9D77-41CC-9D93-54F9C1F97369}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FED75364-9D77-41CC-9D93-54F9C1F97369}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FED75364-9D77-41CC-9D93-54F9C1F97369}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
 		{FED75364-9D77-41CC-9D93-54F9C1F97369}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FED75364-9D77-41CC-9D93-54F9C1F97369}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection

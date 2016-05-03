@@ -11,6 +11,7 @@ open System.Windows.Controls.Primitives
 open Common
 open Basis3
 open Map3
+open Map3Info
 open Map3Dna
 open Map3Gui
 
@@ -115,7 +116,7 @@ type View with
   static member internal mutationPredicate(rnd : Rnd, view : ExplorerView<_>, mutateMode : ExplorerMutateMode) =
       let shouldRetainAlways name = name = "Generator" || name = "Layout" || name.StartsWith("View")
       let mutateMode = match mutateMode with | Random -> rnd.choose(1.0, ColorsEffects, 1.0, ScalesOffsets, 1.0, Details, 1.0, Everything) | x -> x
-      // Mosaic view uses a smaller mutation rate.
+      // Half view has a higher mutation rate than full and mosaic views.
       let mR = match view.mainMode with
                | HalfView -> rnd.exp(0.5, 2.0)
                | _ -> rnd.exp(0.25, 0.5)
@@ -128,7 +129,7 @@ type View with
             Retain
           elif name = "Color space" then
             rnd.choose(2.0, Retain, 1.0 * mR, Randomize)
-          elif name.StartsWith("Color") || name.StartsWith("Hue") || name.StartsWith("Saturation") || name = "Gamma skew" then
+          elif name.StartsWith("Color") || name.StartsWith("Hue") || name.StartsWith("Saturation") || name = "Value skew" then
             Jolt(rnd.exp(0.01, 1.0))
           elif name = "Shape" || parentName = "Shape" then
             rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
@@ -167,12 +168,12 @@ type View with
             rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
           else Retain
       | Everything | _ ->
-        let mutationFrequency = rnd.exp(0.02, 0.2)
+        let mR = mR * rnd.exp(0.1, 1.0)
         fun rnd (dna : Dna) i ->
           let name = dna.[i].name
           if shouldRetainAlways name then
             Retain
-          elif rnd.boolean(mutationFrequency) then
+          elif rnd.boolean(mR) then
             Jolt(rnd.exp(0.01, 1.0))
           else
             Retain
@@ -250,23 +251,26 @@ type Explorer =
     let mapSeed = Map3.zero
     let richSeed = { RichMap3.map = mapSeed; center = Vec3f(0.5f); zoom = 1.0f; aspectRatio = 1.0f; info = Map3Info.create(mapSeed) }
     let deepGenerator = RichMap3.generate(generateExplorerMap)
-    let pixmapGenerator extraTransform = RichMap3.pixmapGenerator extraTransform
+    let pixmapGenerator extraTransform =
+      match extraTransform with
+      | Some(transform) -> RichMap3.pixmapGenerator(transform)
+      | None -> RichMap3.pixmapGenerator()
     let deepFilter = RichMap3.filterDetail
 
-    let fullView = ExplorerView.create(FullView, richSeed, deepGenerator, pixmapGenerator identity, deepFilter, canvas, true, 4)
+    let fullView = ExplorerView.create(FullView, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, true, 4)
 
-    let centerView = ExplorerView.create(CenterView, richSeed, deepGenerator, pixmapGenerator identity, deepFilter, canvas, false, 4)
+    let centerView = ExplorerView.create(CenterView, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, false, 4)
 
     let halfXY i = (i % 2, i / 2)
     let halfView = Array.init hN (fun i ->
-      ExplorerView.create(HalfView, richSeed, deepGenerator, pixmapGenerator identity, deepFilter, canvas, false, 4)
+      ExplorerView.create(HalfView, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, false, 4)
       )
 
     let quarterXY i = (i % 4, i / 4)
     let quarterView = Array.init qN (fun i ->
       let x, y = quarterXY i
       let mosaicTransform (v : Vec3f) = Vec3f((v.x + float32 x) / 4.0f, (v.y + float32 y) / 4.0f, v.z)
-      ExplorerView.create(QuarterView, richSeed, deepGenerator, pixmapGenerator mosaicTransform, deepFilter, canvas, false, 3)
+      ExplorerView.create(QuarterView, richSeed, deepGenerator, pixmapGenerator (Some mosaicTransform), deepFilter, canvas, false, 3)
       )
 
     let halfQuarterView = Array.append halfView quarterView
@@ -412,10 +416,12 @@ type Explorer =
       // View parameters are manipulated using the view controls.
       elif parameter.name.StartsWith("View") then
         Hidden
+      elif parameter.name.StartsWith("Dummy") then
+        Hidden
       else Editable
       )
 
-    /// Updates the Dna view.
+    /// Updates the Dna view. This can be called from any thread.
     let updateDna() =
       match !focusView with
       | Some(view) ->
@@ -683,6 +689,7 @@ type Explorer =
             if !view.controller.deep <>= richSeed then view.post(fun _ ->
               let predicate = View.mutationPredicate(rnd, view, !mutateMode)
               view.controller.mutateFrom(view.controller, predicate)
+              updateDna()
               )
           else
             setFocus view
@@ -695,8 +702,19 @@ type Explorer =
         | Panning(_, source) ->
           let target = args.GetPosition(canvas).vec2f
           let delta = (source - target) / (float32 image.Width * (!view.controller.deep).zoom)
-          view.panDelta.modify((+) <| Vec3f(delta.x, delta.y, 0.0f))
-          view.post(ignore)
+          match view.mainMode with
+          | QuarterView ->
+            // TODO. Panning all 16 views at once is too much for our program. What we could do instead is
+            // pan up to 2x2 views, depending on the position of the mouse when the left button is pressed:
+            // near an edge, include the neighboring view(s) into the pan.
+            let delta = delta * 0.25f
+            let qview = view
+            //for qview in quarterView do
+            qview.panDelta.modify((+) <| Vec3f(delta.x, delta.y, 0.0f))
+            qview.post(ignore)
+          | _ ->
+            view.panDelta.modify((+) <| Vec3f(delta.x, delta.y, 0.0f))
+            view.post(ignore)
           userAction := Panning(view, target)
           args.Handled <- true
 
@@ -890,6 +908,7 @@ type Explorer =
 (*
 TODO
 
+-Figure out a better way to mutate in the mosaic view.
 -Store generator version info in YAML.
 -Add export in F# source format, i.e., DnaData constructor and function that invokes generator.
 -Modify InteractiveSource & stuff so that editing of node tree becomes easier. E.g., delete parent, insert node...
@@ -906,14 +925,12 @@ TODO
  -increase chance of mutation of parameter?
 -Main menu bar. We should put more stuff there.
  -Defaults: default normalization mode. default tiling mode.
- -Mutation mode belongs in the tool options!
+ -Mutation mode belongs in tool options!
 -Current focused map information in tool panel. X range, Y range, Z, zoom, description length,
  sampled histogram, sampled slopes.
 -Is animation support possible?
--Cache normalization information (Map3Info). For map identification, it suffices to
- generate a subtree fingerprint from Dna combined with subgenerator ID.
--To make caching of subtree pixmaps themselves possible, call patterns need to be
- fingerprinted as well. These flow downstream from the root. In practice, we could
- affix a downstream fingerprint to Dna that is maintained per level.
+-Caching of subtree pixmaps is harder than caching of normalization info because call patterns
+ need to be fingerprinted as well. Call patterns flow downstream from the root in Dna but not all
+ drawn parameters have an effect on them. Look into it at some point.
 
 *)

@@ -87,10 +87,10 @@ type HashMap<'k, 'v when 'k : equality> =
   /// Modular (i.e., hash table) distance between two buckets.
   member inline internal this.distance(bucket1, bucket2) = (bucket2 - bucket1) &&& this.mask
 
-  /// Returns a hop value (mask) for bucket2 containing an item hashing to bucket1. Valid if distance between buckets is at most 31.
+  /// Hop value (mask) when bucket2 contains an item hashing to bucket1.
   member inline internal this.hop(bucket1, bucket2) = 1u <<< this.distance(bucket1, bucket2)
 
-  /// Returns a hop value (mask), given bucket distance. Valid if distance is at most 31.
+  /// Hop value (mask), given bucket distance.
   member inline internal this.hop(distance) = 1u <<< distance
 
   /// Current capacity of the table.
@@ -127,7 +127,7 @@ type HashMap<'k, 'v when 'k : equality> =
     this.size <- 0
 
 
-  /// Tries to find the value associated with the given key. Returns Noneval if it is not found.
+  /// Tries to locate the value associated with the given key. Returns Noneval if it is not found.
   /// Does not return the default value.
   member this.find(key : 'k) =
     let hash = this.hash(key)
@@ -177,7 +177,7 @@ type HashMap<'k, 'v when 'k : equality> =
     /// return the default value if it is set, otherwise we throw an exception. The default value
     /// is not inserted into the map.
     with get key =
-      // This imperative version is clearly faster than the recursive version in Hopmap.at.
+      // This imperative version is clearly faster than the recursive version in HashMap.at.
       let hash = this.hash(key)
       let mutable hop = this.table.[this.bucket(hash)].hop
       let mutable value = this.nullValue
@@ -201,8 +201,8 @@ type HashMap<'k, 'v when 'k : equality> =
           | Some(x) -> x
           | None -> failwithf "HashMap.get_Item: Key %A not found." key
 
-    /// Sets the value associated with the key. If the item is already in the table its value will be modified,
-    /// otherwise a new item is created.
+    /// Sets the value associated with the key. If the mapping is already in the table
+    /// its value is modified, otherwise a new mapping is created.
     and set key value =
       let hash = this.hash(key)
       let mutable hop = this.table.[this.bucket(hash)].hop
@@ -249,7 +249,7 @@ type HashMap<'k, 'v when 'k : equality> =
     locateKey this.table.[this.bucket(hash)].hop
 
 
-  /// Inserts a key-value mapping into the table. Does not check whether the key is already contained in the table.
+  /// Inserts a mapping into the table. Does not check whether the key is already contained in the table.
   /// Entering duplicate keys is legal but may degrade performance.
   member this.insert(key : 'k, value : 'v) =
     if float this.size >= float this.capacity * HashConfig.maximumLoad then
@@ -321,7 +321,7 @@ type HashMap<'k, 'v when 'k : equality> =
     locateKey this.table.[bucket].hop
 
 
-  /// Calls the supplied function for each item in the table. The ordering of items is arbitrary.
+  /// Calls the supplied function for each item in the table. The ordering is arbitrary.
   member inline this.iter(f : 'k -> 'v -> unit) =
     for i = 0 to this.capacity - 1 do
       if this.table.[i].isOccupied then f this.table.[i].key this.table.[i].value
@@ -329,7 +329,7 @@ type HashMap<'k, 'v when 'k : equality> =
 
 
   /// Calls the supplied function for each item in the table. Additionally, numbers the items
-  /// starting from zero. The ordering of items is arbitrary.
+  /// starting from zero. The ordering is arbitrary.
   member inline this.iteri(f : int -> 'k -> 'v -> unit) =
     let mutable n = 0
     for i = 0 to this.capacity - 1 do
@@ -341,21 +341,21 @@ type HashMap<'k, 'v when 'k : equality> =
       n <- n + 1
 
 
-  /// Returns the keys in the table as an array. The ordering of items is arbitrary.
+  /// Returns the keys in the table as an array. The ordering is arbitrary.
   member this.keys =
     let a = Array.zeroCreate this.size
     this.iteri(fun i k _ -> a.[i] <- k)
     a
 
 
-  /// Returns the values in the table as an array. The ordering of items is arbitrary.
+  /// Returns the values in the table as an array. The ordering is arbitrary.
   member this.values =
     let a = Array.zeroCreate this.size
     this.iteri(fun i _ v -> a.[i] <- v)
     a
 
 
-  /// Returns the items in the table as a Pair(key, value) array. The ordering of items is arbitrary.
+  /// Returns the items in the table as a Pair(key, value) array. The ordering is arbitrary.
   member this.items =
     let a = Array.zeroCreate this.size
     this.iteri(fun i k v -> a.[i] <- Pair(k, v))
@@ -364,6 +364,7 @@ type HashMap<'k, 'v when 'k : equality> =
 
   /// Retains only items that match the predicate.
   member this.filter(predicate : 'k -> 'v -> bool) =
+    // TODO: Check auto-trim.
     for i = 0 to this.capacity - 1 do
       if this.table.[i].isOccupied then
         if predicate this.table.[i].key this.table.[i].value = false then
@@ -400,7 +401,7 @@ type HashMap<'k, 'v when 'k : equality> =
   // DIAGNOSTICS
   
   member this.check() =
-    printfn "HashMap: size %d, capacity %d" this.size this.capacity
+    Log.infof "HashMap.check(): size %d, capacity %d." this.size this.capacity
     // Check that hop information is correct.
     for i = 0 to this.capacity - 1 do
       let hop = this.table.[i].hop
@@ -411,7 +412,7 @@ type HashMap<'k, 'v when 'k : equality> =
           enforce (this.table.[j].isEmpty || this.bucket(this.hash(this.table.[j].key)) <> i) "HashMap: Hop flag is 0, yet entry matches the bucket."
         else
           enforce (this.table.[j].isOccupied && this.bucket(this.hash(this.table.[j].key)) = i) "HashMap: Hop flag is 1 but entry does not match the bucket."
-    printfn "Ok."
+    Log.info "HashMap.check(): OK."
 
 
 
@@ -421,32 +422,31 @@ type EmptyStruct = struct end
 
 
 
-/// A hash set.
+/// A hash (multi)set.
 [<ReferenceEquality>]
 type HashSet<'k when 'k : equality> =
   {
     map : HashMap<'k, EmptyStruct>
   }
-  /// The number of items in the set.
+  /// The number of keys in the set. Each instance of an identical key is counted separately.
   member inline this.size = this.map.size
   /// Returns whether the set contains the key.
   member inline this.exists(key) = this.map.find(key).isSome
   /// Adds a key to the set. Duplicates are not checked for; entering duplicates is legal but may reduce performance.
   member inline this.add(key) = this.map.insert(key, EmptyStruct())
-  /// Removes a key from the set. Throws an exception if it is not found.
+  /// Removes (an instance of) the key from the set. Throws an exception if it is not found.
   member inline this.remove(key) = this.map.remove(key)
-  /// Retains only keys that match the predicate.
+  /// Retains only keys that fulfill the predicate.
   member inline this.filter(predicate : 'k -> bool) = this.map.filter(fun key _ -> predicate key)
-  /// Calls a function for each key in the set.
+  /// Calls a function for each key in the set. The ordering is arbitrary.
   member inline this.iter(f : 'k -> unit) = this.map.iter(fun key _ -> f key)
-  /// Empties the set. Contents are deallocated.
+  /// Empties the set. The table is deallocated if 
   member inline this.reset() = this.map.reset()
-  /// Adds the key to the set, if it is not added yet.
+  /// Adds the key to the set, if it is not in it yet.
   member inline this.set(key) = if this.map.find(key).isNone then this.add(key)
-  /// Removes the key from the set, if it is contained in it.
+  /// Removes (an instance of) the key from the set, if it is contained in it.
   member inline this.unset(key) = if this.map.find(key).isSome then this.remove(key)
   /// Creates an empty hash set.
   static member create(hashf, ?autoTrim : bool) : HashSet<'k> = { HashSet.map = HashMap.create(hashf, autoTrim = (autoTrim >? true)) }
-
 
 

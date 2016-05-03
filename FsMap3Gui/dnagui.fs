@@ -14,6 +14,16 @@ type ParameterDisplayMode = Editable | ReadOnly | Hidden
 
 
 
+[<NoComparison; NoEquality>]
+type DnaItem = struct
+  val displayMode : ParameterDisplayMode
+  val treeItem : TreeViewItem option
+
+  new(displayMode, treeItem) = { displayMode = displayMode; treeItem = treeItem }
+end
+
+
+
 /// Displays a tree view of the parameters of a Dna.
 /// Synchronization model: Construct from the UI thread. After publication, access only from the UI thread.
 type DnaView() =
@@ -24,8 +34,8 @@ type DnaView() =
   /// Tree item -> structural hash. This is used to update expandMap above.
   let structMap = HashMap<TreeViewItem, int64>.create(hash)
 
-  /// Pairs (display action, item) for current Dna parameters.
-  let itemArray = Darray<Pair<ParameterDisplayMode, TreeViewItem option>>.create()
+  /// Extra indexed info on current Dna parameters.
+  let itemArray = Darray<DnaItem>.create()
 
   /// Displayed genotype.
   member val dna = Dna.create()
@@ -119,7 +129,7 @@ type DnaView() =
     let displayArray = Array.init dna'.size (fun i -> this.viewFilter dna'.[i])
 
     let displayIsCompatible = displayArray.size = itemArray.size && Fun.forall 0 displayArray.last (fun i ->
-      itemArray.[i].fst = displayArray.[i]
+      itemArray.[i].displayMode = displayArray.[i]
       )
 
     if dnaIsCompatible && displayIsCompatible then
@@ -130,52 +140,45 @@ type DnaView() =
           let valueHasChanged = dna'.[i].value <> this.dna.[i].value || dna'.[i].valueString <> this.dna.[i].valueString
           this.dna.parameterArray.[i] <- dna'.[i]
           if displayArray.[i] <> Hidden && valueHasChanged then
-            let item = !itemArray.[i].snd
+            let item = !itemArray.[i].treeItem
             item.Header <- this.createItemPanel(i, this.dna.[i], displayArray.[i] = Editable)
 
     else
 
       this.reset()
       this.dna.copyFrom(dna')
-      let nodeMap = HashMap<ParameterAddress, TreeViewItem>.create(fun address -> int (Mangle.mangle64 (int64 address.value)))
 
       for i = 0 to this.dna.last do
-        let parameter = this.dna.parameter(i)
+        let parameter = this.dna.[i]
         let displayAction = displayArray.[i]
         if displayAction = Hidden then
-          itemArray.add(Pair(Hidden, None))
+          itemArray.add(DnaItem(Hidden, None))
         else
           let item = TreeViewItem(Margin = Thickness(1.0))
-          itemArray.add(Pair(displayAction, Some(item)))
+          itemArray.add(DnaItem(displayAction, Some item))
           structMap.[item] <- parameter.structuralId
           item.IsExpanded <- expandMap.find(parameter.structuralId) >? true
           item.Header <- this.createItemPanel(i, parameter, (displayAction = Editable))
 
-          nodeMap.[parameter.address] <- item
-
-          if parameter.level = 0 then
-            // Item is at root level.
-            this.treeView.add(item)
-          else
-            // Always link the item to the existing tree, creating blank ancestors if necessary.
-            let rec getParentItem (address : ParameterAddress) =
-              let parentAddress = address.parent
-              match nodeMap.find(parentAddress) with
-              | Someval(item) ->
-                item
-              | Noneval ->
+          let rec addItem i item =
+            match this.dna.[i].level, this.dna.[i].parent with
+            | 0, _ ->
+              // Item is at root level.
+              this.treeView.add(item)
+            | _, Someval j ->
+              match itemArray.[j].treeItem with
+              | Some parentItem -> parentItem.add(item)
+              | None ->
+                // Create a blank parent item.
                 let blankItem = TreeViewItem(Margin = Thickness(1.0))
-                nodeMap.[parentAddress] <- blankItem
-                // The parent address can be null as well if the maximum depth has been exceeded.
-                // In that case, add such items under a single null parent.
-                if parentAddress.isRoot || parentAddress.isNull then
-                  this.treeView.add(blankItem)
-                else
-                  let parentItem = getParentItem parentAddress
-                  parentItem.add(blankItem)
-                blankItem
+                itemArray.[j] <- DnaItem(itemArray.[j].displayMode, Some blankItem)
+                addItem j blankItem
+                blankItem.add(item)
+            | _ ->
+              // This is not supposed to happen - every parameter not at root should have a parent.
+              Log.warnf "Dna parameter '%s' does not have a parent." this.dna.[i].name
+              this.treeView.add(item)
 
-            let parent = getParentItem parameter.address
-            parent.add(item)
+          addItem i item
 
 
