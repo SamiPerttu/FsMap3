@@ -364,17 +364,17 @@ let rec genBasis maxDepth (dna : Dna) =
       let fade = genJuliaFade dna
       let lerpc = lerp -1.0f 1.0f
       let lerpq = lerp -1.0f 1.0f
-      let cx = dna.float32("C-origin X", lerpc)
-      let cy = dna.float32("C-origin Y", lerpc)
-      let cz = if formula.is2D then 0.0f else dna.float32("C-origin Z", lerpc)
-      let qx = dna.float32("Q-origin X", lerpq)
-      let qy = dna.float32("Q-origin Y", lerpq)
-      let qz = if formula.is2D then 0.0f else dna.float32("Q-origin Z", lerpq)
+      let cOrigin = Vec3f(dna.float32("C-origin X", lerpc),
+                          dna.float32("C-origin Y", lerpc),
+                          if formula.is2D then 0.0f else dna.float32("C-origin Z", lerpc))
+      let qOrigin = Vec3f(dna.float32("Q-origin X", lerpq),
+                          dna.float32("Q-origin Y", lerpq),
+                          if formula.is2D then 0.0f else dna.float32("Q-origin Z", lerpq))
       let cRange = dna.float32("C-range", squared >> lerp 0.5f 2.0f)
       let qRange = dna.float32("Q-range", squared >> lerp 0.5f 2.0f)
       let cScale = dna.float32("C-scale", lerp 0.0f 2.0f)
       let qScale = dna.float32("Q-scale", lerp 0.0f 2.0f)
-      julia (genLayout dna |> layoutFunction) count formula iterations roughness radius fade (Vec3f(cx, cy, cz)) (Vec3f(qx, qy, qz)) cRange qRange cScale qScale
+      julia (genLayout dna |> layoutFunction) count formula iterations roughness radius fade cOrigin qOrigin cRange qRange cScale qScale
       ),
     C(dualWeight, "Julia orbit trap", fun _ ->
       let iterations = dna.int("Iterations", 2, 8)
@@ -383,25 +383,25 @@ let rec genBasis maxDepth (dna : Dna) =
       let radius = dna.float32("Feature radius", sqrt >> lerp 0.5f 1.25f)
       let lerpc = lerp -1.0f 1.0f
       let lerpq = lerp -1.0f 1.0f
-      let cx = dna.float32("C-origin X", lerpc)
-      let cy = dna.float32("C-origin Y", lerpc)
-      let cz = if formula.is2D then 0.0f else dna.float32("C-origin Z", lerpc)
-      let qx = dna.float32("Q-origin X", lerpq)
-      let qy = dna.float32("Q-origin Y", lerpq)
-      let qz = if formula.is2D then 0.0f else dna.float32("Q-origin Z", lerpq)
+      let cOrigin = Vec3f(dna.float32("C-origin X", lerpc),
+                          dna.float32("C-origin Y", lerpc),
+                          if formula.is2D then 0.0f else dna.float32("C-origin Z", lerpc))
+      let qOrigin = Vec3f(dna.float32("Q-origin X", lerpq),
+                          dna.float32("Q-origin Y", lerpq),
+                          if formula.is2D then 0.0f else dna.float32("Q-origin Z", lerpq))
       let cRange = dna.float32("C-range", squared >> lerp 0.5f 2.0f)
       let qRange = dna.float32("Q-range", squared >> lerp 0.5f 2.0f)
-      let ffade = genJuliaFade dna
+      let fade = genJuliaFade dna
       let cScale = dna.float32("C-scale", lerp 0.0f 2.0f)
       let qScale = dna.float32("Q-scale", lerp 0.0f 2.0f)
-      let tx = dna.float32("Trap X", lerpc)
-      let ty = dna.float32("Trap Y", lerpc)
-      let tz = if formula.is2D then 0.0f else dna.float32("Trap Z", lerpc)
-      let tr = dna.float32("Trap radius", lerp 1.0f 2.0f)
-      let tfade = genTrapFade dna
+      let trap = Vec3f(dna.float32("Trap X", lerpc),
+                       dna.float32("Trap Y", lerpc),
+                       if formula.is2D then 0.0f else dna.float32("Trap Z", lerpc))
+      let trapR = dna.float32("Trap radius", lerp 1.0f 2.0f)
+      let trapFade = genTrapFade dna
       let mix = genBasisMixOp dna
       let atlas = genAtlas genPattern dna
-      orbit (genLayout dna |> layoutFunction) count formula iterations (Vec3f(cx, cy, cz)) (Vec3f(qx, qy, qz)) cRange qRange cScale qScale ffade (Vec3f(tx, ty, tz)) tr tfade atlas mix radius
+      orbit (genLayout dna |> layoutFunction) count formula iterations cOrigin qOrigin cRange qRange cScale qScale fade trap trapR trapFade atlas mix radius
       ),
     C(dualWeight, "geopard", fun _ ->
       let count = genFeatureCount dna
@@ -411,8 +411,8 @@ let rec genBasis maxDepth (dna : Dna) =
       ),
     C(dualWeight, "displace", fun _ ->
       let factor = genFactor()
-      let basis1 = dna.descend("Basis 1", Map3Info.normalizeBasis genShapedBasis)
-      let basis2 = dna.descend("Basis 2", genBasis maxDepth')
+      let basis1 = dna.descend("Displace basis", Map3Info.normalizeBasis genShapedBasis)
+      let basis2 = dna.descend("Pigment basis", genBasis maxDepth')
       displaceBasis (genDisplacement 0.2f 1.5f dna) factor basis1 basis2
       ),
     C(dualWeight, "layer", fun _ ->
@@ -442,24 +442,24 @@ let rec genBasis maxDepth (dna : Dna) =
       let rotateAmount = dna.float32("Rotate amount", lerp 2.0f 6.0f)
       let rotateWidth = dna.float32("Rotate width", lerp 1.0f 3.0f)
       let fade = genLayerFade dna
-      let basis1 = dna.descend("Basis 1", genShapedBasis)
-      let basis2 = dna.descend("Basis 2", genBasis maxDepth')
+      let basis1 = dna.descend("Rotate basis", genShapedBasis)
+      let basis2 = dna.descend("Pigment basis", genBasis maxDepth')
       binaryBasis (rotatef rotateWidth rotateAmount fade) factor basis1 basis2
       ),
     C(dualWeight, "displace and rotate", fun _ ->
       let factor = genFactor()
       let rotation = dna.float32("Rotate amount", lerp 2.0f 6.0f)
       let displace = genDisplacement 0.2f 1.5f dna
-      let basis1 = dna.descend("Basis 1", Map3Info.normalizeBasis genShapedBasis)
-      let basis2 = dna.descend("Basis 2", genBasis maxDepth')
+      let basis1 = dna.descend("Modifier basis", Map3Info.normalizeBasis genShapedBasis)
+      let basis2 = dna.descend("Pigment basis", genBasis maxDepth')
       binaryBasisd (rotate rotation) displace factor basis1 basis2
       ),
     C(dualWeight, "displace and softmix", fun _ ->
       let factor = genFactor()
       let mix = genSoftmix3 dna
       let displace = genDisplacement 0.2f 1.5f dna
-      let basis1 = dna.descend("Basis 1", Map3Info.normalizeBasis genShapedBasis)
-      let basis2 = dna.descend("Basis 2", genBasis maxDepth')
+      let basis1 = dna.descend("Modifier basis", Map3Info.normalizeBasis genShapedBasis)
+      let basis2 = dna.descend("Pigment basis", genBasis maxDepth')
       binaryBasisd mix displace factor basis1 basis2
       ),
     C(dualWeight, "shape", fun _ ->
@@ -467,8 +467,8 @@ let rec genBasis maxDepth (dna : Dna) =
       let saturation = dna.float32("Saturation")
       let monoization = dna.float32("Monoization")
       let scattering = dna.float32("Scattering")
-      let basis1 = dna.descend("Basis 1", genShapedBasis)
-      let basis2 = dna.descend("Basis 2", genBasis maxDepth')
+      let basis1 = dna.descend("Shaping basis", genShapedBasis)
+      let basis2 = dna.descend("Pigment basis", genBasis maxDepth')
       binaryBasis variableShape factor (shapeBasis (Vec3f(saturation, monoization, scattering) |> scale) basis1) basis2
       ),
     C(dualWeight, "capsule flow", fun _ ->
