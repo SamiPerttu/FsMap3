@@ -78,7 +78,7 @@ type RichMap3 =
     let aspectRatio = 1.0f
     let palette = Color.genPalette 32 dna
     let viewTransform (v : Vec3f) = v / zoom + offset
-    let info, map = Map3Info.create(mapGenerator, dna, true, true, true)
+    let info, map = Map3Info.create(mapGenerator, dna, retainSamples = true, computeDeviation = true, computeSlopes = true)
     {
       RichMap3.map = viewTransform >> map >> info.normalizer >> palette
       center = center

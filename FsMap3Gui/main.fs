@@ -11,7 +11,7 @@ open System.Windows.Markup
 type App() as app =
   inherit System.Windows.Application()  
   do app.Startup.Add(fun _ ->
-    //Log.createLogFile(@"D:\fsmap3.log")
+    Log.createLogFile(@"D:\fsmap3.log")
     //Benchmark.benchmark()
     Explorer.Explorer.start()
     )

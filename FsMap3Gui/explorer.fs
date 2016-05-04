@@ -416,8 +416,6 @@ type Explorer =
       // View parameters are manipulated using the view controls.
       elif parameter.name.StartsWith("View") then
         Hidden
-      elif parameter.name.StartsWith("Dummy") then
-        Hidden
       else Editable
       )
 

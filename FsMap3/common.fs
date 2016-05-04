@@ -131,7 +131,7 @@ let ln10 = 2.30258509299405
 
 
 
-/// Numeric conversions and attributes for generic functions such as Fuse.G.
+/// Numeric conversions and attributes for generic functions such as Common.G.
 type NumericTraits =
 
   static member inline convert(x : int, _ : int) = int x
@@ -353,6 +353,9 @@ let inline squared x = x * x
 /// Cube function.
 let inline cubed x = x * x * x
 
+/// Cubic root.
+let inline cbrt x = x ** Q 1 3
+
 /// Linear interpolation. Interpolates between a (when x = 0) and b (when x = 1).
 let inline lerp (a : 'a) (b : 'a) x : 'a = (1G - x) * a + x * b
 
@@ -433,14 +436,14 @@ let inline sinTaylor (x : 'a) : 'a =
   let x2 = squared x
   x * (1G - x2 * Q 1 6 * (1G - x2 * Q 1 20 * (1G - x2 * Q 1 42)))
 
-/// Periodic sine approximation based on Fuse.sinTaylor. ~4 times faster than sin.
+/// Periodic sine approximation based on Common.sinTaylor. ~4 times faster than sin.
 let inline sinFast (x : 'a) : 'a =
   let phi = x - G pi12
   let k = floor (phi * Q 1 tau)
   let a = phi - k * G tau
   sinTaylor (abs (a - G pi) - G pi12)
 
-/// Periodic cosine approximation based on Fuse.sinTaylor. ~4 times faster than cos.
+/// Periodic cosine approximation based on Common.sinTaylor. ~4 times faster than cos.
 let inline cosFast (x : 'a) : 'a =
   let k = floor (x * Q 1 tau)
   let a = x - k * G tau
@@ -552,7 +555,7 @@ let choose n k =
 let entropy (p : float) =
   if p > 0.0 && p < 1.0 then (p * log p + (1.0 - p) * log(1.0 - p)) / -ln2 else 0.0
 
-/// Exponentiation a ** b to a non-negative integer power in O(log b). Always returns 1 if the exponent is zero.
+/// Exponentiation a ** b to a non-negative integer power in O(log b). Always returns 1 if b = 0.
 /// This is much faster than the standard pown function, apparently because the latter is generic.
 let inline pow (a : 'a) b : 'a =
   assert (b >= 0)
@@ -784,9 +787,8 @@ let createIterate value0 f = { Counter.value = value0; f = f }
 
 /// Creates a MINSTD linear congruential generator (seed > 0) that cycles through the positive ints.
 let createLcg seed =
-  enforce (seed > 0) "Fuse.createLcg: Seed must be greater than zero."
-  // Do a little "burn-in" for the initial value.
-  { Counter.value = minstd (minstd seed); f = minstd }
+  enforce (seed > 0) "Common.createLcg: Seed must be greater than zero."
+  { Counter.value = seed; f = minstd }
 
 
 
@@ -843,7 +845,8 @@ type ``[]``<'a> with
   member inline a.iter(f) = for i = 0 to a.last do f a.[i]
   /// Scrubs the whole array with the default value of the item type.
   member inline a.scrub() = Array.fill a 0 a.size nullValue
-
+  /// Item access.
+  member inline a.at(i) = a.[i]
 
 
 /// Type that enables sharing of empty arrays.
@@ -860,4 +863,5 @@ module Array =
   let inline setAll (a : 'a array) (v : 'a) = Array.fill a 0 a.size v
   /// Scrubs the whole array with the default value of the item type.
   let inline scrub (a : 'a array) = setAll a Unchecked.defaultof<'a>
-
+  /// Swaps two array items. Does not check that the indices differ.
+  let inline swap (a : 'a array) i j = a.swap(i, j)

@@ -29,7 +29,7 @@ type Map3Info =
   member inline this.normalizer =
     let rZ = Vec3f(2.0f) / (this.max - this.min)
     let rM = (this.min + this.max) / 2.0f
-    fun (v : Vec3f) -> ((v - rM) * rZ).map(clamp11)
+    fun (v : Vec3f) -> (v - rM) * rZ
 
 
 
@@ -48,13 +48,11 @@ type Map3Info with
     let cache = map3InfoCache
     let existing = match fingerprint with | Some fingerprint -> lock cache (fun _ -> cache.find(fingerprint)) | None -> Noneval
 
-    (*
-    fingerprint.apply(fun fingerprint ->
+    if false then fingerprint.apply(fun fingerprint ->
       match existing with
       | Someval info -> Log.infof "Map3Info: existing info found for fingerprint %d" fingerprint
       | Noneval -> Log.infof "Map3Info: no info found for fingerprint %d" fingerprint
       )
-    *)
 
     let matching = existing.filter(fun info ->
       (not retainSamples || info.sampleArray.size > 0)
@@ -103,10 +101,10 @@ type Map3Info with
       for (v0, v1) in Array.Parallel.map sampleZ [| 0 .. R - 1 |] do
         minV <- Vec3f.minimize minV v0
         maxV <- Vec3f.maximize maxV v1
-      minV <- minV - abs minV * 1.0e-6f - Vec3f(1.0e-6f)
-      maxV <- maxV + abs maxV * 1.0e-6f + Vec3f(1.0e-6f)
+      minV <- minV - abs minV * 1.0e-3f - Vec3f(1.0e-6f)
+      maxV <- maxV + abs maxV * 1.0e-3f + Vec3f(1.0e-6f)
 
-      let ranV = maxV - minV
+      let rangeV = maxV - minV
       let meanV = average minV maxV
 
       let sd =
@@ -117,7 +115,7 @@ type Map3Info with
           let estimatorY = Mat.MomentEstimator()
           let estimatorZ = Mat.MomentEstimator()
           sampleArray.modify(fun v ->
-            let v' = (v - meanV) / ranV * 2.0f
+            let v' = (v - meanV) / rangeV * 2.0f
             estimatorX.add(float v'.x)
             estimatorY.add(float v'.y)
             estimatorZ.add(float v'.z)
@@ -132,12 +130,12 @@ type Map3Info with
         if existing.isSomeAnd(fun existing -> existing.slope90.isSome) then
           (!existing).slope90, (!existing).slope99
         elif computeSlopes then
-          let slopeArray = Array.init N (fun i -> (gradientArray.[i] / ranV).length)
-          let rank90 = (int <| float N * 0.90)
-          let i90 = Fun.quickselect 0 (N - 1) (fun i -> slopeArray.[i]) (fun i j -> slopeArray.swap(i, j)) rank90
+          let slopeArray = Array.init N (fun i -> (gradientArray.[i] / rangeV).length)
+          let rank90 = float N * 0.90 |> int
+          let i90 = Fun.quickselect 0 (N - 1) slopeArray.at (Array.swap slopeArray) rank90
           let slope90 = slopeArray.[i90]
-          let rank99 = (int <| float N * 0.99)
-          let i99 = Fun.quickselect 0 (N - 1) (fun i -> slopeArray.[i]) (fun i j -> slopeArray.swap(i, j)) rank99
+          let rank99 = float N * 0.99 |> int
+          let i99 = Fun.quickselect 0 (N - 1) slopeArray.at (Array.swap slopeArray) rank99
           let slope99 = slopeArray.[i99]
           Someval(slope90), Someval(slope99)
         else
@@ -160,38 +158,48 @@ type Map3Info with
 
 
   /// Generates a map and its info. Cache aware.
-  static member create(generator : Dna -> Map3, dna : Dna, ?retainSamples, ?computeDeviation, ?computeSlopes) =
+  static member create(generator : Dna -> Map3, dna : Dna, ?extraId : int, ?retainSamples, ?computeDeviation, ?computeSlopes) =
     let i0 = dna.size
     let map = generator dna
     let i1 = dna.last
     let hash = Mangle.Hash128.create()
+    extraId.apply(fun print -> hash.hash(print))
     for i = i0 to i1 do
       hash.hash(dna.[i].semanticId)
+      hash.hash(dna.[i].value)
     hash.hashEnd()
     let info = Map3Info.create(map, hash.a64, retainSamples >? false, computeDeviation >? false, computeSlopes >? false)
     info, map
 
 
 
-/// Normalizes the map produced by the generator. Cache aware.
-let normalize (generator : Dna -> Map3) (dna : Dna) =
+/// Normalizes the map from the generator, including extraId in the hash. Cache aware.
+let normalizeWithId extraId (generator : Dna -> Map3) (dna : Dna) =
   let info, map = Map3Info.create(generator, dna)
   map >> info.normalizer
 
 
+
+/// Normalizes the map from the generator. Cache aware.
+let normalize generator dna =
+  normalizeWithId 0 generator dna
+
+
+
+/// Normalizes the basis from the generator. Cache aware.
 let normalizeBasis (basisGenerator : Dna -> float32 -> Map3) (dna : Dna) =
 
   let basis = ref nullRef
 
   let generator = fun (dna : Dna) ->
     basis := basisGenerator dna
-    let dummy = dna.int("Dummy Basis", 1)
+    // Instantiate the basis with an arbitrary high frequency for sampling.
     !basis 200.0f
 
-  let info, _ = Map3Info.create(generator, dna)
+  let info, _ = Map3Info.create(generator, dna, extraId = 0xba515)
 
   fun frequency ->
     let map = !basis frequency
-    fun (v : Vec3f) -> map v |> info.normalizer
+    map >> info.normalizer
 
 
