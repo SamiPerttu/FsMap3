@@ -469,8 +469,11 @@ let inline cosr0 (x : 'a) : 'a = (cosr x + 1G) * Q 1 2
 
 /// Triangle wave. The argument is phase in radians.
 /// The shape approximates the sine function.
-let inline tri x =
+let inline tri (x : 'a) : 'a =
   let x = fract(x * Q 1 tau - Q 1 4) in abs (x - Q 1 2) * 4G - 1G
+
+/// Triangle wave with a period of unity. The shape approximates the sine function.
+let inline trir (x : 'a) : 'a = tri(x * G tau)
 
 /// The average of the two arguments.
 let inline average (x : 'a) (y : 'a) : 'a = (x + y) * Q 1 2

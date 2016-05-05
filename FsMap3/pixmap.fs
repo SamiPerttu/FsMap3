@@ -44,8 +44,8 @@ type Pixmap =
   member inline this.mul(i, v : Vec3f) = this.a.[i] <- this.a.[i] * v
 
 
-  /// Retrieves a pixel value using bicubic filtering. Pixmap height and width must be greater than 1.
-  /// Clamps coordinates outside Pixmap boundaries.
+  /// Retrieves a pixel value with bicubic filtering. Pixmap height and width must be greater than 1.
+  /// Clamps coordinates outside pixmap boundaries.
   member this.atCubic(x : float32, y : float32) =
     assert (this.width > 1 && this.height > 1)
     let ix = clampi 0 (this.sizeX - 2) (int x)
@@ -86,8 +86,8 @@ type Pixmap =
     this.a.fill(color)
 
 
-  /// Interprets this pixmap as a 3-map centered inside the XY plane unit square.
-  /// Points are retrieved using bicubic interpolation.
+  /// Interprets this pixmap as a Map3 centered inside the XY plane unit square.
+  /// Points are retrieved with bicubic interpolation.
   member this.cubicMap3 =
     let Z = float32 (max this.width this.height)
     let cx = 0.5f * float32 this.width
@@ -96,7 +96,7 @@ type Pixmap =
       this.atCubic(cx + (v.x - 0.5f) * Z, cy + (v.y - 0.5f) * Z)
 
 
-  /// Creates a Pixmap.
+  /// Creates a pixmap.
   static member create(width, height, ?color : Vec3f) = {
     Pixmap.width = width
     height = height
@@ -104,11 +104,11 @@ type Pixmap =
   }
 
 
-  /// Creates a copy of a Pixmap.
+  /// Creates a copy of a pixmap.
   static member createCopy(pixmap : Pixmap) = { pixmap with a = Array.copy pixmap.a }
 
 
-  /// Creates a Pixmap, retrieving pixel values from the supplied function.
+  /// Creates a pixmap, retrieving pixel values from the supplied function.
   static member create(width, height, f : int -> int -> Vec3f) = {
     Pixmap.width = width
     height = height
@@ -213,12 +213,10 @@ type Pixmap =
 
 
 
-
-
 /// Source of pixel data. This can be anything from a procedural texture to a ray tracer.
 type IPixmapSource =
 
-  /// This is called whenever we start rendering a Pixmap. Arguments are: width, height.
+  /// This is called whenever we start rendering an image. Arguments are: width, height.
   abstract start : int * int -> unit
 
   /// Retrieves a pixel. This can be called in parallel. Arguments are: width, height, x, y.
@@ -232,6 +230,7 @@ type IPixmapSource =
 
 
 
+/// Utility IPixmapSource stuff.
 type PixmapSource() =
 
   static let zeroSource = {

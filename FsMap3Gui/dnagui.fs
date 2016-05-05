@@ -41,7 +41,7 @@ type DnaView() =
   member val dna = Dna.create()
 
   /// The tree view component should be added to a GUI by the client.
-  member val treeView = TreeView()
+  member val treeView = TreeView(BorderThickness = Thickness(0.0))
 
   /// Parameter display filtering. Read-only by default. Note that read-only parameters still receive callbacks.
   member val viewFilter = fun (_ : Parameter) -> ReadOnly with get, set

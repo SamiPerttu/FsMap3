@@ -54,18 +54,31 @@ type RichMap3 =
         member __.postFx(pixmap) = ()
       }
 
-  static member filterDetail(rich : RichMap3) =
-    let maxSlope = 512.0f / rich.viewHeight
-    let minSlope = maxSlope * 0.01f
-    let minDeviation = 0.03f
-    if !rich.info.slope99 > maxSlope || !rich.info.slope99 < minSlope || !rich.info.deviation < minDeviation then
-      Log.infof "Map was rejected. 99%% slope %d (maximum %d) | deviation %f (minimum %f)" (int !rich.info.slope99) (int maxSlope) !rich.info.deviation minDeviation
+  /// Applies some common sense filtering to a generated map. Returns true if the map seems acceptable.
+  static member filter (map : RichMap3) (previous : RichMap3 option) =
+    let slope99Max = max (512.0f / map.viewHeight) (previous.map(fun previous -> previous.info.slope99 >? 0.0f) >? 0.0f)
+    let slope99Min = min (5.120f / map.viewHeight) (previous.map(fun previous -> previous.info.slope99 >? infinityf) >? infinityf)
+    let deviationMin = min 0.03f (previous.map(fun previous -> previous.info.deviation >? infinityf) >? infinityf)
+    if !map.info.slope99 > slope99Max || !map.info.slope99 < slope99Min || !map.info.deviation < deviationMin then
+      Log.infof "Map detail level rejected. 99%% slope %d (maximum %d) | deviation %f (minimum %f)" (int !map.info.slope99) (int slope99Max) !map.info.deviation deviationMin
       false
     else
-      Log.infof "Map was accepted. 99%% slope %d (maximum %d) | deviation %f (minimum %f)" (int !rich.info.slope99) (int maxSlope) !rich.info.deviation minDeviation
-      true
+      Log.infof "Map detail level accepted. 99%% slope %d (maximum %d) | deviation %f (minimum %f)" (int !map.info.slope99) (int slope99Max) !map.info.deviation deviationMin
+      match previous with
+      | Some previous ->
+        let sample0 = previous.info.sampleArray
+        let sample1 = map.info.sampleArray
+        let n = min sample0.size sample1.size
+        let difference = Fun.sum 0 (n - 1) (fun i -> (sample0.[i] - sample1.[i]).norm1)
+        if n > 0 && difference < 1.0f then
+          Log.infof "Map is too similar to previous map. Absolute difference = %f" difference
+          false
+        else
+          if n > 0 then Log.infof "Map is dissimilar enough. Absolute difference = %f" difference
+          true
+      | None -> true
 
-  /// Generates a RichMap3. The palette and 2-window are generated separately here.
+  /// Generates a RichMap3. The palette and 2-window are generated and applied separately here.
   /// The map generator is supplied as an argument.
   static member generate(mapGenerator : Dna -> Map3) = fun (dna : Dna) ->
     let clerp = lerp -1000.0f 1000.0f
@@ -76,7 +89,7 @@ type RichMap3 =
     let zoom = dna.float32("View Zoom", xerp 1.0e-4f 1.0e4f)
     let offset = Vec3f(centerX - 0.5f / zoom, centerY - 0.5f / zoom, centerZ)
     let aspectRatio = 1.0f
-    let palette = Color.genPalette 32 dna
+    let palette = dna.descend("Palette", Color.genPalette 32)
     let viewTransform (v : Vec3f) = v / zoom + offset
     let info, map = Map3Info.create(mapGenerator, dna, retainSamples = true, computeDeviation = true, computeSlopes = true)
     {

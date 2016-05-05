@@ -16,187 +16,11 @@ open Map3Dna
 open Map3Gui
 
 
-type ExplorerViewMode = FullView | CenterView | HalfView | QuarterView
-
-
-
-type ExplorerMutateMode = Everything | ColorsEffects | ScalesOffsets | Details | Random
-
-
-
-type ExplorerTool = PanTool | ZoomTool | MutateTool | JoltTool
-
-
-
-type View =
-  static member internal transform(?centerX : ParameterAction, ?centerY : ParameterAction, ?centerZ : ParameterAction, ?zoom : ParameterAction) =
-    fun (rnd : Rnd) (dna : Dna) i ->
-      match dna.[i].name, centerX, centerY, centerZ, zoom with
-      | "View Center X", Some(centerX), _, _, _ -> centerX
-      | "View Center Y", _, Some(centerY), _, _ -> centerY
-      | "View Center Z", _, _, Some(centerZ), _ -> centerZ
-      | "View Zoom", _, _, _, Some(zoom) -> zoom
-      | _ -> Retain
-
-
-
-[<NoComparison; NoEquality>]
-type ExplorerView<'a> =
-  {
-    mainMode : ExplorerViewMode
-    image : Image
-    view : PixmapView
-    controller : 'a PixmapController
-    mutable focusShape : Rectangle option
-    /// View center delta for rapid panning actions.
-    panDelta : Atom.Shared<Vec3f>
-    /// Zoom factor for rapid zooming actions.
-    zoomFactor : Atom.Shared<float32>
-    /// The agent serializes user actions with respect to this view.
-    mutable agent : (unit -> bool) Agent
-  }
-
-  member this.stop() =
-    this.agent.Post(always false)
-    this.view.stop()
-
-  member this.post(f : unit -> unit) =
-    this.agent.Post(fun _ -> f(); true)
-
-  static member create(mainMode, deepSeed : 'a, deepGenerator, pixmapGenerator, deepFilter, grid : Grid, visible : bool, previewLevels) : 'a ExplorerView =
-    let image = Image(SnapsToDevicePixels = true, Visibility = match visible with | true -> Visibility.Visible | false -> Visibility.Collapsed)
-    let view = PixmapView(image, previewLevels = previewLevels)
-    grid.add(image, 0, 0)
-    image.Margin <- Thickness(0.0)
-    image.HorizontalAlignment <- HorizontalAlignment.Left
-    image.VerticalAlignment <- VerticalAlignment.Top
-    let this = 
-      {
-        mainMode = mainMode
-        image = image
-        view = view
-        controller = PixmapController.create(view, deepSeed, deepGenerator, pixmapGenerator, deepFilter)
-        focusShape = None
-        panDelta = Atom.Shared(Vec3f.zero)
-        zoomFactor = Atom.Shared(1.0f)
-        agent = nullRef
-      }
-    this.agent <- Agent.Start(this.agentFunction)
-    this
-
-  member this.agentFunction(inbox) =
-    async {
-      let mutable alive = true
-      while alive do
-        let panDelta = this.panDelta.pre(always Vec3f.zero)
-        let zoomFactor = this.zoomFactor.pre(always 1.0f)
-        // Pan or zoom the view if requested.
-        if panDelta.length2 > 0.0f || zoomFactor <> 1.0f then
-          this.controller.alter(View.transform(centerX = ModifyFloat (fun x -> x + float panDelta.x),
-                                               centerY = ModifyFloat (fun y -> y + float panDelta.y),
-                                               centerZ = ModifyFloat (fun z -> z + float panDelta.z),
-                                               zoom = ModifyFloat (fun zoom -> zoom * float zoomFactor)))
-        else
-          // Otherwise, process the next message.
-          let! msg = inbox.Receive()
-          alive <- msg()
-    }
-
-  member this.createFocusShape(grid : Grid) =
-    let shape = Rectangle(Visibility = Visibility.Hidden, IsHitTestVisible = false, Stroke = Wpf.brush(0.75), Opacity = 1.0, StrokeThickness = 2.0, Fill = Brushes.Transparent, SnapsToDevicePixels = true)
-    this.focusShape <- Some(shape)
-    grid.add(shape, 0, 0)
-    shape.Margin <- Thickness(0.0)
-    shape.HorizontalAlignment <- HorizontalAlignment.Left
-    shape.VerticalAlignment <- VerticalAlignment.Top
-
-
-
-type View with
-  static member internal mutationPredicate(rnd : Rnd, view : ExplorerView<_>, mutateMode : ExplorerMutateMode) =
-      let shouldRetainAlways name = name = "Generator" || name = "Layout" || name.StartsWith("View")
-      let mutateMode = match mutateMode with | Random -> rnd.choose(1.0, ColorsEffects, 1.0, ScalesOffsets, 1.0, Details, 1.0, Everything) | x -> x
-      // Half view has a higher mutation rate than full and mosaic views.
-      let mR = match view.mainMode with
-               | HalfView -> rnd.exp(0.5, 2.0)
-               | _ -> rnd.exp(0.25, 0.5)
-      match mutateMode with
-      | ColorsEffects ->
-        fun (rnd : Rnd) (dna : Dna) i ->
-          let name = dna.[i].name
-          let parentName = dna.parentParameter(i).map(fun p -> p.name) >? ""
-          if shouldRetainAlways name then
-            Retain
-          elif name = "Color space" then
-            rnd.choose(2.0, Retain, 1.0 * mR, Randomize)
-          elif name.StartsWith("Color") || name.StartsWith("Hue") || name.StartsWith("Saturation") || name = "Value skew" then
-            Jolt(rnd.exp(0.01, 1.0))
-          elif name = "Shape" || parentName = "Shape" then
-            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-          elif name = "Cell color" || parentName = "Cell color" then
-            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-          else Retain
-      | ScalesOffsets ->
-        fun rnd (dna : Dna) i ->
-          let name = dna.[i].name
-          if shouldRetainAlways name then
-            Retain
-          elif name = "X offset" || name = "Y offset" || name = "Z offset" then
-            rnd.choose(1.5, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-          elif name = "Frequency" || name = "Frequency factor" || name = "Flow frequency factor" then
-            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-          elif name = "Lacunarity" then
-            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-          else Retain
-      | Details ->
-        fun rnd (dna : Dna) i ->
-          let name = dna.[i].name
-          let parentName = dna.parentParameter(i).map(fun p -> p.name) >? ""
-          if shouldRetainAlways name then
-            Retain
-          elif name = "Roughness" then
-            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.05, 0.5)))
-          elif name = "Octaves" then
-            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.05, 0.3)))
-          elif name = "Layer hardness" || name = "Layer width" || name = "Rotate width" then
-            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-          elif name = "Walk operator" || name = "Displace amount" || name = "Basis displace amount" || name = "Rotate amount" || parentName = "Displace response" || name = "Basis displace response" then
-            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-          elif parentName = "Mix operator" || parentName = "Shape" || parentName = "Features per cell" || parentName = "Potential function" || parentName = "Basis" then
-            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-          elif name.EndsWith("fade") || name.EndsWith("shading") || name.EndsWith("radius") then
-            rnd.choose(2.0, Retain, 1.0 * mR, Jolt(rnd.exp(0.01, 1.0)))
-          else Retain
-      | Everything | _ ->
-        let mR = mR * rnd.exp(0.1, 1.0)
-        fun rnd (dna : Dna) i ->
-          let name = dna.[i].name
-          if shouldRetainAlways name then
-            Retain
-          elif rnd.boolean(mR) then
-            Jolt(rnd.exp(0.01, 1.0))
-          else
-            Retain
-
-
-
-
-
 [<NoComparison; NoEquality>]
 type UserAction =
   | Zooming of view : ExplorerView<RichMap3> * source : Vec2f
   | Panning of view : ExplorerView<RichMap3> * source : Vec2f
   | Idle
-
-
-
-[<NoComparison; NoEquality>]
-type StatusLine =
-  {
-    statusPanel : StackPanel
-    statusSymbol : Image
-    statusMessage : TextBlock
-  }
 
 
 
@@ -212,7 +36,7 @@ type Explorer =
     /// How many pixels user has to move the mouse before it is recognized as zooming.
     let dragMinimum = 16.0f
     /// Width of tool bar panel.
-    let toolPanelWidth = 140.0
+    let toolPanelWidth = 150.0
 
     // We have 1 full view, 1 center half view, 4 half views, and 16 quarter views.
     let fN = 1
@@ -224,9 +48,6 @@ type Explorer =
 
     let currentCanvasWidth = ref 0
     let currentCanvasHeight = ref 0
-
-    /// Current user action.
-    let userAction = ref Idle
 
     /// Which PixmapViews are visible depends on the mode.
     let guiMode = ref ExplorerViewMode.FullView
@@ -240,6 +61,9 @@ type Explorer =
     /// Current mutation mode.
     let mutateMode = ref Everything
 
+    /// Current user action.
+    let userAction = ref Idle
+
     let window = Window(Title = "Map3 Explorer", ResizeMode = ResizeMode.CanResize, Width = 1024.0, Height = 512.0, SizeToContent = SizeToContent.Manual, Topmost = false, WindowStartupLocation = WindowStartupLocation.CenterScreen)
 
     let canvas = Grid(Background = Brushes.Black, ClipToBounds = true, Margin = Thickness(0.0, 0.0, 0.0, 0.0))
@@ -248,6 +72,10 @@ type Explorer =
     canvas.HorizontalAlignment <- HorizontalAlignment.Stretch
     canvas.VerticalAlignment <- VerticalAlignment.Stretch
 
+    let mapInfoBox = RichMap3InfoBox.create(toolPanelWidth)
+    mapInfoBox.panel.HorizontalAlignment <- HorizontalAlignment.Center
+    mapInfoBox.panel.VerticalAlignment <- VerticalAlignment.Bottom
+
     let mapSeed = Map3.zero
     let richSeed = { RichMap3.map = mapSeed; center = Vec3f(0.5f); zoom = 1.0f; aspectRatio = 1.0f; info = Map3Info.create(mapSeed) }
     let deepGenerator = RichMap3.generate(generateExplorerMap)
@@ -255,7 +83,7 @@ type Explorer =
       match extraTransform with
       | Some(transform) -> RichMap3.pixmapGenerator(transform)
       | None -> RichMap3.pixmapGenerator()
-    let deepFilter = RichMap3.filterDetail
+    let deepFilter = RichMap3.filter
 
     let fullView = ExplorerView.create(FullView, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, true, 4)
 
@@ -339,8 +167,8 @@ type Explorer =
           view.view.setRenderSize(R, R)
           )
      
-    let toolPanel = StackPanel(Orientation = Orientation.Vertical, Width = toolPanelWidth)
-    toolPanel.VerticalAlignment <- VerticalAlignment.Top
+    let toolPanel = DockPanel(Width = toolPanelWidth, Margin = Thickness(1.0))
+    toolPanel.VerticalAlignment <- VerticalAlignment.Stretch
 
     let iconSize = 26.0
     let iconMargin = Thickness(1.0)
@@ -428,7 +256,21 @@ type Explorer =
       | None ->
         Wpf.dispatch(window, fun _ -> dnaView.reset())
 
-    /// Sets focus to the view and displays its Dna.
+    /// Updates the map info box. This can be called from any thread.
+    let updateInfo() =
+      Wpf.dispatch(window, fun _ ->
+        match !focusView with
+        | Some(view) ->
+          let map = !view.controller.deep
+          if map <>= richSeed then
+            mapInfoBox.update(!view.controller.deep)
+          else
+            mapInfoBox.reset()
+        | None ->
+          mapInfoBox.reset()
+        )
+
+    /// Sets focus to the view and displays its Dna and info.
     let setFocus view' =
       if (!focusView).isNoneOr((<>=) view') then
         focusView := Some(view')
@@ -437,11 +279,13 @@ type Explorer =
             (!view.focusShape).Visibility <- if view' === view then Visibility.Visible else Visibility.Hidden
           )
       updateDna()
+      updateInfo()
 
-    /// Clears focus and resets the Dna view.
+    /// Clears focus and resets the Dna view and the info box.
     let clearFocus() =
       focusView := None
       updateDna()
+      updateInfo()
       Wpf.dispatch(window, fun _ ->
         for view in halfQuarterView do
           (!view.focusShape).Visibility <- Visibility.Hidden
@@ -476,6 +320,7 @@ type Explorer =
         view.post(fun _ ->
           view.controller.setValue(i, Some(value))
           updateDna()
+          updateInfo()
           )
       | None -> ()
     dnaView.rightCallback <- fun i ->
@@ -484,6 +329,7 @@ type Explorer =
         view.post(fun _ ->
           view.controller.setValue(i, None)
           updateDna()
+          updateInfo()
           )
       | None -> ()
     dnaView.wheelCallback <- fun i delta ->
@@ -492,6 +338,7 @@ type Explorer =
         view.post(fun _ ->
           view.controller.modifyValue(i, float (sign delta) * -0.02)
           updateDna()
+          updateInfo()
           )
       | None -> ()
 
@@ -578,7 +425,8 @@ type Explorer =
       zoomOut.Click.Add(fun _ ->
         view.post(fun _ ->
           setFocus view
-          view.controller.alter(View.transform(zoom = ModifyFloat(fun zoom -> zoom * 0.5)))
+          view.controller.alter(View.transform(zoom = ModifyFloat((*) 0.5)))
+          updateInfo()
           )
         )
       menu.add(zoomOut)
@@ -588,6 +436,7 @@ type Explorer =
         view.post(fun _ ->
           setFocus view
           view.controller.alter(View.transform(zoom = SelectFloat 1.0))
+          updateInfo()
           )
         )
       menu.add(resetZoom)
@@ -597,6 +446,7 @@ type Explorer =
         view.post(fun _ ->
           setFocus view
           view.controller.alter(View.transform(centerX = SelectFloat 0.5, centerY = SelectFloat 0.5, centerZ = SelectFloat 0.5, zoom = SelectFloat 1.0))
+          updateInfo()
           )
         )
       menu.add(resetView)
@@ -606,6 +456,7 @@ type Explorer =
         view.post(fun _ ->
           view.controller.restart(randomizePredicate)
           setFocus view
+          updateInfo()
           )
         )
       menu.add(randomizeItem)
@@ -688,6 +539,7 @@ type Explorer =
               let predicate = View.mutationPredicate(rnd, view, !mutateMode)
               view.controller.mutateFrom(view.controller, predicate)
               updateDna()
+              updateInfo()
               )
           else
             setFocus view
@@ -709,10 +561,10 @@ type Explorer =
             let qview = view
             //for qview in quarterView do
             qview.panDelta.modify((+) <| Vec3f(delta.x, delta.y, 0.0f))
-            qview.post(ignore)
+            qview.wakeAndPost(updateInfo)
           | _ ->
             view.panDelta.modify((+) <| Vec3f(delta.x, delta.y, 0.0f))
-            view.post(ignore)
+            view.wakeAndPost(updateInfo)
           userAction := Panning(view, target)
           args.Handled <- true
 
@@ -735,7 +587,7 @@ type Explorer =
         if args.Delta <> 0 then
           let delta = float32 (sign args.Delta) * 0.01f / (!view.controller.deep).zoom
           view.panDelta.modify((+) <| Vec3f(0.0f, 0.0f, delta))
-          view.post(ignore)
+          view.wakeAndPost(updateInfo)
         args.Handled <- true
         setFocus view
         )
@@ -762,6 +614,7 @@ type Explorer =
               view.controller.alter(View.transform(centerX = SelectFloat (average x0' x1' |> float),
                                                 centerY = SelectFloat (average y0' y1' |> float),
                                                 zoom = SelectFloat (1.0 / float (y1' - y0'))))
+              updateInfo()
               )
           dragShape.Visibility <- Visibility.Collapsed
 
@@ -779,7 +632,7 @@ type Explorer =
 
       )
 
-    let menuPanel = StackPanel(Orientation = Orientation.Horizontal)
+    let menuPanel = StackPanel(Orientation = Orientation.Horizontal, Background = Wpf.verticalBrush(Wpf.color(0.8), Wpf.color(1.0)))
     menuPanel.VerticalAlignment <- VerticalAlignment.Center
     menuPanel.HorizontalAlignment <- HorizontalAlignment.Stretch
     let menu = Menu()
@@ -833,33 +686,33 @@ type Explorer =
 
     let randomizeAllButton = Button(Content = "Randomize All")
     randomizeAllButton.Click.Add(fun _ -> randomizeAll())
-    toolPanel.add(randomizeAllButton)
-    toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 0.0)))
-    toolPanel.add(Label(Content = "Mutation mode"))
+    toolPanel.add(randomizeAllButton, Dock.Top)
+    toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 0.0)), Dock.Top)
+    toolPanel.add(Label(Content = "Mutation mode"), Dock.Top)
     let mutationModeBox = ComboBox()
     mutationModeBox.add(ComboBoxItem(Content = "Everything", IsSelected = true, withSelected = fun _ -> mutateMode := Everything))
     mutationModeBox.add(ComboBoxItem(Content = "Colors and Effects", withSelected = fun _ -> mutateMode := ColorsEffects))
     mutationModeBox.add(ComboBoxItem(Content = "Scales and Offsets", withSelected = fun _ -> mutateMode := ScalesOffsets))
     mutationModeBox.add(ComboBoxItem(Content = "Details", withSelected = fun _ -> mutateMode := Details))
-    mutationModeBox.add(ComboBoxItem(Content = "Choose at Random", withSelected = fun _ -> mutateMode := Random))
-    toolPanel.add(mutationModeBox)
+    mutationModeBox.add(ComboBoxItem(Content = "Choose at Random", withSelected = fun _ -> mutateMode := ExplorerMutateMode.Random))
+    toolPanel.add(mutationModeBox, Dock.Top)
 
     let layoutModeBox = ComboBox()
     for i = 0 to layoutChoices.last do
       layoutModeBox.add(ComboBoxItem(Content = layoutChoices.name(i), IsSelected = (layoutChoices.weight(i) > 1.0), withSelected = fun _ -> layoutMode := layoutChoices.value(i)))
-    toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 0.0)))
-    toolPanel.add(Label(Content = "Default layout mode"))
-    toolPanel.add(layoutModeBox)
+    toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 0.0)), Dock.Top)
+    toolPanel.add(Label(Content = "Default layout mode"), Dock.Top)
+    toolPanel.add(layoutModeBox, Dock.Top)
 
-    toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 6.0)))
-    toolPanel.add(viewBar)
+    toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 6.0)), Dock.Top)
+    toolPanel.add(viewBar, Dock.Top)
 
-    toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 6.0)))
-    toolPanel.add(toolBar)
+    toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 6.0)), Dock.Top)
+    toolPanel.add(toolBar, Dock.Top)
 
-    let splitter = GridSplitter(Width = 5.0, Margin = Thickness(0.0))
-    splitter.VerticalAlignment <- VerticalAlignment.Stretch
-    splitter.HorizontalAlignment <- HorizontalAlignment.Left
+    toolPanel.add(mapInfoBox.container, Dock.Bottom)
+
+    let splitter = GridSplitter(Width = 4.0, Margin = Thickness(0.0), Foreground = Wpf.brush(0.7), VerticalAlignment = VerticalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Center)
 
     dnaView.treeView.HorizontalAlignment <- HorizontalAlignment.Stretch
     dnaView.treeView.VerticalAlignment <- VerticalAlignment.Stretch
@@ -870,8 +723,8 @@ type Explorer =
     mainPanel.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
     mainPanel.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
     mainPanel.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
-    mainPanel.ColumnDefinitions.Add(ColumnDefinition())
-    mainPanel.add(menuPanel, 0, 0, 3, 1)
+    mainPanel.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength(1.0, GridUnitType.Star)))
+    mainPanel.add(menuPanel, 0, 0, 4, 1)
     mainPanel.add(dnaView.treeView, 0, 1)
     mainPanel.add(splitter, 1, 1)
     mainPanel.add(toolPanel, 2, 1)
@@ -880,16 +733,15 @@ type Explorer =
     // Create an invisible label to take up some initial space in the Dna view column.
     mainPanel.add(Label(Content = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", Height = 0.0, Visibility = Visibility.Hidden), 0, 1)
 
-    window.setPixelContent(mainPanel)
-    window.KeyDown.Add(fun args -> if args.Key = System.Windows.Input.Key.Escape then window.Close())
+    canvas.setPixelUnits()
+
+    window.Content <- mainPanel
+    //window.KeyDown.Add(fun args -> if args.Key = System.Windows.Input.Key.Escape then window.Close())
     window.Closed.Add(fun _ ->
       iterateViews(fun view _ -> view.stop())
       )
-    //window.SizeChanged.Add(fun _ -> layoutCanvas())
-    window.Loaded.Add(fun _ ->
-      setToolMode PanTool
-      )
     window.LayoutUpdated.Add(fun _ -> layoutCanvas())
+
     window.Show()
 
     iterateViews(fun view _ ->
@@ -899,8 +751,10 @@ type Explorer =
     initialDnaSource.apply(fun source ->
       fullView.controller.generate(true, dnaSource = source)
       updateDna()
+      updateInfo()
       )
 
+    setToolMode PanTool
 
    
 (*
@@ -918,14 +772,12 @@ TODO
 -Status line. Where do we put this? At the bottom? I think we don't want to use the menu bar for this.
  Instead, we can put something else in the menu bar if necessary.
 -Add either hover options or extra buttons to parameters in Dna view:
- -If in mosaic view, display range of parameter values in a gradient, pick new value by clicking.
+ -display range of parameter values in a gradient, pick new value by clicking.
  -lock parameter.
  -increase chance of mutation of parameter?
 -Main menu bar. We should put more stuff there.
  -Defaults: default normalization mode. default tiling mode.
  -Mutation mode belongs in tool options!
--Current focused map information in tool panel. X range, Y range, Z, zoom, description length,
- sampled histogram, sampled slopes.
 -Is animation support possible?
 -Caching of subtree pixmaps is harder than caching of normalization info because call patterns
  need to be fingerprinted as well. Call patterns flow downstream from the root in Dna but not all

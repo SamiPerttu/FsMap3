@@ -66,6 +66,8 @@
     <Compile Include="pixmapgui.fs" />
     <Compile Include="raygui.fs" />
     <Compile Include="map3gui.fs" />
+    <Compile Include="richmap3gui.fs" />
+    <Compile Include="explorerview.fs" />
     <Compile Include="explorer.fs" />
     <None Include="demo.fsx" />
     <Compile Include="main.fs" />

@@ -1,11 +1,11 @@
-﻿/// 3-potential functions.
+﻿/// Potential functions in 3-space.
 module FsMap3.Potential
 
 open Common
 
 
 /// A potential can be interpreted as a distance. A unity potential is considered to define
-/// the surface of the potential function. The surface should always fit inside the unit sphere.
+/// the surface of a potential function. The surface should always fit inside the unit ball.
 type Potential3 = Vec3f -> float32
 
 
@@ -20,8 +20,8 @@ Notes.
 
 
 
-/// Ball potential function.
-let ball (v : Vec3f) = v.length
+/// Ball potential function. The radius is r (0 < r < 1).
+let ball r (v : Vec3f) = v.length / r
 
 
 /// Superellipsoid potential function. The norms r ("radial") and t ("translational") (r > 0, t > 0)
@@ -97,7 +97,7 @@ let teardrop (v : Vec3f) =
 /// The rounded base has a radius of 0 < radius <= 1.
 let supercone p radius (v : Vec3f) =
   assert (p > 0G && 0G < radius && radius < 1G)
-  // Compute a rough bounding sphere for the supercone.
+  // Compute a rough bounding ball for the supercone.
   let scale = clamp 1.089f 1.33f (lerp 1.089f 1.127f (delerp 2.0f 2.5f p))
   let v = Vec3f(scale / radius * abs v.x, scale * v.y, scale / radius * abs v.z)
   (v.x ** p + v.z ** p + squared (squared (squared (min v.y 0.0f))) + 0.5f * v.y - 0.5f) * 1.2618f + 1.0f

@@ -96,7 +96,7 @@ let CIELCHtoCIELAB L c h =
 
 
 /// Converts a Munsell chart style color to RGB. The letter 'g' in Mugsell
-/// comes from genetic programming, which came up with this function.
+/// comes from genetic programming, which came up with this approximation.
 /// All arguments are in unit range; H is wrapped to unit range if it is not in it.
 /// H value at zero (and one - hue wraps around) approximates Munsell Hue R2.5.
 /// V is Munsell Value divided by 9 (V = 0 is thus extrapolated).
@@ -121,7 +121,7 @@ type ColorSpace =
 
 
 
-/// Generates a pseudo-random palette as a 3-map. It maps abstract component values to RGB,
+/// Generates a pseudo-random palette as a Map3. It maps abstract component values to RGB,
 /// with both inputs and outputs in the range [-1, 1] (as is common with Map3 functions).
 /// The grid resolution of the color interpolation cube is n, which must be a power of two
 /// (for example, 32). Note that no gamma conversion is done; it is expected that we want

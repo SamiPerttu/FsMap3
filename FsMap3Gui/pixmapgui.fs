@@ -39,7 +39,7 @@ module PixmapExtensions =
 
 
     /// Saves the pixmap as a PNG file.
-    member this.savePNG(filename : string) =
+    member this.savePng(filename : string) =
       let bitmap = this.bitmapSource()
       use stream = new System.IO.FileStream(filename, System.IO.FileMode.Create)
       let encoder = Imaging.PngBitmapEncoder(Interlace = Imaging.PngInterlaceOption.Off)
@@ -80,7 +80,7 @@ module IPixmapSourceExtensions =
           Wpf.dispatch(progressBar, fun _ -> progressBar.Value <- max progressBar.Value (float row))
         scheduleTask(fun _ ->
           let pixmap = PixmapSource.toPixmap(source, width, height, callback)
-          pixmap.savePNG(dialog.FileName)
+          pixmap.savePng(dialog.FileName)
           Wpf.dispatch(progressWindow, fun _ -> progressWindow.Close())
         )
 
@@ -234,7 +234,7 @@ type PixmapController<'a> =
     fitnessCounter : Counter<float>
     deepGenerator : Dna -> 'a
     pixmapGenerator : 'a -> IPixmapSource
-    deepFilter : 'a -> bool
+    deepFilter : 'a -> 'a option -> bool
   }
 
   static member create(pixmapView, deepSeed : 'a, deepGenerator, pixmapGenerator, ?deepFilter) =
@@ -250,10 +250,10 @@ type PixmapController<'a> =
       fitnessCounter = createCounter 1.0
       deepGenerator = deepGenerator
       pixmapGenerator = pixmapGenerator
-      deepFilter = deepFilter >? fun _ -> true
+      deepFilter = deepFilter >? fun _ _ -> true
     }
 
-  member this.generate(bypassFilter : bool, ?dnaSource) =
+  member this.generate(bypassFilter : bool, ?previous, ?dnaSource) =
     let dnaSource = dnaSource >? (this.editSource :> DnaSource)
 
     let dna = Dna.create()
@@ -264,7 +264,7 @@ type PixmapController<'a> =
 
     while success = false do
       let deep' = dna.generate(dnaSource, this.deepGenerator)
-      if attemptsLeft = 0 || bypassFilter || (this.deepFilter deep' && dna.fingerprint <> fingerprint) then
+      if attemptsLeft = 0 || bypassFilter || (this.deepFilter deep' previous && dna.fingerprint <> fingerprint) then
         success <- true
         this.deep.set(deep')
         let pixmapSource = this.pixmapGenerator deep'
@@ -314,11 +314,11 @@ type PixmapController<'a> =
     this.editSource.observe(dna, this.fitnessCounter.tick)
 
   /// Makes us a mutation of the contents of the source, which can be this controller or another controller.
-  member this.mutateFrom(source : PixmapController<_>, predicate) =
-    let dna = !source.dna
+  member this.mutateFrom(source : PixmapController<'a>, predicate) =
+    let sourceDna, sourceDeep = !source.dna, !source.deep
     // TODO. Do we always want to reset the edit memory?
     this.editSource.reset()
-    this.editSource.observe(dna, this.fitnessCounter.tick)
+    this.editSource.observe(sourceDna, this.fitnessCounter.tick)
     this.editSource.mutationPredicate <- predicate
-    this.generate(false)
+    this.generate(false, sourceDeep)
 

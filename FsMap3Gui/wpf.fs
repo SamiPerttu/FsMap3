@@ -4,26 +4,33 @@ namespace FsMap3
 open System
 open System.Windows
 open System.Windows.Media
+open System.Windows.Media.Imaging
 open System.Windows.Shapes
 open System.Windows.Controls
 
 open Common
+open Map3
 
 
 /// Windows Presentation Foundation wrappers and utilities.
 type Wpf =
 
-  /// Returns a Windows color, given RGB values in [0, 1].
+  /// Windows color with RGB values in [0, 1].
   static member color(R, G, B) = Color.FromRgb(byte (clamp01 R * 255.9), byte (clamp01 G * 255.9), byte (clamp01 B * 255.9))
 
-  /// Returns a Windows color, given a grayscale value in [0, 1].
+  /// Grayscale windows color with value in [0, 1].
   static member color(V) = Wpf.color(V, V, V)
 
-  /// Returns a solid color brush, given RGB values in [0, 1].
+  /// Solid color brush with RGB values in [0, 1].
   static member brush(R, G, B) = SolidColorBrush(Wpf.color(R, G, B))
 
   /// Returns a solid color brush, given a grayscale value in [0, 1].
   static member brush(V) = Wpf.brush(V, V, V)
+
+  /// Vertical gradient brush.
+  static member verticalBrush(topColor, bottomColor, ?height) =
+    let height = height >? 1.0
+    LinearGradientBrush(topColor, bottomColor, Point(0.5, 0.5 - height * 0.5), Point(0.5, 0.5 + height * 0.5))
 
   /// Dispatches a task to the UI thread of the given element. If we are that thread, the task
   /// is executed immediately; otherwise it is scheduled to be executed asynchronously.
@@ -67,6 +74,10 @@ module WpfExtensions =
 
   type FrameworkElement with
     member this.withToolTip with set(tip : string) = this.ToolTip <- Label(Content = tip)
+
+    member this.setPixelUnits() =
+      let setTransform = lazy (this.LayoutTransform <- MatrixTransform(PresentationSource.FromVisual(this).CompositionTarget.TransformFromDevice))
+      this.Loaded.Add(fun _ -> !setTransform)
 
 
   type Control with
@@ -118,6 +129,42 @@ module WpfExtensions =
   type ComboBoxItem with
     member this.withSelected with set(x) = this.Selected.Add(x)
 
+  
+  type BitmapSource with
+    /// Converts a Map3 to a BitmapSource, which is also frozen. The camera function is invoked
+    /// with X and Y arguments in [0, 1[. Computes the bitmap in parallel using the .NET thread pool.
+    /// Map component values are clamped to [-1, 1] and transformed to unit range.
+    /// Optionally, a (reentrant) callback is invoked after each row is rendered.
+    static member createFrom(map : Map3, width, height, camera : float32 -> float32 -> Vec3f, ?callback : (int -> unit)) =
+      let callback = callback >? fun _ -> ()
+      // Ensure 32-bit alignment of rows, just in case it is needed somewhere.
+      let stride = (width * 3 + 3) &&& ~~~3
+      let bytes = stride * height
+      let pixelArray = Array.create bytes 0uy
+      let inline topix x = byte <| clampi 0 255 (int x)
+      let computeRow y =
+        let mutable j = y * stride
+        let yf = float32 y / float32 height
+        for x = 0 to width - 1 do
+          let xf = float32 x / float32 width
+          let v = camera xf yf
+          let color = (map v + Vec3f.one) * (0.5f * 256.0f)
+          pixelArray.[j] <- topix color.x
+          pixelArray.[j + 1] <- topix color.y
+          pixelArray.[j + 2] <- topix color.z
+          j <- j + 3
+        callback y
+      Array.Parallel.iter computeRow [| 0 .. height - 1 |]
+      let source = BitmapSource.Create(width, height, 96.0, 96.0, System.Windows.Media.PixelFormats.Rgb24, null, pixelArray, stride)
+      source.Freeze()
+      source
 
 
+  type ImageBrush with
+    /// Creates a tiling image brush from a Map3. If width <> height, then only the larger dimension will tile.
+    /// The viewport is the size of the brush scaled by pixelScale.
+    static member createFrom(map : Map3, width, height, pixelScale) =
+      let Z = 1.0f / (max width height |> float32)
+      let bitmapSource = BitmapSource.createFrom(map, width, height, fun x y -> Vec3f(x * Z, y * Z, 0.0f))
+      ImageBrush(bitmapSource, TileMode = TileMode.Tile, Viewport = Rect(0.0, 0.0, float width * pixelScale, float height * pixelScale), ViewportUnits = BrushMappingMode.Absolute)
 

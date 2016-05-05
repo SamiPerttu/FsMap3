@@ -1,4 +1,4 @@
-﻿/// Normalization and filtering of 3-maps by sampling.
+﻿/// Map3 normalization and filtering by sampling.
 module FsMap3.Map3Info
 
 open Common
@@ -9,7 +9,7 @@ open Map3
 [<NoEquality; NoComparison>]
 type Map3Info =
   {
-    /// Fingerprint of the map.
+    /// Fingerprint of the map. Needed only if we want to use the cache.
     fingerprint : int64
     /// Estimated minimum component values of the original map.
     min : Vec3f
@@ -23,12 +23,14 @@ type Map3Info =
     deviation : float32 Optionval
     /// Sample set of values from pseudo-random points in the normalized map. Can be used for fingerprinting.
     sampleArray : Vec3f[]
+    /// Sample set of gradients from pseudo-random points in the normalized map. Can be used for fingerprinting.
+    gradientArray : Vec3f[]
   }
 
   /// Returns a normalizer map for the source map. The slopes are defined in this map.
   member inline this.normalizer =
     let rZ = Vec3f(2.0f) / (this.max - this.min)
-    let rM = (this.min + this.max) / 2.0f
+    let rM = average this.min this.max
     fun (v : Vec3f) -> (v - rM) * rZ
 
 
@@ -61,11 +63,11 @@ type Map3Info with
       )
 
     if matching.isSome then
-      // A matching Node3Info was found with all the information we need - use it.
+      // A matching Map3Info was found with all the information we need - use it.
       !matching
 
     else
-      // There may be an existing Node3Info but it does not contain all the information we need.
+      // There may be an existing Map3Info but it does not contain all the information we need.
       let R = 16
       let Ri = 1.0f / float32 R
       let N = cubed R
@@ -82,7 +84,10 @@ type Map3Info with
         for x = 0 to R - 1 do
           for y = 0 to R - 1 do
             let i = (z * R + x) * R + y
-            let P = (Vec3f(float32 x, float32 y, float32 z) + rnd.vec3f()) * Ri
+            // We sample copies of the unit cube in a stratified pattern. If the map does not tile, then
+            // the sampling pattern is more spread out, and not stratified.
+            let S = Vec3f(rnd.int(-3, 3) |> float32, rnd.int(-3, 3) |> float32, rnd.int(-3, 3) |> float32)
+            let P = S + Ri * (Vec3f(float32 x, float32 y, float32 z) + rnd.vec3f())
             let v = map P
             minV <- Vec3f.minimize minV v
             maxV <- Vec3f.maximize maxV v
@@ -106,6 +111,11 @@ type Map3Info with
 
       let rangeV = maxV - minV
       let meanV = average minV maxV
+      let Z = Vec3f(2.0f) / rangeV
+
+      // Normalize value and gradient samples.
+      sampleArray.modify(fun v -> (v - meanV) * Z)
+      gradientArray.modify((*) Z)
 
       let sd =
         if existing.isSomeAnd(fun existing -> existing.deviation.isSome) then
@@ -114,12 +124,10 @@ type Map3Info with
           let estimatorX = Mat.MomentEstimator()
           let estimatorY = Mat.MomentEstimator()
           let estimatorZ = Mat.MomentEstimator()
-          sampleArray.modify(fun v ->
-            let v' = (v - meanV) / rangeV * 2.0f
-            estimatorX.add(float v'.x)
-            estimatorY.add(float v'.y)
-            estimatorZ.add(float v'.z)
-            v'
+          sampleArray.iter(fun v ->
+            estimatorX.add(float v.x)
+            estimatorY.add(float v.y)
+            estimatorZ.add(float v.z)
             )
           let sd = (estimatorX.deviation + estimatorY.deviation + estimatorZ.deviation) / 3.0
           Someval(float32 sd)
@@ -130,7 +138,7 @@ type Map3Info with
         if existing.isSomeAnd(fun existing -> existing.slope90.isSome) then
           (!existing).slope90, (!existing).slope99
         elif computeSlopes then
-          let slopeArray = Array.init N (fun i -> (gradientArray.[i] / rangeV).length)
+          let slopeArray = Array.init N (fun i -> gradientArray.[i].length)
           let rank90 = float N * 0.90 |> int
           let i90 = Fun.quickselect 0 (N - 1) slopeArray.at (Array.swap slopeArray) rank90
           let slope90 = slopeArray.[i90]
@@ -150,6 +158,7 @@ type Map3Info with
           slope99 = slope99
           deviation = sd
           sampleArray = if retainSamples then sampleArray else Array.createEmpty
+          gradientArray = if retainSamples then gradientArray else Array.createEmpty
         }
 
       // Insert or replace the info. The new info is always a superset of any existing info.

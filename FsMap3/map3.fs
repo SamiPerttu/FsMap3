@@ -1,4 +1,4 @@
-﻿/// 3-map functions and combinators.
+﻿/// Map3 functions and combinators.
 module FsMap3.Map3
 
 open Common
@@ -8,8 +8,8 @@ open Basis3
 open Walk
 
 
-/// Maps in 3-space form the foundation of the texture engine. The canonical target range
-/// of a map is [-1, 1] for each component.
+/// Maps in 3-space form the foundation of the texture engine.
+/// The canonical range of a map is [-1, 1] for each component.
 type Map3 = Vec3f -> Vec3f
 
 
@@ -50,7 +50,7 @@ let inline scale u (v : Vec3f) = u * v
 let inline translate u (v : Vec3f) = u + v
 
 
-/// Flat XY plane unit square pattern that displays successive depth slices
+/// Flat XY plane unit square pattern that arranges successive depth slices
 /// of the XY unit square in an n-by-n grid.
 let sliceChart (n : int) (v : Vec3f) =
   let tiles = float32 n
@@ -201,13 +201,12 @@ let iteratei n c (f : int -> Map3) =
     v
 
 
-/// Combines two maps into one with a binary vector operation.
+/// Combines two maps with a binary operation.
 let bimap (binop : Vec3f -> Vec3f -> Vec3f) (f : Map3) (g : Map3) (v : Vec3f) =
   binop (f v) (g v)
 
 
-/// Combines two maps into one with a binary vector operation, while applying shaped displacement
-/// from the first map to the second map.
+/// Combines two maps with a binary operation while applying wavelength scaled, shaped displacement from f to g.
 let bimapd (displaceShape : Map3) (binop : Vec3f -> Vec3f -> Vec3f) (f : Map3) (g : Map3) (v : Vec3f) =
   let u = f v
   binop u (g (v + displaceShape u))
@@ -221,7 +220,8 @@ let binaryBasis (binop : Vec3f -> Vec3f -> Vec3f) (frequencyFactor : float32) (f
     binop (f v) (g v)
 
 
-/// Applies a binary operation to two basis functions and a displacement scaled by wavelength to the second basis.
+/// Applies a binary operation to two basis functions. Before the binary operation, g is displaced by f
+/// with the displacement scaled by wavelength.
 let binaryBasisd (binop : Vec3f -> Vec3f -> Vec3f) (displaceShape : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) (frequency : float32) =
   let frequency' = frequency * frequencyFactor
   let f = f frequency'
@@ -231,7 +231,7 @@ let binaryBasisd (binop : Vec3f -> Vec3f -> Vec3f) (displaceShape : Map3) (frequ
     binop u (g (v + displaceShape u / frequency'))
 
 
-/// Applies a displacement scaled by wavelength from the first basis to the second.
+/// Applies a displacement scaled by wavelength from f to g.
 let displaceBasis (response : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) (frequency : float32) =
   let frequency' = frequency * frequencyFactor
   let f = f frequency'
@@ -244,30 +244,13 @@ let displaceBasis (response : Map3) (frequencyFactor : float32) (f : Basis3) (g 
 /// Shapes a basis with a map.
 let shapeBasis (f : Map3) (g : Basis3) frequency =
   let g = g frequency
-  fun (v : Vec3f) ->
-    f (g v)
+  fun (v : Vec3f) -> f (g v)
 
 
-/// Layers a ("application") on b ("base") in a manner similar to Map3.swiss.
+/// Layers a ("application") on b ("base") in a manner similar to Mix.layer.
 let layer width (fade : float32 -> float32) (a : Vec3f) (b : Vec3f) =
   let w = fade (max 0G (1G - (abs (b - a)).sum / width))
   (b + a * w) / (1G + w)
-
-
-/// Layers a series of maps in a manner similar to Map3.swiss. The first map is the base.
-/// The persist parameter (0 <= persist <= 1) is the portion of current overlay target
-/// that is retained for the next layer.
-let layeri width (persist : float32) (fade : float32 -> float32) (m : Map3 array) (v : Vec3f) =
-  let mutable R = m.[0] v // weighted result
-  let mutable O = R // overlay target
-  let mutable W = 1G
-  for i = 1 to m.last do
-    let u = m.[i] v
-    let w = fade (max 0G (1G - (abs (u - O)).sum / width))
-    R <- R + u * w
-    O <- lerp u O persist
-    W <- W + w
-  R / W
 
 
 /// Reflects components by shaping them with the wave function (e.g., sin, tri).
@@ -284,7 +267,7 @@ let reflectf (fade : float32 -> float32) (a : float32) =
 
 /// Reflects a vector proportional to its magnitude using a fade function fashioned into a periodic function.
 /// Parameter a is the number of reflections.
-let reflectNormf (fade : float32 -> float32) (a : float32) =
+let reflect3f (fade : float32 -> float32) (a : float32) =
   let wave = Fade.sinefyr fade
   fun (v : Vec3f) ->
     let m = v.length
@@ -293,22 +276,20 @@ let reflectNormf (fade : float32 -> float32) (a : float32) =
     else Vec3f.zero
 
 
-/// Saturates components. Amount a > 0 (typically, 1 < a < 20).
+/// Saturates components. Amount a > 0 (typically, 1 < a < 10 for normalized inputs).
 let saturate (a : float32) =
-  let Z = 1G / tanh a
+  let Z = 1.0f / tanh a
   shape (fun x -> Z * tanh(x * a))
 
 
-/// Saturates components proportional to the maximum component.
-let saturateMax (a : float32) (v : Vec3f) =
-  let m = (abs v).maximum
-  v * tanh(a * m)
-
-
-/// Saturates a vector proportional to its N-norm.
-let saturateN (N : float32) (a : float32) (v : Vec3f) =
-  let m = v.map(fun x -> abs x ** N).average ** (1G / N)
-  v * tanh(a * m)
+/// Saturates the input while retaining component proportions. Amount a > 0 (typically, 1 < a < 10 for normalized inputs).
+let saturate3 (a : float32) (v : Vec3f) =
+  // Use the 8-norm as a smooth proxy for the largest magnitude component.
+  let m = v.map(squared >> squared >> squared).sum |> sqrt |> sqrt |> sqrt
+  if m > 0.0f then
+    (tanh(m * a) / m) * v
+  else
+    Vec3f.zero
 
 
 /// Crushes components with the specified number of levels per unit,
@@ -317,7 +298,8 @@ let crush (fade : float32 -> float32) (levels : float32) =
   shape (fun x -> Fade.staircase fade (x * levels) / levels)
 
 
-/// Crushes components proportional to the maximum component using a fade function fashioned into a step function.
+/// Crushes components proportional to the maximum component with the specified number of levels per unit,
+/// using the fade function to transition between levels.
 let crush3 (fade : float32 -> float32) (levels : float32) (v : Vec3f) =
   let m = (abs v).maximum * levels
   if m > 1.0e-6f then
@@ -425,19 +407,19 @@ let fourierDirection (seed : int) (f : int) =
   permute (mangle32d seed) (Vec3f(float32 x, float32 y, float32 z))
 
 
-/// Produces a single Fourier style basis vector with frequency f (rounded down) measured along a cube diagonal.
-/// Each distinct frequency has a unique appearance.
-let fourier (f : float32) =
+/// Produces a single Fourier style basis wave with frequency f (rounded down) measured along a cube diagonal.
+/// Each distinct frequency has a unique appearance. Tiles the unit cube.
+let fourierWave (f : float32) =
   let h = manglef64 f
   let f = int f
   let vi = fourierDirection (int (h >>> 32)) f
   let pv = Vec3f.fromSeed(int h)
   fun (v : Vec3f) ->
     let phi = v.x * vi.x + v.y * vi.y + v.z * vi.z
-    (pv + Vec3f(phi)).map(sinr)
+    (pv + Vec3f(phi)).sinr
 
 
-/// Slightly more complicated basis function. Still quite fast.
+/// Slightly more complicated basis function. Still quite fast. Tiles the unit cube.
 let packetw (wavef : float32 -> float32) (f : float32) =
   let h = manglef64 f
   let f = int f
