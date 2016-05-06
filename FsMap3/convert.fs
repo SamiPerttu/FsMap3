@@ -86,6 +86,7 @@ let geometric (p : float) (a : int) =
 /// Converts an int32 to a sample from the Poisson distribution Pois(lambda).
 let poisson (lambda : float) =
   let p0 = exp(-lambda)
+  // This is a straightforward algorithm that does inversion sampling. 
   fun (a : int) ->
     let x = float01 Closed a
     let mutable k = 0
@@ -94,7 +95,8 @@ let poisson (lambda : float) =
     while x > sum do
       k <- k + 1
       p <- p * lambda / float k
-      sum <- sum + p
+      // Add a small constant to prevent massive outcomes and ensure that the loop terminates.
+      sum <- sum + p + 1.0e-6
     k
 
 
