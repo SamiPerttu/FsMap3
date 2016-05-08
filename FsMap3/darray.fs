@@ -150,6 +150,11 @@ type Darray<'a> =
     this.autoTrimMask <- a.autoTrimMask
     for i = 0 to a.last do this.[i] <- a.[i]
 
+  /// Makes this a shallow copy of another array.
+  member this.copyFrom(a : 'a[]) =
+    this.resize(a.size)
+    for i = 0 to a.last do this.[i] <- a.[i]
+
   /// Initializes the array with n elements from an indexed function.
   member this.initialize(n, f : int -> 'a) =
     this.resize(n)

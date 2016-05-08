@@ -286,13 +286,13 @@ type PixmapController<'a> =
     this.editSource.mutationPredicate <-
       match value with
       | Some(v) -> fun _ _ i -> if i = index then Select(v) else Retain
-      | _ -> fun _ _ i -> if i = index then Jolt(1.0) else Retain
+      | _ -> fun _ _ i -> if i = index then Jolt01(1.0) else Retain
     this.generate(true)
     
   /// Modifies a parameter in the Dna.
   member this.modifyValue(index, delta) =
     this.editSource.mutationPredicate <-
-      fun _ _ i -> if i = index then Modify(delta) else Retain
+      fun _ _ i -> if i = index then Adjust01(delta) else Retain
     this.generate(true)
 
   /// Alters Dna with the predicate.
@@ -314,11 +314,11 @@ type PixmapController<'a> =
     this.editSource.observe(dna, this.fitnessCounter.tick)
 
   /// Makes us a mutation of the contents of the source, which can be this controller or another controller.
-  member this.mutateFrom(source : PixmapController<'a>, predicate) =
+  member this.mutateFrom(source : PixmapController<'a>, predicate, ?bypassFilter) =
     let sourceDna, sourceDeep = !source.dna, !source.deep
     // TODO. Do we always want to reset the edit memory?
     this.editSource.reset()
     this.editSource.observe(sourceDna, this.fitnessCounter.tick)
     this.editSource.mutationPredicate <- predicate
-    this.generate(false, sourceDeep)
+    this.generate(bypassFilter >? false, sourceDeep)
 

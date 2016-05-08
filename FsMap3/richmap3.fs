@@ -71,7 +71,7 @@ type RichMap3 =
         let n = min sample0.size sample1.size
         let difference = Fun.sum 0 (n - 1) (fun i -> (sample0.[i] - sample1.[i]).norm1)
         if n > 0 && difference < 1.0f then
-          Log.infof "Map is too similar to previous map. Absolute difference = %f" difference
+          Log.infof "Map is too similar. Absolute difference = %f" difference
           false
         else
           if n > 0 then Log.infof "Map is dissimilar enough. Absolute difference = %f" difference
@@ -81,12 +81,12 @@ type RichMap3 =
   /// Generates a RichMap3. The palette and 2-window are generated and applied separately here.
   /// The map generator is supplied as an argument.
   static member generate(mapGenerator : Dna -> Map3) = fun (dna : Dna) ->
-    let clerp = lerp -1000.0f 1000.0f
+    let clerp = lerp -50.0f 50.0f
     let centerX = dna.float32("View Center X", clerp)
     let centerY = dna.float32("View Center Y", clerp)
     let centerZ = dna.float32("View Center Z", clerp)
     let center = Vec3f(centerX, centerY, centerZ)
-    let zoom = dna.float32("View Zoom", xerp 1.0e-4f 1.0e4f)
+    let zoom = dna.float32("View Zoom", xerp 0.5e-2f 0.5e3f)
     let offset = Vec3f(centerX - 0.5f / zoom, centerY - 0.5f / zoom, centerZ)
     let aspectRatio = 1.0f
     let palette = dna.descend("Palette", Color.genPalette 32)

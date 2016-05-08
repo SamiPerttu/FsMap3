@@ -434,32 +434,6 @@ type [<ReferenceEquality>] Dna =
     choices.value(parameter.value)
 
 
-  /// Creates a label parameter. Labels are dummy parameters whose purpose is to make sure
-  /// every branch of the Dna tree has a root node.
-  member private this.createLabel(name) =
-    let i = this.size
-    let a = this.state.[this.level]
-    let semanticId = Parameter.getSemanticId(Categorical, name, 0u)
-    let parameter = {
-      Parameter.format = Categorical
-      name = name
-      maxValue = 0u
-      level = this.level
-      address = a.address
-      number = a.number
-      parent = if this.level > 0 then this.state.[this.level - 1].parameterIndex else Noneval
-      semanticId = semanticId
-      structuralId = Parameter.getStructuralId(semanticId, this.level, a.address, a.number)
-      value = 0u
-      valueString = ""
-      valueChoices = Array.createEmpty
-      }
-    this.parameterArray.add(parameter)
-    this.choose(ignore) |> ignore
-    this.updateFingerprint(parameter)
-    this.state.[this.level] <- LevelState(a.address, Someval(i), a.children, a.number + 1)
-
-
   /// Creates a new full range parameter.
   member private this.newParameter(format, name, valueTransform, stringConverter) =
     this.newParameter(format, name, ~~~0u, valueTransform, stringConverter)
@@ -528,6 +502,33 @@ type [<ReferenceEquality>] Dna =
   // PUBLIC INTERFACE FOR PROCEDURAL GENERATORS
 
 
+  /// Adds a label parameter. Labels are parameters where the value contains no information.
+  /// They can be used to inject custom information into Dna in the parameter name. They are also used
+  /// as dummy parameters whose purpose is to make sure that every branch of the Dna tree has a root node.
+  member this.addLabel(name) =
+    let i = this.size
+    let a = this.state.[this.level]
+    let semanticId = Parameter.getSemanticId(Categorical, name, 0u)
+    let parameter = {
+      Parameter.format = Categorical
+      name = name
+      maxValue = 0u
+      level = this.level
+      address = a.address
+      number = a.number
+      parent = if this.level > 0 then this.state.[this.level - 1].parameterIndex else Noneval
+      semanticId = semanticId
+      structuralId = Parameter.getStructuralId(semanticId, this.level, a.address, a.number)
+      value = 0u
+      valueString = ""
+      valueChoices = Array.createEmpty
+      }
+    this.parameterArray.add(parameter)
+    this.choose(ignore) |> ignore
+    this.updateFingerprint(parameter)
+    this.state.[this.level] <- LevelState(a.address, Someval(i), a.children, a.number + 1)
+
+
   /// Adds an injector. More recently added injectors have higher precedence.
   member this.addInjector(injector : DnaInjector) =
     this.injectorArray.add(injector)
@@ -536,7 +537,7 @@ type [<ReferenceEquality>] Dna =
   /// Calls a subgenerator in a child node in the parameter tree. Adds a dummy parameter
   /// as a label for the subtree.
   member this.descend(label : string, generator : Dna -> _) =
-    this.createLabel(label)
+    this.addLabel(label)
     this.descend(generator)
 
 

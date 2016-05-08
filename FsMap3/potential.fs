@@ -12,6 +12,10 @@ type Potential3 = Vec3f -> float32
 (*
 Notes.
 -The Y axis is 'up'.
+-If a potential function has no power parameters or all power parameters set to 2, then
+ it is a volume of revolution about the Y axis.
+-Even if some power parameter does not equal 2, all potential functions are symmetric about the X and Z axes,
+ and X and Z axes are interchangeable.
 -For the supershapes, as any power parameter drops below 1, the maximum gradient magnitude starts to climb rapidly.
 -The potentials have been adjusted to near unity radius, some more closely than others.
 -The range of the potentials has been adjusted so that the minimum value is zero
@@ -19,9 +23,8 @@ Notes.
 *)
 
 
-
-/// Ball potential function. The radius is r (0 < r < 1).
-let ball r (v : Vec3f) = v.length / r
+/// Ball potential function.
+let ball (v : Vec3f) = v.length
 
 
 /// Superellipsoid potential function. The norms r ("radial") and t ("translational") (r > 0, t > 0)
@@ -106,7 +109,7 @@ let supercone p radius (v : Vec3f) =
 /// Steiner's Roman surface.
 let roman (v : Vec3f) =
   let v = v / G sqrt3
-  (squared v.x * (squared v.y + squared v.z) + squared v.y * squared v.z - v.x * v.y * v.z) * 256.0f + 1.0f
+  (squared v.y * (squared v.x + squared v.z) + squared v.x * squared v.z - v.x * v.y * v.z) * 256.0f + 1.0f
 
 
 
@@ -132,12 +135,20 @@ let normal (f : Potential3) (v : Vec3f) =
 
 
 
-/// Samples the volume of potential function f. The volume is returned as a fraction of the unit ball.
-let sampleVolume samples (f : Potential3) =
+/// Estimates the volume of a potential function by taking approximately 1.046 * n^3 stratified samples.
+/// The volume is returned as a fraction of the unit ball.
+let sampleVolume n (f : Potential3) =
   let rnd = Rnd(1)
-  let mutable n = 0
-  for __ = 1 to samples do
-    let v = Common.doFind (fun _ -> rnd.vec3f(map01to11)) (fun v -> v.length <= 1.0f)
-    if f v < 1.0f then n <- n + 1
-  float32 n / float32 samples
+  let mutable samples = 0
+  let mutable hits = 0
+  let Z = 1.0f / float32 n
+  // Due to symmetries, it suffices to sample one XZ quadrant.
+  for x = 0 to n - 1 do
+    for y = -n to n - 1 do
+      for z = 0 to n - 1 do
+        let v = Vec3f(float32 x + rnd.float32(), float32 y + rnd.float32(), float32 z + rnd.float32()) * Z
+        if v.length2 < 1.0f then
+          samples <- samples + 1
+          if f v < 1.0f then hits <- hits + 1
+  float32 hits / float32 samples
 

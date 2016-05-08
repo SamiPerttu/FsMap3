@@ -118,7 +118,7 @@ let orbit (layout : LayoutFunction)
       let mutable iteration = 0
       let mutable value = Mix.start
       while iteration < iterations && q.length2 < 100.0f do
-        let D = squared v.x + squared v.y
+        let D = squared q.x + squared q.y
         if D > 0.0f then
           q <- Vec3f((squared q.x - squared q.y) * (1.0f - squared q.z / D), 2.0f * q.x * q.y * (1.0f - squared q.z / D), -2.0f * q.z * sqrt(D)) + c
         else

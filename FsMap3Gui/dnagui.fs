@@ -38,7 +38,7 @@ type DnaView() =
   let itemArray = Darray<DnaItem>.create()
 
   /// Displayed genotype.
-  member val dna = Dna.create()
+  let dna = Dna.create()
 
   /// The tree view component should be added to a GUI by the client.
   member val treeView = TreeView(BorderThickness = Thickness(0.0))
@@ -67,8 +67,8 @@ type DnaView() =
     structMap.iter(fun item hash -> expandMap.[hash] <- item.IsExpanded)
     structMap.reset()
     itemArray.reset()
+    dna.reset()
     this.treeView.Items.Clear()
-    this.dna.reset()
 
 
   /// Creates a UI element for the parameter.
@@ -100,7 +100,7 @@ type DnaView() =
       vcanvas.PreviewMouseLeftButtonDown.Add(fun (args : Input.MouseButtonEventArgs) ->
         let x = args.GetPosition(vcanvas).X
         let value = uint <| round (lerp -0.49 (float parameter.maxValue + 0.49) (delerp01 4.0 (vw - 4.0) x))
-        if i < this.dna.size && value <> this.dna.parameter(i).value then this.leftCallback i value
+        if i < dna.size && value <> dna.[i].value then this.leftCallback i value
         )
       vcanvas.PreviewMouseRightButtonDown.Add(fun _ -> this.rightCallback i)
       vcanvas.PreviewMouseWheel.Add(fun (args : Input.MouseWheelEventArgs) ->
@@ -122,8 +122,8 @@ type DnaView() =
     // First, we check whether we can update the existing view instead of recreating everything from scratch.
     // For this to work, the two Dnas must be identical except for parameter values, and all parameters must
     // retain their display status.
-    let dnaIsCompatible = this.dna.size = dna'.size && Fun.forall 0 this.dna.last (fun i ->
-      this.dna.[i].semanticId = dna'.[i].semanticId && this.dna.[i].format = dna'.[i].format && this.dna.[i].name = dna'.[i].name && this.dna.[i].maxValue = dna'.[i].maxValue
+    let dnaIsCompatible = dna.size = dna'.size && Fun.forall 0 dna.last (fun i ->
+      dna.[i].semanticId = dna'.[i].semanticId && dna.[i].format = dna'.[i].format && dna.[i].name = dna'.[i].name && dna.[i].maxValue = dna'.[i].maxValue
       )
 
     let displayArray = Array.init dna'.size (fun i -> this.viewFilter dna'.[i])
@@ -135,21 +135,22 @@ type DnaView() =
     if dnaIsCompatible && displayIsCompatible then
 
       // If the fingerprint is identical as well we assume nothing has changed.
-      if dna'.fingerprint <> this.dna.fingerprint then
+      if dna'.fingerprint <> dna.fingerprint then
+        dna.fingerprint <- dna'.fingerprint
         for i = 0 to dna'.last do
-          let valueHasChanged = dna'.[i].value <> this.dna.[i].value || dna'.[i].valueString <> this.dna.[i].valueString
-          this.dna.parameterArray.[i] <- dna'.[i]
+          let valueHasChanged = dna'.[i].value <> dna.[i].value || dna'.[i].valueString <> dna.[i].valueString
+          dna.parameterArray.[i] <- dna'.[i]
           if displayArray.[i] <> Hidden && valueHasChanged then
             let item = !itemArray.[i].treeItem
-            item.Header <- this.createItemPanel(i, this.dna.[i], displayArray.[i] = Editable)
+            item.Header <- this.createItemPanel(i, dna.[i], displayArray.[i] = Editable)
 
     else
 
       this.reset()
-      this.dna.copyFrom(dna')
+      dna.copyFrom(dna')
 
-      for i = 0 to this.dna.last do
-        let parameter = this.dna.[i]
+      for i = 0 to dna.last do
+        let parameter = dna.[i]
         let displayAction = displayArray.[i]
         if displayAction = Hidden then
           itemArray.add(DnaItem(Hidden, None))
@@ -161,7 +162,7 @@ type DnaView() =
           item.Header <- this.createItemPanel(i, parameter, (displayAction = Editable))
 
           let rec addItem i item =
-            match this.dna.[i].level, this.dna.[i].parent with
+            match dna.[i].level, dna.[i].parent with
             | 0, _ ->
               // Item is at root level.
               this.treeView.add(item)
@@ -176,7 +177,7 @@ type DnaView() =
                 blankItem.add(item)
             | _ ->
               // This is not supposed to happen - every parameter not at root should have a parent.
-              Log.warnf "Dna parameter '%s' does not have a parent." this.dna.[i].name
+              Log.warnf "Dna parameter '%s' does not have a parent." dna.[i].name
               this.treeView.add(item)
 
           addItem i item

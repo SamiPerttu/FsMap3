@@ -93,8 +93,7 @@ let genPotential (dna : Dna) =
 /// to get the potential to occupy at least 1% of the volume of the unit sphere.
 let genPotentialAndRadius (dna : Dna) =
   let potential = genPotential dna
-  // TODO. Improve sampling efficiency.
-  let volume = sampleVolume 500 potential |> max 0.001f
+  let volume = sampleVolume 8 potential |> max 0.001f
   let minVolume = 0.01f
   let volumeFactor = volume / minVolume
   let minRadius = clamp 0.1f 0.9f (1.0f / cbrt volumeFactor)
@@ -151,9 +150,9 @@ let genCellDistance (dna : Dna) =
 
 /// Generates a component shifting map.
 let genShift (dna : Dna) =
-  let dx = dna.float32("X offset", lerp -0.5f 0.5f)
-  let dy = dna.float32("Y offset", lerp -0.5f 0.5f)
-  let dz = dna.float32("Z offset", lerp -0.5f 0.5f)
+  let dx = dna.float32("X shift", lerp -0.5f 0.5f)
+  let dy = dna.float32("Y shift", lerp -0.5f 0.5f)
+  let dz = dna.float32("Z shift", lerp -0.5f 0.5f)
   let wave = dna.category("Shift wave", C("triangle", tri), C("smooth triangle", Fade.sinefy Fade.smoothLine), C("sine", sin))
   scatter wave (Vec3f(dx, dy, dz))
 
@@ -234,7 +233,8 @@ let genVectorSaturate (dna : Dna) =
 
 /// Generates a wave packet map.
 let genWavePacket (dna : Dna) =
-  packet (dna.float32("Packet seed", lerp 1.0f 2.0f, interval = Interval.LeftClosed))
+  let seed = dna.data("Packet seed")
+  packet (1.0f + float32 (Convert.float01 Interval.LeftClosed seed))
 
 
 /// Generates a shaping function (or nothing).
@@ -245,12 +245,12 @@ let genShape (dna : Dna) =
     C(1.0, "bleed", genBleed),
     C(1.0, "scatter", genScatter),
     C(1.0, "wave packet", genWavePacket),
-    C(1.0, "component saturate", genSaturate),
-    C(0.5, "vector saturate", genVectorSaturate),
+    C(0.8, "component saturate", genSaturate),
+    C(0.8, "vector saturate", genVectorSaturate),
     C(0.5, "component posterize", genComponentPosterize),
     C(1.0, "vector posterize", genVectorPosterize),
-    C(0.5, "component reflect", genComponentReflect),
-    C(0.5, "vector reflect", genVectorReflect)
+    C(0.25, "component reflect", genComponentReflect),
+    C(0.25, "vector reflect", genVectorReflect)
     )
 
 
@@ -663,8 +663,9 @@ let rec genNode (E : float) (dna : Dna) =
     )
 
 
-/// Map generator for the Explorer GUI.
+/// Map generator for the Explorer GUI. This is placed here so that Explorer data can be read on any platform.
 let generateExplorerMap (dna : Dna) =
+  dna.addLabel("FsMap3 Explorer Version 0.20")
   let layout = genLayout dna
   dna.addInjector(DnaInjector.create(fun dna i (choices : Choices<Layout>) -> Someval(choices.numberOf((=) layout))))
   genNode 5.0 dna

@@ -264,11 +264,20 @@ let (|LsEq|_|) y x = if x <= y then Some() else None
 
 
 
+/// The constant function.
+let inline always x _ = x
+
 /// Inverts argument order: flip f x y = f y x.
 let inline flip f x y = f y x
 
-/// The constant function.
-let inline always x _ = x
+/// Produces a curried form from a function taking a pair as input.
+let inline curry f x y = f (x, y)
+
+/// Produces a tupled form from a function with two arguments.
+let inline uncurry f (x, y) = f x y
+
+/// Reverses a pair.
+let inline rev (a, b) = b, a
 
 /// The first element of a triple.
 let inline fst3 (a, b, c) = a
