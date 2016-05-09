@@ -28,16 +28,16 @@ The user interface is divided horizontally into three parts: *parameters*, *cont
 
 The parameter panel contains all **parameters** of the texture under view. Together, the parameters completely define what the texture looks like. They are divided into three parts:
 
--**Palette** defines the color scheme of the texture. At each point in space, the final 3 values that emerge from the texture are colored according to the palette.
+- **Palette** defines the color scheme of the texture. At each point in space, the final 3 values that emerge from the texture are colored according to the palette.
 
--**Global parameters** consists of just the layout for now. In the future, other parameters may be added. The *layout* determines how the texture *tiles*: not at all, along all axes, or only along X or Y axis.
+- **Global parameters** consists of just the layout for now. In the future, other parameters may be added. The *layout* determines how the texture *tiles*: not at all, along all axes, or only along X or Y axis.
 
--**Node tree** contains the meat of the texture definition. There are four types of nodes:
-- **Binary** nodes have two child branches, which are somehow combined. For example, the first child could be *layered* over the second child.
-- **Unary** nodes have a single child, which they modify. For example, the output from the child could be *overdriven*, effecting a contrasty and saturated look when viewed in color.
-- **Bases** are *leaves* of the node tree. They produce the basic texture content that is modified and combined. In the example screenshot, the whole tree consists of just one basis node containing [Perlin noise](http://en.wikipedia.org/wiki/Perlin_noise). You may be familiar with its look in the texture view on the right.
- -Every basis obeys the *layout* of the texture.
- -Every basis has a *frequency* parameter, which is the scale at which texture features occur. Doubling the frequency doubles the detail level.
-- **Fractalizers**, finally, are special nodes that take many basis samples and combine them. They are called fractalizers because, typically, samples are taken at different frequencies in a *[geometric progression](http://en.wikipedia.org/wiki/Geometric_progression)*. When combined, the result has fractal-like qualities because the same general look occurs at many scales.
+- **Node tree** contains the meat of the texture definition. There are four types of nodes:
+ - **Binary** nodes have two child branches, which are somehow combined. For example, the first child could be *layered* over the second child.
+ - **Unary** nodes have a single child, which they modify. For example, the output from the child could be *overdriven*, effecting a contrasty and saturated look when viewed in color.
+ - **Bases** are *leaves* of the node tree. They produce the basic texture content that is modified and combined. In the example screenshot, the whole tree consists of just one basis node containing [Perlin noise](http://en.wikipedia.org/wiki/Perlin_noise). You may be familiar with its look in the texture view on the right.
+   - Every basis obeys the *layout* of the texture.
+   - Every basis has a *frequency* parameter, which is the scale at which texture features occur. Doubling the frequency doubles the detail level.
+ - **Fractalizers**, finally, are special nodes that take many basis samples and combine them. They are called fractalizers because, typically, samples are taken at different frequencies in a *[geometric progression](http://en.wikipedia.org/wiki/Geometric_progression)*. When combined, the result has fractal-like qualities because the same general look occurs at many scales.
 
 The parameter panel can be resized by dragging the faintly gray vertical divider at the left of the control panel. If you are not interested in parameters, you can minimize the parameter panel by moving the divider all the way to the left.
