@@ -220,15 +220,15 @@ let genComponentReflect (dna : Dna) =
   translate offset >> reflect wave amount
 
 
-/// Generates a component saturation map.
-let genSaturate (dna : Dna) =
-  saturate (dna.float32("Saturation amount", xerp 2.0f 10.0f))
+/// Generates a component overdrive map.
+let genOverdrive (dna : Dna) =
+  overdrive (dna.float32("Overdrive amount", xerp 2.0f 10.0f))
 
 
-/// Generates a vector saturation map.
-let genVectorSaturate (dna : Dna) =
-  let amount = dna.float32("Saturation amount", xerp 2.0f 10.0f)
-  saturate3 amount
+/// Generates a vector overdrive map.
+let genVectorOverdrive (dna : Dna) =
+  let amount = dna.float32("Overdrive amount", xerp 2.0f 10.0f)
+  overdrive3 amount
 
 
 /// Generates a wave packet map.
@@ -245,8 +245,8 @@ let genShape (dna : Dna) =
     C(1.0, "bleed", genBleed),
     C(1.0, "scatter", genScatter),
     C(1.0, "wave packet", genWavePacket),
-    C(0.8, "component saturate", genSaturate),
-    C(0.8, "vector saturate", genVectorSaturate),
+    C(0.8, "component overdrive", genOverdrive),
+    C(0.8, "vector overdrive", genVectorOverdrive),
     C(0.5, "component posterize", genComponentPosterize),
     C(1.0, "vector posterize", genVectorPosterize),
     C(0.25, "component reflect", genComponentReflect),
@@ -267,8 +267,8 @@ let genUnary (subGen : Dna -> Map3) (dna : Dna) =
     C(1.0, "scatter", unaryShape genScatter),
     C(1.0, "wave packet", unaryShape genWavePacket),
     C(1.0, "curl", Map3Info.normalizeWithId 0xc081 (subGen >> curl)),
-    C(1.0, "component saturate", unaryShape genSaturate),
-    C(0.5, "vector saturate", unaryShape genVectorSaturate),
+    C(1.0, "component overdrive", unaryShape genOverdrive),
+    C(0.5, "vector overdrive", unaryShape genVectorOverdrive),
     C(0.5, "component posterize", unaryShape genComponentPosterize),
     C(1.0, "vector posterize", unaryShape genVectorPosterize),
     C(0.5, "component reflect", unaryShape genComponentReflect),
@@ -502,12 +502,12 @@ let rec genBasis maxDepth (dna : Dna) =
       ),
     C(dualWeight, "shape", fun _ ->
       let factor = genFactor()
-      let saturation = dna.float32("Saturation")
+      let overdrive = dna.float32("Overdrive")
       let monoization = dna.float32("Monoization")
       let scattering = dna.float32("Scattering")
       let basis1 = dna.descend("Shaper", genShapedBasis)
       let basis2 = dna.descend("Base", genBasis maxDepth')
-      binaryBasis variableShape factor (shapeBasis (Vec3f(saturation, monoization, scattering) |> scale) basis1) basis2
+      binaryBasis variableShape factor (shapeBasis (Vec3f(overdrive, monoization, scattering) |> scale) basis1) basis2
       ),
     C(dualWeight, "capsule flow", fun _ ->
       let radius = dna.float32("Radius", lerp 0.1f 1.0f)

@@ -253,7 +253,7 @@ let layer width (fade : float32 -> float32) (a : Vec3f) (b : Vec3f) =
   (b + a * w) / (1G + w)
 
 
-/// Reflects components by shaping them with the wave function (e.g., sin, tri).
+/// Reflects components by shaping them with a wave function (e.g., sin, tri).
 /// Parameter a is the number of reflections.
 let reflect (wave : float32 -> float32) (a : float32) = shape (fun x -> wave(x * a * G pi))
 
@@ -277,13 +277,13 @@ let reflect3f (fade : float32 -> float32) (a : float32) =
 
 
 /// Saturates components. Amount a > 0 (typically, 1 < a < 10 for normalized inputs).
-let saturate (a : float32) =
+let overdrive (a : float32) =
   let Z = 1.0f / tanh a
   shape (fun x -> Z * tanh(x * a))
 
 
 /// Saturates the input while retaining component proportions. Amount a > 0 (typically, 1 < a < 10 for normalized inputs).
-let saturate3 (a : float32) (v : Vec3f) =
+let overdrive3 (a : float32) (v : Vec3f) =
   // Use the 8-norm as a smooth proxy for the largest magnitude component.
   let m = v.map(squared >> squared >> squared).sum |> sqrt |> sqrt |> sqrt
   if m > 0.0f then
