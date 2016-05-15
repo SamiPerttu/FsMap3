@@ -49,12 +49,35 @@ let inline binarySearchClosest i0 i1 f value =
   closestI
 
 
+/// Iterates f in [i0, i1] in ascending order.
+let inline iter i0 i1 f =
+  // Note that this weird manner of iteration is necessary when i1 is the maximum value of its type
+  // because then i1 + 1G < i1.
+  let mutable loop = i0 <= i1
+  let mutable i = i0
+  while loop do
+    f i
+    if i < i1 then i <- i + 1G else loop <- false
+
+
+/// Iterates f in [i0, i1] in descending order.
+let inline iterBack i0 i1 f =
+  let mutable loop = i1 >= i0
+  let mutable i = i1
+  while loop do
+    f i
+    if i > i0 then i <- i - 1G else loop <- false
+
+
 /// Reduces a projected range with the binary operator.
-let inline reduce i0 i1 (f : int -> 'a) (binop: 'a -> 'a -> 'a) =
+let inline reduce i0 i1 f binop =
   enforce (i0 <= i1) "Fun.reduce: Empty range."
   let mutable v = f i0
-  for i = i0 + 1 to i1 do
+  let mutable loop = i0 < i1
+  let mutable i = i0 + 1G
+  while loop do
     v <- binop v (f i)
+    if i < i1 then i <- i + 1G else loop <- false
   v
 
 
@@ -74,17 +97,25 @@ let inline min i0 i1 f = reduce i0 i1 f min
 let inline max i0 i1 f = reduce i0 i1 f max
 
 
+/// Returns the number of times the predicate is true in [i0, i1].
+let inline count i0 i1 predicate =
+  if i0 <= i1 then reduce i0 i1 (fun i -> if predicate i then 1 else 0) (+) else 0
+
+
 /// Returns the function value with the minimum projection in [i0, i1].
 let inline minBy i0 i1 f projection =
   enforce (i0 <= i1) "Fun.minBy: Empty range."
   let mutable minV = f i0
   let mutable minP = projection minV
-  for i = i0 + 1 to i1 do
+  let mutable loop = i0 < i1
+  let mutable i = i0 + 1G
+  while loop do
     let v = f i
     let p = projection v
     if p < minP then
       minV <- v
       minP <- p
+    if i < i1 then i <- i + 1G else loop <- false
   minV
 
 
@@ -93,68 +124,93 @@ let inline maxBy i0 i1 f projection =
   enforce (i0 <= i1) "Fun.maxBy: Empty range."
   let mutable maxV = f i0
   let mutable maxP = projection maxV
-  for i = i0 + 1 to i1 do
+  let mutable loop = i0 < i1
+  let mutable i = i0 + 1G
+  while loop do
     let v = f i
     let p = projection v
     if p > maxP then
       maxV <- v
       maxP <- p
+    if i < i1 then i <- i + 1G else loop <- false
   maxV
   
 
 /// Returns the argument of the minimum of f in [i0, i1].
-let inline argMin i0 i1 (f : int -> _) =
+let inline argMin i0 i1 f =
   enforce (i0 <= i1) "Fun.argMin: Empty range."
   let mutable imin = i0
   let mutable vmin = f i0
-  for i = i0 + 1 to i1 do
+  let mutable loop = i0 < i1
+  let mutable i = i0 + 1G
+  while loop do
     let v = f i
-    if v < vmin then imin <- i; vmin <- v
+    if v < vmin then
+      imin <- i
+      vmin <- v
+    if i < i1 then i <- i + 1G else loop <- false
   imin
 
 
 /// Returns the argument of the maximum of f in [i0, i1].
-let inline argMax i0 i1 (f : int -> _) =
+let inline argMax i0 i1 f =
   enforce (i0 <= i1) "Fun.argMax: Empty range."
   let mutable imax = i0
   let mutable vmax = f i0
-  for i = i0 + 1 to i1 do
+  let mutable loop = i0 < i1
+  let mutable i = i0 + 1G
+  while loop do
     let v = f i
-    if v > vmax then imax <- i; vmax <- v
+    if v > vmax then
+      imax <- i
+      vmax <- v
+    if i < i1 then i <- i + 1G else loop <- false
   imax
 
 
-/// Searches for an integer satisfying the predicate in [i0, i1]. Checks integers
-/// in ascending order. If one is found, invokes the success continuation.
-/// If none are found, or the range is empty, invokes the failure continuation.
-let inline find i0 i1 (predicate : _ -> bool) (success : _ -> _) (failure : unit -> _) =
-  let rec loop i =
-    if i <= i1 then
-      if predicate i then success i else loop (i + 1G)
-    else failure()
-  loop i0
+/// Searches for a function value in [i0, i1] satisfying the predicate in [i0, i1].
+/// Checks the range in ascending order. If none are found, returns Noneval.
+let inline find i0 i1 f predicate =
+  let mutable result = Noneval
+  let mutable loop = i0 <= i1
+  let mutable i = i0
+  while loop do
+    let x = f i
+    if predicate x then
+      result <- Someval x
+      loop <- false
+    elif i < i1 then
+      i <- i + 1G
+    else loop <- false
+  result
 
 
-/// Searches for an integer satisfying the predicate in [i0, i1]. Checks integers
-/// in descending order. If one is found, invokes the success continuation.
-/// If none are found, or the range is empty, invokes the failure continuation.
-let inline findBack i0 i1 (predicate : _ -> bool) (success : _ -> _) (failure : unit -> _) =
-  let rec loop i =
-    if i >= i0 then
-      if predicate i then success i else loop (i - 1G)
-    else failure()
-  loop i1
+/// Searches for a function value in [i0, i1] satisfying the predicate in [i0, i1].
+/// Checks the range in descending order. If none are found, returns Noneval.
+let inline findBack i0 i1 f predicate =
+  let mutable result = Noneval
+  let mutable loop = i1 >= i0
+  let mutable i = i1
+  while loop do
+    let x = f i
+    if predicate x then
+      result <- Someval x
+      loop <- false
+    elif i > i0 then
+      i <- i - 1G
+    else loop <- false
+  result
 
 
 /// Searches for an integer satisfying the predicate in [i0, i1].
 /// Returns the smallest integer found. If none are found, returns Noneval.
-let inline findArg i0 i1 (predicate : _ -> bool) =
-  let mutable i = i0
+let inline findArg i0 i1 predicate =
   let mutable result = Noneval
-  let mutable loop = i <= i1
+  let mutable loop = i0 <= i1
+  let mutable i = i0
   while loop do
     if predicate i then
-      result <- Someval(i)
+      result <- Someval i
       loop <- false
     elif i < i1 then
       i <- i + 1G
@@ -164,13 +220,13 @@ let inline findArg i0 i1 (predicate : _ -> bool) =
 
 /// Searches for an integer satisfying the predicate in [i0, i1].
 /// Returns the largest integer found. If none are found, returns Noneval.
-let inline findArgBack i0 i1 (predicate : _ -> bool) =
-  let mutable i = i1
+let inline findArgBack i0 i1 predicate =
   let mutable result = Noneval
-  let mutable loop = i >= i0
+  let mutable loop = i1 >= i0
+  let mutable i = i1
   while loop do
     if predicate i then
-      result <- Someval(i)
+      result <- Someval i
       loop <- false
     elif i > i0 then
       i <- i - 1G
@@ -178,19 +234,23 @@ let inline findArgBack i0 i1 (predicate : _ -> bool) =
   result
 
 
-/// Returns the entropy (in bits) of a function of frequencies (which need not sum to 1)
-/// from the integer range [i0, i1].
-let inline entropy i0 i1 (f : int -> float) =
-  enforce (i0 <= i1) "Fun.entropy: Empty range."
-  if i0 = i1 then 0.0 else
-    let M = reduce i0 i1 f (+)
-    enforce (M > 0.0) "Fun.entropy: Range sum is zero."
-    let Z = 1.0 / M
-    let mutable E = 0.0
-    for i = i0 to i1 do
-      let p = Z * f i
-      if p > 0.0 then E <- E - p * log2(p)
-    E
+/// Returns the entropy (in bits) of a function of frequencies from argument range [i0, i1].
+/// The frequencies need not sum to 1.
+let inline entropy i0 i1 f =
+  let mutable E = 0G
+  let mutable F = 0G
+  let mutable n = 0
+  let mutable loop = i0 <= i1
+  let mutable i = i0
+  while loop do
+    let x = f i
+    if x > 0G then
+      n <- n + 1
+      F <- F + x
+      E <- E - x * log2(x)
+    if i < i1 then i <- i + 1G else loop <- false
+  if n < 2 then 0G else
+    E / F + log2(F)
 
 
 /// Detects cycles of the given function of length up to 2^P (P < 63). If found, returns the length of the cycle.
@@ -217,82 +277,70 @@ let detectCycle (x0 : 'a) (f : 'a -> 'a) P =
 /// Returns true iff the predicate is true for all integers in [i0, i1].
 /// Returns true if the range is empty.
 let inline forall i0 i1 (predicate : _ -> bool) =
-  // Make sure we can represent i1 + 1.
-  enforce (i1 < i1 + 1G) "Fun.forall: Arithmetic overflow."
   let mutable result = true
+  let mutable loop = i0 <= i1
   let mutable i = i0
-  while i <= i1 do
+  while loop do
     if predicate i then
-      i <- i + 1G
+      if i < i1 then i <- i + 1G else loop <- false
     else
-      i <- i1 + 1G
       result <- false
+      loop <- false
   result
 
 
 /// Returns true iff the predicate is true for some argument in [i0, i1].
 /// Returns false if the range is empty.
-let inline exists i0 i1 (predicate : _ -> bool) =
-  // Make sure we can represent i1 + 1.
-  enforce (i1 < i1 + 1G) "Fun.exists: Arithmetic overflow."
+let inline exists i0 i1 predicate =
   let mutable result = false
+  let mutable loop = i0 <= i1
   let mutable i = i0
-  while i <= i1 do
+  while loop do
     if predicate i then
-      i <- i1 + 1G
       result <- true
+      loop <- false
     else
-      i <- i + 1G
+      if i < i1 then i <- i + 1G else loop <- false
   result
   
 
-/// Returns the number of times the predicate is true in [i0, i1].
-let inline count i0 i1 (predicate : int -> bool) =
-  let mutable count = 0
-  for i = i0 to i1 do
-    if predicate i then count <- count + 1
-  count
-
-
 /// Returns the nth (n > 0) integer in [i0, i1] that satisfies the predicate, or Noneval
-/// if the predicate is not satisfied that many times. The range is iterated in ascending order.
-let inline nth i0 i1 n (predicate : _ -> bool) =
-  enforce (i1 < i1 + 1G) "Fun.nth: Arithmetic overflow."
+/// if the predicate is not satisfied that many times.
+let inline nth i0 i1 n predicate =
+  assert (n > 0)
   let mutable count = 0
   let mutable result = Noneval
+  let mutable loop = i0 <= i1
   let mutable i = i0
-  while i <= i1 do
+  while loop do
     if predicate i then
       count <- count + 1
       if count = n then
-        result <- Someval(i)
-        i <- i1
-    i <- i + 1G
+        result <- Someval i
+        loop <- false
+    if i < i1 then i <- i + 1G else loop <- false
   result
 
 
-/// Calls the function with arguments in [i0, i1] in ascending order.
-let inline iter i0 i1 (f : int -> _) =
-  for i = i0 to i1 do f i
-
-
 /// Reverses the range [i0, i1].
-let inline reverse i0 i1 (get : int -> 'a) (set : int -> 'a -> unit) =
+let inline reverse i0 i1 get set =
   let rec loop i0 i1 =
     if i0 < i1 then
       let tmp = get i0
       set i0 (get i1)
       set i1 tmp
-      loop (i0 + 1) (i1 - 1)
+      loop (i0 + 1G) (i1 - 1G)
   loop i0 i1
 
 
-/// Folds in [i0, i1] using the function get to retrieve items and the function fold
-/// to fold them into the state.
-let inline fold i0 i1 (state0 : 'a) (get : int -> 'b) (fold : 'a -> 'b -> 'a) =
+/// Folds in [i0, i1] using get to retrieve items and fold to fold them into the state.
+let inline fold i0 i1 state0 get fold =
   let mutable state = state0
-  for i = i0 to i1 do
+  let mutable loop = i0 <= i1
+  let mutable i = i0
+  while loop do
     state <- fold state (get i)
+    if i < i1 then i <- i + 1G else loop <- false
   state
 
 

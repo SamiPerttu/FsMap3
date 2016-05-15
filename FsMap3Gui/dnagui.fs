@@ -24,6 +24,15 @@ end
 
 
 
+/// Plug-in for custom choice visualization. Goes into ComboBoxItem.
+type ChoiceVisualizer = Parameter -> int -> obj option
+
+
+/// Plug-in for custom value visualization.
+type ValueVisualizer = Parameter -> UIElement option
+
+
+
 /// Displays a tree view of the parameters of a Dna.
 /// Synchronization model: Construct from the UI thread. After publication, access only from the UI thread.
 type DnaView() =
@@ -39,6 +48,12 @@ type DnaView() =
 
   /// Displayed genotype.
   let dna = Dna.create()
+
+  let choiceVisualizers = Darray.create()
+  let valueVisualizers = Darray.create()
+
+  member this.addChoiceVisualizer(v : ChoiceVisualizer) = choiceVisualizers.add(v)
+  member this.addValueVisualizer(v : ValueVisualizer) = valueVisualizers.add(v)
 
   /// The tree view component should be added to a GUI by the client.
   member val treeView = TreeView(BorderThickness = Thickness(0.0))
@@ -75,14 +90,19 @@ type DnaView() =
   member private this.createItemPanel(i : int, parameter : Parameter, editable : bool) =
     let itemPanel = StackPanel(Orientation = Orientation.Horizontal)
     itemPanel.add(TextBlock(Documents.Span(Documents.Run(parameter.name))))
-    let choices = parameter.valueChoices.sumBy (fun string -> if string.size > 0 then 1 else 0)
     // If we have editable choices, show them in a list.
-    if editable && choices > 1 then
+    if editable && parameter.choices.isSome then
+      let choices = !parameter.choices
       let valueBox = ComboBox(Margin = Thickness(10.0, 0.0, 0.0, 0.0))
       itemPanel.Margin <- Thickness(0.0, 2.0, 0.0, 2.0)
-      for j = 0 to parameter.valueChoices.last do
-        if parameter.valueChoices.[j].size > 0 then
-          let valueItem = ComboBoxItem(Content = parameter.valueChoices.[j])
+      for j = 0 to choices.choiceCount - 1 do
+        let weight = choices.choiceWeight(j)
+        if weight > 0.0 then
+          let content =
+            match Fun.find 0 choiceVisualizers.last (fun k -> choiceVisualizers.[k] parameter j) Option.isSome with
+            | Someval(Some content) -> content
+            | _ -> choices.choiceName(j) |> box
+          let valueItem = ComboBoxItem(Content = content)
           if parameter.value = uint j then valueItem.IsSelected <- true
           valueBox.add(valueItem)
           valueItem.Selected.Add(fun _ -> this.leftCallback i (uint j))

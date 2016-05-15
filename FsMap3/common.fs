@@ -445,18 +445,24 @@ let inline sinTaylor (x : 'a) : 'a =
   let x2 = squared x
   x * (1G - x2 * Q 1 6 * (1G - x2 * Q 1 20 * (1G - x2 * Q 1 42)))
 
-/// Periodic sine approximation based on Common.sinTaylor. ~4 times faster than sin.
+/// Periodic sin approximation based on Common.sinTaylor. ~4 times faster than sin.
 let inline sinFast (x : 'a) : 'a =
   let phi = x - G pi12
   let k = floor (phi * Q 1 tau)
   let a = phi - k * G tau
   sinTaylor (abs (a - G pi) - G pi12)
 
-/// Periodic cosine approximation based on Common.sinTaylor. ~4 times faster than cos.
+/// Periodic sin approximation based on Common.sinTaylor with a period of unity.
+let inline sinrFast (x : 'a) : 'a = sinFast(x * G tau)
+
+/// Periodic cos approximation based on Common.sinTaylor. ~4 times faster than cos.
 let inline cosFast (x : 'a) : 'a =
   let k = floor (x * Q 1 tau)
   let a = x - k * G tau
   sinTaylor (abs (a - G pi) - G pi12)
+
+/// Periodic cos approximation based on Common.sinTaylor with a period of unity.
+let inline cosrFast (x : 'a) : 'a = cosFast(x * G tau)
 
 /// Sine function scaled to [0, 1].
 let inline sin0 (x : 'a) : 'a = (sin x + 1G) * Q 1 2

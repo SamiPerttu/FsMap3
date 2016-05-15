@@ -7,7 +7,7 @@ open Basis3
 
 
 /// Improved Perlin gradient noise. This function is designed to emulate band-limited noise.
-/// Only some fades - Fade.smooth, Fade.cubic, Fade.sine, Fade.super - produce smooth results.
+/// A smooth, symmetric fade is recommended for best results.
 let perlin (layout : LayoutFunction) (fade : float32 -> float32) (frequency : float32) =
   let layoutInstance = layout frequency
 
@@ -36,8 +36,8 @@ let perlin (layout : LayoutFunction) (fade : float32 -> float32) (frequency : fl
     result
 
 
-/// Default Perlin noise with the standard cell layout and the smooth fade.
-let perlind frequency = perlin hifiLayout Fade.smooth frequency
+/// Default Perlin noise with the standard cell layout and the smooth-2 fade.
+let perlind frequency = perlin hifiLayout Fade.smooth2 frequency
 
 
 /// Perlin noise with the standard cell layout.

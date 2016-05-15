@@ -58,8 +58,8 @@ let peacock (layout : LayoutFunction)
     Mix.result value
 
 
-/// Default peacock pattern with the standard cell layout and the smooth fade function.
-let inline peacockd potential radius frequency = peacock hifiLayout unityCount potential Mix.sum anyColor Fade.smooth 0G radius frequency
+/// Default peacock pattern with the standard cell layout and the smooth-2 fade function.
+let inline peacockd potential radius frequency = peacock hifiLayout unityCount potential Mix.sum anyColor Fade.smooth2 0G radius frequency
 
 
 /// Peacock pattern with the standard cell layout.

@@ -126,7 +126,7 @@ let scatterf (amount : Vec3f) (offset : Vec3f) (fade : float32 -> float32) =
 
 /// Scatters vector components by feeding them to a wave function with an offset.
 let scatter (wave : float32 -> float32) (offset : Vec3f) =
-  fun (v : Vec3f) -> ((v + offset) * G pi).map(wave)
+  fun (v : Vec3f) -> (v + offset).map(wave)
 
 
 /// Displaces map g by samples from map f scaled by a.
@@ -253,9 +253,9 @@ let layer width (fade : float32 -> float32) (a : Vec3f) (b : Vec3f) =
   (b + a * w) / (1G + w)
 
 
-/// Reflects components by shaping them with a wave function (e.g., sin, tri).
+/// Reflects components by shaping them with a wave function (e.g., sinr, trir).
 /// Parameter a is the number of reflections.
-let reflect (wave : float32 -> float32) (a : float32) = shape (fun x -> wave(x * a * G pi))
+let reflect (wave : float32 -> float32) (a : float32) = shape (fun x -> wave(x * a))
 
 
 /// Reflects components by shaping them with a fade function fashioned into a periodic function.
@@ -521,7 +521,7 @@ let multid roughness lacunarity minDisplace maxDisplace minTwist maxTwist initia
 
     for i = 0 to int octaves - 1 do
       // Fade out smoothly the final octave.
-      let P = Fade.smooth(delerp01 (octaves - 1.0f) (octaves - 2.0f) (float32 i))
+      let P = Fade.smooth2(delerp01 (octaves - 1.0f) (octaves - 2.0f) (float32 i))
       if P > 0.0f then
         let y = g.[i] (v + Vec3f.fromSeed(mangle32 (i + manglef (float F))))
         let L2 = y.length2

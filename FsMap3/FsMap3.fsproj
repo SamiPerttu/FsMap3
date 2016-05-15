@@ -76,6 +76,7 @@
     <Compile Include="hopscotch.fs" />
     <Compile Include="rnd.fs" />
     <Compile Include="wset.fs" />
+    <Compile Include="choice.fs" />
     <Compile Include="dna.fs" />
     <Compile Include="dnaparameter.fs" />
     <Compile Include="yamlsource.fs" />

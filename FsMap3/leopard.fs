@@ -50,8 +50,8 @@ let leopard (layout : LayoutFunction)
     Mix.result value
 
 
-/// Default leopard pattern with the standard cell layout and the smooth fade function.
-let inline leopardd radius frequency = leopard hifiLayout unityCount Mix.sum anyColor Fade.smooth 0.0f radius frequency
+/// Default leopard pattern with the standard cell layout and the smooth-2 fade function.
+let inline leopardd radius frequency = leopard hifiLayout unityCount Mix.sum anyColor Fade.smooth2 0.0f radius frequency
 
 
 /// Leopard pattern with the standard cell layout.

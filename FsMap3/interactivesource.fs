@@ -117,10 +117,14 @@ type CodePool =
 
 [<NoComparison; NoEquality>]
 type ParameterAction =
-  /// Retain previous value, if it exists. Otherwise pick a random value.
+  /// Retain the previous value, if it exists. Otherwise pick a random value.
   | Retain
   /// Select a random value. If a previous value exists, avoid selecting it.
   | Randomize
+  /// Select a default value. If the parameter comes with a prior, select the value
+  /// with the largest weight. Otherwise, for ordered parameters, pick the middlemost value.
+  /// For categorical parameters, pick the first value.
+  | SelectDefault
   /// Attempt to select a specific value. If not possible, pick a random value.
   | Select of value : uint
   /// If ordered, attempt to select a specific fractional value. If categorical, randomize.
@@ -128,7 +132,7 @@ type ParameterAction =
   /// If ordered, alter value by a fraction no larger than the given amount.
   /// If categorical, randomize.
   | Jolt01 of amount : float
-  /// If ordered, adjust (untransformed) value fractionally by delta, always changing the value if delta <> 0.
+  /// If ordered, adjust value fractionally by delta, always changing the value if delta <> 0.
   /// If categorical, cycle value in the direction indicated by delta.
   | Adjust01 of delta : float
   /// Modify existing transformed float with the function. Pick the closest legal value.
@@ -146,6 +150,10 @@ type ParameterAction =
       match existing with | Someval(v) -> v | _ -> pickAny()
     | Randomize | Select01 _ | ModifyFloat _ | SelectFloat _ ->
       pickAny()
+    | SelectDefault ->
+      match choices with
+      | Some(choices) -> Fun.argMax 0 choices.last choices.weight |> uint
+      | None -> 0u
     | Select v ->
       match choices with
       | Some(choices) -> if choices.isLegal(v) then v else pickAny()
@@ -160,9 +168,9 @@ type ParameterAction =
         match choices with
         | Some(choices) ->
           let wrap x = if x > maxValue then x - maxValue - 1u else x
-          (if delta > 0.0 then Fun.find else Fun.findBack) 1u maxValue
-            (fun offset -> choices.weight(wrap (v + offset)) > 0.0)
-            (fun offset -> wrap (v + offset)) (always v)
+          match (if delta > 0.0 then Fun.find else Fun.findBack) 1u maxValue (fun offset -> wrap (v + offset)) (fun v -> choices.weight(v) > 0.0) with
+          | Someval(v') -> v'
+          | Noneval -> v
         | None ->
           match sign delta, v with
           |  1, Eq(maxValue) -> 0u
@@ -184,6 +192,10 @@ type ParameterAction =
       match existing with | Someval(v) -> v | Noneval -> pickAny()
     | Randomize ->
       pickAny()
+    | SelectDefault ->
+      match choices with
+      | Some(choices) -> Fun.argMax 0 choices.last choices.weight |> uint
+      | None -> maxValue / 2u
     | Select v ->
       tryPick(v)
     | Select01 v ->
@@ -200,9 +212,13 @@ type ParameterAction =
         match choices with
         | Some(choices) ->
           if delta > 0.0 && v < maxValue then
-            Fun.find (v + 1u) (maxValue) (fun v -> choices.weight(v) > 0.0) id (always v)
+            match Fun.findArg (v + 1u) maxValue (fun v -> choices.weight(v) > 0.0) with
+            | Someval(v') -> v'
+            | Noneval -> v
           elif delta < 0.0 && v > 0u then
-            Fun.findBack 0u (v - 1u) (fun v -> choices.weight(v) > 0.0) id (always v)
+            match Fun.findArgBack 0u (v - 1u) (fun v -> choices.weight(v) > 0.0) with
+            | Someval(v') -> v'
+            | Noneval -> v
           else v
         | None ->
           if delta < 0.0 && v > 0u then

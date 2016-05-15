@@ -42,11 +42,12 @@ let genFixedLayout (dna : Dna) =
   match genLayout dna with | Layout.Hifi -> Layout.Offset | x -> x
 
 
-/// Generates a unit cube offset.
+/// Generates a smallish offset.
 let genOffset (dna : Dna) =
-  let x = dna.float32("X offset")
-  let y = dna.float32("Y offset")
-  let z = dna.float32("Z offset")
+  let lerpC = lerp -5.0f 5.0f
+  let x = dna.float32("X offset", lerpC)
+  let y = dna.float32("Y offset", lerpC)
+  let z = dna.float32("Z offset", lerpC)
   translate (Vec3f(x, y, z))
 
 
@@ -65,13 +66,13 @@ let genCellColor (dna : Dna) =
 /// Generates a potential function.
 let genPotential (dna : Dna) =
   dna.branch("Potential function",
-    C("rounded cube", fun _ -> roundedCube),
+    C(1.5, "rounded cube", fun _ -> roundedCube),
     C("teardrop", fun _ -> teardrop),
-    C("rounded cylinder", fun _ ->
-      roundedCylinder (dna.float32("Cylinder radius", Fade.hump >> lerp 0.05f 1.0f))
+    C(1.5, "rounded cylinder", fun _ ->
+      roundedCylinder (dna.float32("Cylinder radius", Fade.reverse Fade.power3 >> lerp 0.05f 1.0f))
       ),
-    C("rounded cone", fun _ ->
-      roundedCone (dna.float32("Cone radius", Fade.hump >> lerp 0.05f 1.0f))
+    C(1.5, "rounded cone", fun _ ->
+      roundedCone (dna.float32("Cone radius", Fade.reverse Fade.power3 >> lerp 0.05f 1.0f))
       ),
     C(1.0, "torus", fun _ ->
       torus (dna.float32("Major axis", lerp 0.5f 0.95f))
@@ -83,7 +84,7 @@ let genPotential (dna : Dna) =
       supertorus (dna.float32("Ring power", xerp 1.0f 8.0f)) (dna.float32("Major axis", lerp 0.5f 0.95f))
       ),
     C("supercone", fun _ ->
-      supercone (dna.float32("Radial power", xerp 1.0f 8.0f)) (dna.float32("Cone radius", Fade.hump >> lerp 0.05f 1.0f))
+      supercone (dna.float32("Radial power", xerp 1.0f 8.0f)) (dna.float32("Cone radius", Fade.reverse Fade.power3 >> lerp 0.05f 1.0f))
       ),
     C("Roman", fun _ -> roman)
     )
@@ -153,14 +154,20 @@ let genShift (dna : Dna) =
   let dx = dna.float32("X shift", lerp -0.5f 0.5f)
   let dy = dna.float32("Y shift", lerp -0.5f 0.5f)
   let dz = dna.float32("Z shift", lerp -0.5f 0.5f)
-  let wave = dna.category("Shift wave", C("triangle", tri), C("smooth triangle", Fade.sinefy Fade.smoothLine), C("sine", sin))
+  let wave = dna.category("Shift wave", C("triangle", trir),
+                                        C("smooth triangle", fun x -> Fade.cosifyr Fade.smoothLine (x - Q 1 4)),
+                                        C("sine", sinrFast)
+                                        )
   scatter wave (Vec3f(dx, dy, dz))
 
 
 /// Generates a scattering map.
 let genScatter (dna : Dna) =
   let seed = dna.data("Scatter seed")
-  let wave = dna.category("Scatter wave", C("triangle", trir), C("smooth triangle", Fade.sinefyr Fade.smoothLine), C("sine", sinr))
+  let wave = dna.category("Scatter wave", C("triangle", trir),
+                                          C("smooth triangle", fun x -> Fade.cosifyr Fade.smoothLine (x - Q 1 4)),
+                                          C("sine", sinrFast)
+                                          )
   let seed' = mangle32 seed
   let t1 = dna.float32("Scatter finetuning 1")
   let t2 = dna.float32("Scatter finetuning 2")
@@ -197,24 +204,26 @@ let genComponentPosterize (dna : Dna) =
 
 /// Generates a vector reflection map.
 let genVectorReflect (dna : Dna) =
-  let fade, factor = dna.category("Reflect fade", C(0.5, "hump", (Fade.hump, 1.0f)),
-                                                  C("line", (Fade.line, 1.0f)),
-                                                  C("smooth line", (Fade.smoothLine, 1.0f)),
-                                                  C("smooth", (Fade.smooth, 1.0f)),
-                                                  C("super smooth", (Fade.super, 1.0f)),
-                                                  C("worm", (Fade.worm 2, 0.6f)),
-                                                  C(0.5, "spike", (Fade.spike, 0.8f)))
-  let amount = dna.float32("Reflect amount", lerp 2.0f 8.0f) * factor
+  let fade = dna.category("Reflect fade", C(0.5, "reverse power-2", Fade.reverse Fade.power2),
+                                          C("line", Fade.line),
+                                          C("smooth line", Fade.smoothLine),
+                                          C("smooth-2", Fade.smooth2),
+                                          C("smooth-3", Fade.smooth3),
+                                          C("worm", Fade.worm 2),
+                                          C(0.5, "power-2", Fade.power2)
+                                          )
+  let amount = dna.float32("Reflect amount", lerp 2.0f 8.0f)
   reflect3f fade amount
 
 
 /// Generates a component reflection map.
 let genComponentReflect (dna : Dna) =
-  let wave = dna.category("Reflect fade", C(1.5, "line", tri),
-                                          C("smooth line", Fade.sinefy Fade.smoothLine),
-                                          C("sine", sinFast),
-                                          C("smooth", Fade.sinefy Fade.smooth),
-                                          C("spike", Fade.sinefy Fade.spike))
+  let wave = dna.category("Reflect wave", C(1.5, "line", trir),
+                                          C("smooth line", fun x -> Fade.cosifyr Fade.smoothLine (x - Q 1 4)),
+                                          C("sine", sinrFast),
+                                          C("smooth-2", fun x -> Fade.cosifyr Fade.smooth2 (x - Q 1 4)),
+                                          C("power-2", Fade.sinefyr Fade.power2)
+                                          )
   let amount = dna.float32("Reflect amount", lerp 2.0f 8.0f)
   let offset = Vec3f.fromSeed(dna.data("Reflect offset"), -0.125f, 0.125f)
   translate offset >> reflect wave amount
@@ -267,12 +276,12 @@ let genUnary (subGen : Dna -> Map3) (dna : Dna) =
     C(1.0, "scatter", unaryShape genScatter),
     C(1.0, "wave packet", unaryShape genWavePacket),
     C(1.0, "curl", Map3Info.normalizeWithId 0xc081 (subGen >> curl)),
-    C(1.0, "component overdrive", unaryShape genOverdrive),
-    C(0.5, "vector overdrive", unaryShape genVectorOverdrive),
+    C(0.8, "component overdrive", unaryShape genOverdrive),
+    C(0.8, "vector overdrive", unaryShape genVectorOverdrive),
     C(0.5, "component posterize", unaryShape genComponentPosterize),
     C(1.0, "vector posterize", unaryShape genVectorPosterize),
-    C(0.5, "component reflect", unaryShape genComponentReflect),
-    C(0.5, "vector reflect", unaryShape genVectorReflect)
+    C(0.25, "component reflect", unaryShape genComponentReflect),
+    C(0.25, "vector reflect", unaryShape genVectorReflect)
     )
 
 
@@ -298,12 +307,12 @@ let genDisplacement minAmount maxAmount (dna : Dna) =
 
 /// Generates a component softmix shaper.
 let genSoftmix (dna : Dna) =
-  softmix (dna.float32("Mix", lerp -6.0f 6.0f))
+  softmix (dna.float32("Mix bias", lerp -6.0f 6.0f))
 
 
 /// Generates a vector softmix shaper.
 let genSoftmix3 (dna : Dna) =
-  softmix3 (dna.float32("Mix", lerp -6.0f 6.0f))
+  softmix3 (dna.float32("Mix bias", lerp -6.0f 6.0f))
 
 
 /// Generates an atlas.
@@ -338,35 +347,38 @@ let rec genBasis maxDepth (dna : Dna) =
 
   dna.branch("Basis",
     C(1.0, "Perlin noise", fun _ ->
-      let fade = dna.category("Perlin fade", C("cubic", Fade.cubic), C("smooth", Fade.smooth), C("super smooth", Fade.super))
+      let fade = dna.category("Perlin fade", C("smooth-1", Fade.smooth1), C("smooth-2", Fade.smooth2), C("smooth-3", Fade.smooth3))
       perlin (genLayout dna |> layoutFunction) fade
       ),
     C(1.0, "cubex noise", fun _ ->
       let color = genCellColor dna
-      let fade = dna.category("Cubex fade", C("sine", Fade.sine), C("smooth", Fade.smooth), C("upward arc", Fade.uparc))
+      let fade = dna.category("Cubex fade", C("sine", Fade.sine), C("smooth-2", Fade.smooth2), C("upward arc", Fade.uparc))
       let mix = genBasisMixOp dna
       cubex (genLayout dna |> layoutFunction) mix color fade
       ),
     C(0.5, "weave", fun _ ->
       let period = dna.int("Weave period", 2, 4)
+      // TODO. When the period changes, the fade changes as well: we need to update the visualization in DnaGui somehow.
       let fade = dna.category("Weave", C("threaded", Fade.wave period), 
-                                       C("quilted", Fade.wave period >> Fade.smooth),
+                                       C("quilted", Fade.wave period >> Fade.smooth2),
                                        C("wired", Fade.wave period >> Fade.shelf),
-                                       C("tiled", Fade.clone period Fade.spike))
+                                       C("tiled", Fade.clone period Fade.power4))
       // The wave fade increases the range so scale down a little.
       shapeBasis (scale 0.4f) (perlin (genFixedLayout dna |> layoutFunction) fade)
       ),
     C(1.0, "radial value noise", fun _ ->
       let color = genCellColor dna
-      let fade = dna.category("Radial fade", C(0.4, "cubic", Fade.cubic), C(0.3, "smooth", Fade.smooth), C(0.2, "super smooth", Fade.super), C(0.2, "spike", Fade.spike))
+      let fade = dna.category("Radial fade", C(0.4, "smooth-1", Fade.smooth1), C(0.3, "smooth-2", Fade.smooth2), C(0.2, "smooth-3", Fade.smooth3), C(0.2, "power-2", Fade.power2))
       radial (genLayout dna |> layoutFunction) color fade
       ),
     C(1.0, "leopard", fun _ ->
+      let radius = dna.float32("Leopard radius", xerp 0.25f 1.0f)
       let count = genFeatureCount dna
-      let mix = genBasisMixOp dna
-      let color = genCellColor dna
       let fade = genPotentialFade dna
-      leopard (genLayout dna |> layoutFunction) count mix color fade (dna.float32("Leopard shading")) (dna.float32("Leopard radius", xerp 0.25f 1.0f))
+      let mix = genBasisMixOp dna
+      let shading = dna.float32("Leopard shading")
+      let color = genCellColor dna
+      leopard (genLayout dna |> layoutFunction) count mix color fade shading radius
       ),
     C(1.0, "Worley", fun _ ->
       let count = genFeatureCount dna
@@ -375,7 +387,7 @@ let rec genBasis maxDepth (dna : Dna) =
       let p = dna.data("Worley pattern", cubed P)
       let fade = genWorleyFade dna
       worley (genLayout dna |> layoutFunction) count (p % P) (p / P % P) (p / P / P % P) distance fade),
-    C(1.0, "camo", fun _ ->
+    C(1.0, "colored Worley", fun _ ->
       let count = genFeatureCount dna
       let distance = genCellDistance dna
       let P = camoPattern.size
@@ -521,7 +533,7 @@ let rec genBasis maxDepth (dna : Dna) =
       let basis1 = dna.descend("Flow", Map3Info.normalizeBasis genShapedBasis)
       capflow (layoutFunction <| genLayout dna) featureCount mixOp cellColor fade shading length radius basis1 flowFrequency
       ),
-    C(dualWeight, "implicit flow", fun _ ->
+    C(dualWeight, "potential flow", fun _ ->
       let potential, radius = genPotentialAndRadius dna
       let fade = genPotentialFade dna
       let shading = dna.float32("Shading", squared)
@@ -570,36 +582,44 @@ let genWalk minAmount maxAmount (dna : Dna) =
 let genFractalizer (subGen : Dna -> Map3) (dna : Dna) =
   let offset = genOffset dna
   let octaves = dna.int("Octaves", 2, 10)
-  let basis = genBasis 2 dna
   let basef = dna.float32("Frequency", xerp 2.0f 16.0f)
   let roughness = dna.float32("Roughness", xerp 0.4f 0.9f)
   let minLacunarity = 0.5f / G sqrt2
   let maxLacunarity = 0.5f * G sqrt2
+  let genLacunarity() = dna.float32("Lacunarity", xerp minLacunarity maxLacunarity)
   let fractalizer =
     dna.branch("Fractalizer",
       C(1.0, "mix and displace", fun (dna : Dna) ->
-        let lacunarity = dna.float32("Lacunarity", xerp minLacunarity maxLacunarity)
+        let lacunarity = genLacunarity()
         let highpass = dna.float32("Highpass filter", lerp 0.0f 0.99f)
-        fractald roughness lacunarity highpass (genMixOp dna) (genWalk 0.1f 2.0f dna) basef octaves basis
+        let mix = genMixOp dna
+        let walk = genWalk 0.1f 2.0f dna
+        let basis = genBasis 2 dna
+        fractald roughness lacunarity highpass mix walk basef octaves basis
         ),
       C(1.0, "inverted mix and displace", fun (dna : Dna) ->
-        let lacunarity = dna.float32("Lacunarity", xerp minLacunarity maxLacunarity)
+        let lacunarity = genLacunarity()
         let lowpass = dna.float32("Lowpass filter", lerp 0.0f 0.99f)
-        fractaldi roughness lacunarity lowpass (genMixOp dna) (genWalk 0.05f 0.5f dna) basef octaves basis
+        let mix = genMixOp dna
+        let walk = genWalk 0.05f 0.5f dna
+        let basis = genBasis 2 dna
+        fractaldi roughness lacunarity lowpass mix walk basef octaves basis
         ),
       C(1.0, "walk", fun _ ->
-        let displace = dna.float32("Displace amount", xerp 1.0f 4.0f)
+        let displace = dna.float32("Displace amount", xerp 0.2f 3.0f)
         let twist = dna.float32("Twist amount", lerp 0.0f 3.0f)
+        let basis = genBasis 2 dna
         walk roughness (displace / basef) twist octaves (basis basef)
         ),
       C(1.0, "variable lowpass and displace", fun (dna : Dna) ->
-        let lacunarity = dna.float32("Lacunarity", xerp minLacunarity maxLacunarity)
+        let lacunarity = genLacunarity()
         let displace = dna.float32("Displace amount", squared >> lerp 0.0f 2.0f)
         let displaceV = dna.float32("Displace variability", xerp 1.0f 8.0f)
         let twist = dna.float32("Twist amount", squared >> lerp 0.0f 5.0f)
         let twistV = dna.float32("Twist variability", xerp 1.0f 8.0f)
         let mix = genMixOp dna
         let multiMap = dna.descend("Variable map", Map3Info.normalize subGen)
+        let basis = genBasis 2 dna
         multid (roughness + 0.05f) lacunarity (displace / displaceV) displace (twist / twistV) twist basef 1.0f (float32 octaves + 0.999f) mix multiMap basis
         )
       )
@@ -609,22 +629,33 @@ let genFractalizer (subGen : Dna -> Map3) (dna : Dna) =
 /// Generates a binary operator.
 let genBinop (subGen1 : Dna -> Map3) (subGen2 : Dna -> Map3) (dna : Dna) =
   let offset = genOffset dna
+  let displace() = genDisplacement 0.01f 0.3f dna
+  let rotateWidth() = dna.float32("Rotate width", lerp 1.0f 4.0f)
+  let rotateAmount() = dna.float32("Rotate amount", lerp 2.0f 6.0f)
+  let layer() = layer (dna.float32("Layer width", lerp 1.5f 5.0f)) (genLayerFade dna)
   let subName1, subName2, binop =
     dna.branch("Operator",
       C(1.0, "displace and rotate", fun _ ->
-        "Modifier", "Base", bimapd (genDisplacement 0.01f 0.3f dna) <| rotatef (dna.float32("Rotate width", lerp 1.0f 4.0f)) (dna.float32("Rotate amount", lerp 2.0f 6.0f)) (genLayerFade dna)
+        let displace = displace()
+        let rotateWidth = rotateWidth()
+        let rotateAmount = rotateAmount()
+        "Modifier", "Base", bimapd displace <| rotatef rotateWidth rotateAmount (genLayerFade dna)
         ),
       C(1.0, "displace and softmix", fun _ ->
-        "Modifier", "Base", bimapd (genDisplacement 0.01f 0.3f dna) <| genSoftmix3 dna
+        let displace = displace()
+        "Modifier", "Base", bimapd displace <| genSoftmix3 dna
         ),
       C(2.0, "displace and layer", fun _ ->
-        "Modifier", "Base", bimapd (genDisplacement 0.01f 0.3f dna) <| layer (dna.float32("Layer width", lerp 1.5f 5.0f)) (genLayerFade dna)
+        let displace = displace()
+        "Modifier", "Base", bimapd displace <| layer()
         ),
       C(1.0, "layered rotate", fun _ ->
-        "Rotator", "Base", bimap <| rotatef (dna.float32("Rotate width", lerp 1.0f 4.0f)) (dna.float32("Rotate amount", lerp 2.0f 6.0f)) (genLayerFade dna)
+        let rotateWidth = rotateWidth()
+        let rotateAmount = rotateAmount()
+        "Rotator", "Base", bimap <| rotatef rotateWidth rotateAmount (genLayerFade dna)
         ),
       C(1.0, "rotate", fun _ ->
-        "Rotator", "Base", bimap <| rotate (dna.float32("Rotate amount", lerp 2.0f 6.0f))
+        "Rotator", "Base", bimap <| rotate (rotateAmount())
         ),
       C(1.0, "component softmix", fun _ ->
         "Map 1", "Map 2", bimap <| genSoftmix dna
@@ -633,7 +664,7 @@ let genBinop (subGen1 : Dna -> Map3) (subGen2 : Dna -> Map3) (dna : Dna) =
         "Map 1", "Map 2", bimap <| genSoftmix3 dna
         ),
       C(2.0, "layer", fun _ ->
-        "Layer", "Base", bimap <| layer (dna.float32("Layer width", lerp 1.5f 5.0f)) (genLayerFade dna)
+        "Layer", "Base", bimap <| layer()
         )
       )
   let b0 = dna.descend(subName1, subGen1)
@@ -663,10 +694,10 @@ let rec genNode (E : float) (dna : Dna) =
     )
 
 
-/// Map generator for the Explorer GUI. This is placed here so that Explorer data can be read on any platform.
+/// Map generator for the Explorer GUI. This is placed here to enable Explorer data to be read on any platform.
 let generateExplorerMap (dna : Dna) =
   dna.addLabel("FsMap3 Explorer Version 0.20")
   let layout = genLayout dna
-  dna.addInjector(DnaInjector.create(fun dna i (choices : Choices<Layout>) -> Someval(choices.numberOf((=) layout))))
+  dna.addInjector(DnaInjector.create(fun _ _ choices -> Someval(choices.numberOf((=) layout))))
   genNode 5.0 dna
 

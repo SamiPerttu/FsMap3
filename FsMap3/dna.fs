@@ -114,13 +114,15 @@ type Parameter =
     /// This is enough to identify a parameter uniquely within a genotype.
     structuralId : int64
 
-    /// Raw value. This is typically transformed into another type and/or range. The transformed value
-    /// itself is not stored here (but its description is - see below).
+    /// Raw value. This is transformed into the generated object.
     mutable value : uint
-    /// Description of the value of the parameter. For interactive display; not used by the Dna system itself.
+
+    /// Description of the value of the parameter (optional). For interactive display; not used by the Dna system itself.
     mutable valueString : string
-    /// Value strings indexed by value. For interactive editing; not used by the Dna system itself.
-    mutable valueChoices : string[]
+    /// Set of choices, if applicable (optional).
+    mutable choices : IChoices option
+    /// Generated object (optional).
+    mutable generated : obj
   }
 
   static member getSemanticId(format : ParameterFormat, name, maxValue : uint) =
@@ -147,108 +149,6 @@ type Parameter =
   /// The value as a float in [0, 1]. This is often used by Dna sources to manipulate ordered values.
   member inline this.value01 =
     if this.maxValue > 0u then (float this.value / float this.maxValue) else 0.5
-
-
-
-/// A choice is a typed value, weighted and named, for a parameter.
-type Choice<'a>(weight : float, name : string, value : 'a) =
-  member this.weight = weight
-  member this.name = name
-  member this.value = value
-
-  /// Constructs a choice with name retrieved via Object.GetString.
-  new(weight : float, value : 'a) = Choice<'a>(weight, string (box value), value)
-
-  /// Constructs a unit weight choice.
-  new(name : string, value : 'a) = Choice<'a>(1.0, name, value)
-
-  /// Constructs a unit weight choice with name retrieved via Object.GetString.
-  new(value : 'a) = Choice<'a>(1.0, string (box value), value)
-
-
-
-/// A shorthand for the Choice type.
-type C<'a> = Choice<'a>
-
-
-
-/// A type for specifying a set of choices. The raw choice values are numbered starting from zero.
-type Choices<'a>([<System.ParamArray>] v : C<'a> array) =
-
-  let wset = Wset<Pair<string, 'a>>()
-
-  do
-    for i = 0 to v.last do wset.add(v.[i].weight, Pair(v.[i].name, v.[i].value))
-
-  /// The number of choices.
-  member this.size = wset.size
-
-  /// Number of the last choice.
-  member this.last = wset.last
-
-  /// Weight of choice number i.
-  member this.weight(i) = wset.weight(i)
-
-  /// Weight of choice number u.
-  member this.weight(u : uint) = wset.weight(int u)
-
-  /// Sets weight of choice number i.
-  member this.setWeight(i, w) = wset.weight(i) <- w
-
-  /// Sets weight of choice number u.
-  member this.setWeight(u : uint, w) = wset.weight(int u) <- w
-
-  /// Name of choice number i.
-  member this.name(i) = wset.at(i).fst
-
-  /// Name of choice number u.
-  member this.name(u : uint) = wset.at(int u).fst
-
-  /// Returns choice number i.
-  member this.value(i) = wset.at(i).snd
-
-  /// Returns choice number u.
-  member this.value(u : uint) = wset.at(int u).snd
-
-  /// Picks a choice proportionately using x in [0, 1].
-  member this.pick(x) = uint (wset.pickIndex(x))
-
-  /// Picks a choice proportionately using x in [0, 1]. The single choice excluded must not be the only valid choice.
-  member this.pickExcluding(exclude, x) = uint (wset.pickIndexExcluding(exclude, x))
-
-  /// Picks a choice proportionately using x in [0, 1]. The single choice excluded must not be the only valid choice.
-  member this.pickExcluding(exclude : uint, x) = uint (wset.pickIndexExcluding(int exclude, x))
-
-  /// Maximum choice number (raw value).
-  member this.maximum = uint wset.last
-
-  /// Total weight of choices.
-  member this.total = wset.total
-
-  /// Adds a choice.
-  member this.add(weight, name, value) = wset.add(weight, Pair(name, value))
-
-  /// If there is only one possible choice, returns its number, otherwise returns Noneval.
-  member this.singular =
-    let i = wset.pickIndex(0.0)
-    if wset.weight(i) = wset.total then Someval(uint i) else Noneval
-
-  /// Returns whether choice number u exists and has a non-zero weight.
-  member this.isLegal(u : uint) = u < uint wset.size && wset.weight(int u) > 0.0
-
-  /// Returns whether choice number i exists and has a non-zero weight.
-  member this.isLegal(i : int) = this.isLegal(uint i)
-
-  /// Returns the number of the (single) choice that fulfills the predicate. Throws an exception if no choices
-  /// or more than one choice match.
-  member this.numberOf(predicate : 'a -> bool) =
-    let mutable number = Noneval
-    for i = 0 to this.last do
-      if predicate (this.value(i)) then
-        enforce (number.isNone) "Choices.numberOf: More than one matching choice."
-        number <- Someval(uint i)
-    enforce (number.isSome) "Choices.numberOf: No matching choices."
-    !number
 
 
 
@@ -337,6 +237,13 @@ type [<ReferenceEquality>] Dna =
   // INTERNAL METHODS
 
 
+  /// Does bookkeeping after all parameter attributes have been set. Updates the Dna fingerprint.
+  /// This is called exactly once per created parameter.
+  member private this.updateFingerprint(parameter : Parameter) =
+    this.fingerprint <- mangle64 (this.fingerprint + parameter.structuralId)
+    this.fingerprint <- mangle64 (this.fingerprint + int64 parameter.value)
+      
+
   /// Chooses a value for a new parameter.
   member private this.choose(transform : uint -> 'a) =
     let rec tryFilter i =
@@ -377,7 +284,7 @@ type [<ReferenceEquality>] Dna =
 
 
   /// Creates a new parameter.
-  member private this.newParameter(format, name, maximumValue, valueTransform : uint -> 'a, stringConverter : 'a -> string) =
+  member private this.addParameter(format, name, maximumValue, valueTransform : uint -> 'a, stringConverter : 'a -> string) =
     let i = this.size
     let a = this.state.[this.level]
     let semanticId = Parameter.getSemanticId(format, name, maximumValue)
@@ -393,20 +300,21 @@ type [<ReferenceEquality>] Dna =
       structuralId = Parameter.getStructuralId(semanticId, this.level, a.address, a.number)
       value = 0u
       valueString = ""
-      valueChoices = Array.createEmpty
+      choices = None
+      generated = obj()
       }
     this.parameterArray.add(parameter)
     parameter.value <- this.choose(valueTransform)
-    let transformed = valueTransform parameter.value
-    parameter.valueString <- stringConverter transformed
-    parameter.valueChoices <- Array.createEmpty
+    let generated = valueTransform parameter.value
+    parameter.valueString <- stringConverter generated
+    parameter.generated <- box generated
     this.updateFingerprint(parameter)
     this.state.[this.level] <- LevelState(a.address, Someval(i), a.children, a.number + 1)
-    transformed
+    generated
 
 
   /// Creates a new parameter with a set of choices.
-  member private this.newParameter(format, name, choices : Choices<'a>) =
+  member private this.addParameter(format, name, choices : Choices<'a>) =
     let i = this.size
     let a = this.state.[this.level]
     let semanticId = Parameter.getSemanticId(format, name, choices.maximum)
@@ -422,29 +330,23 @@ type [<ReferenceEquality>] Dna =
       structuralId = Parameter.getStructuralId(semanticId, this.level, a.address, a.number)
       value = 0u
       valueString = ""
-      valueChoices = Array.createEmpty
+      choices = Some (choices :> IChoices)
+      generated = obj()
       }
     this.parameterArray.add(parameter)
     parameter.value <- this.choose(choices)
     parameter.valueString <- choices.name(parameter.value)
-    // Copy values to the choice vector in the parameter.
-    parameter.valueChoices <- Array.init choices.size (fun i -> if choices.weight(i) > 0.0 then choices.name(i) else "")
+    let generated = choices.value(parameter.value)
+    parameter.generated <- box generated
     this.updateFingerprint(parameter)
     this.state.[this.level] <- LevelState(a.address, Someval(i), a.children, a.number + 1)
-    choices.value(parameter.value)
+    generated
 
 
   /// Creates a new full range parameter.
-  member private this.newParameter(format, name, valueTransform, stringConverter) =
-    this.newParameter(format, name, ~~~0u, valueTransform, stringConverter)
+  member private this.addParameter(format, name, valueTransform, stringConverter) =
+    this.addParameter(format, name, ~~~0u, valueTransform, stringConverter)
 
-
-  /// Does bookkeeping after all parameter attributes have been set. Updates the Dna fingerprint.
-  /// This is called exactly once per created parameter.
-  member private this.updateFingerprint(parameter : Parameter) =
-    this.fingerprint <- mangle64 (this.fingerprint + parameter.structuralId)
-    this.fingerprint <- mangle64 (this.fingerprint + int64 parameter.value)
-      
 
   /// Calls a subgenerator in a child node in the parameter tree.
   member private this.descend(generator : Dna -> _) =
@@ -521,7 +423,8 @@ type [<ReferenceEquality>] Dna =
       structuralId = Parameter.getStructuralId(semanticId, this.level, a.address, a.number)
       value = 0u
       valueString = ""
-      valueChoices = Array.createEmpty
+      choices = None
+      generated = obj()
       }
     this.parameterArray.add(parameter)
     this.choose(ignore) |> ignore
@@ -547,7 +450,7 @@ type [<ReferenceEquality>] Dna =
     let interval = interval >? Closed
     let transformation = transformation >? id
     let unit = unit >? ""
-    this.newParameter(
+    this.addParameter(
       Ordered,
       name,
       float01u interval >> transformation,
@@ -563,7 +466,7 @@ type [<ReferenceEquality>] Dna =
 
   /// Queries a categorical parameter.
   member this.category(name, choices : Choices<_>) =
-    this.newParameter(Categorical, name, choices)
+    this.addParameter(Categorical, name, choices)
 
 
   /// Queries a categorical parameter.
@@ -585,7 +488,7 @@ type [<ReferenceEquality>] Dna =
 
   /// Queries an ordered parameter from a set of choices.
   member this.ordered(name, choices : Choices<_>) =
-    this.newParameter(Ordered, name, choices)
+    this.addParameter(Ordered, name, choices)
 
 
   /// Queries an ordered parameter from a set of choices.
@@ -595,14 +498,14 @@ type [<ReferenceEquality>] Dna =
 
   /// Queries an ordered full range parameter.
   member this.ordered(name, transformation : int -> _) =
-    this.newParameter(Ordered, name, (+) 0x80000000u >> int >> transformation, box >> string)
+    this.addParameter(Ordered, name, (+) 0x80000000u >> int >> transformation, box >> string)
 
 
   /// Queries an int parameter in [minimum, maximum], with an optional transformation.
   member this.int(name, minimum : int, maximum : int, ?transformation : int -> int, ?general) =
     enforce (minimum <= maximum) "Dna.int: Empty range."
     let maximumValue = uint maximum - uint minimum
-    this.newParameter(Ordered, name, maximumValue, (+) (uint minimum) >> int >> (transformation >? id), string)
+    this.addParameter(Ordered, name, maximumValue, (+) (uint minimum) >> int >> (transformation >? id), string)
 
 
   /// Queries an int parameter in [0, range[.
@@ -625,7 +528,7 @@ type [<ReferenceEquality>] Dna =
   member this.data(name, ?range : int) =
     enforce (range.isNone || range.value > 0) "Dna.data: Empty range."
     let maximumValue = match range with | Some(r) -> uint r - 1u | None -> maxValue uint
-    this.newParameter(
+    this.addParameter(
       Categorical,
       name,
       maximumValue,
@@ -638,13 +541,13 @@ type [<ReferenceEquality>] Dna =
 
   /// Queries a 32-bit word, which is converted into an object.
   member this.data(name, transformation : int -> _) =
-    this.newParameter(Categorical, name, int >> transformation, box >> string)
+    this.addParameter(Categorical, name, int >> transformation, box >> string)
 
 
   /// Returns true or false.
   member this.boolean(name, ?trueProbability) =
     let p = trueProbability >? 0.5
-    this.newParameter(Categorical, name, Choices(C(1.0 - p, "no", false), C(p, "yes", true)))
+    this.addParameter(Categorical, name, Choices(C(1.0 - p, "no", false), C(p, "yes", true)))
 
 
   /// Calls a subgenerator in a child node and creates clones of the returned object.
@@ -685,6 +588,11 @@ type [<ReferenceEquality>] Dna =
   static member generate(rnd : Rnd, generator : Dna -> _) =
     let dna = Dna.create()
     dna.generate(RandomSource(rnd), generator)
+
+  /// Generates a phenotype using the given source. Returns just the phenotype.
+  static member generate(source : DnaSource, generator : Dna -> _) =
+    let dna = Dna.create()
+    dna.generate(source, generator)
 
 
 
@@ -784,9 +692,9 @@ and DnaData(data : uint array) =
   member this.sourceCode =
     tome {
       yield "DnaData([|"
-      for i = 0 to data.Length - 1 do
-        if i % 8 = 0 then yield "\n  " else yield "; "
-        if data.[i] < 100u then yield sprintf "%du" data.[i] else yield sprintf "0x%xu" data.[i]
+      for i = 0 to data.last do
+        if i > 0 then yield "; "
+        yield sprintf "%du" data.[i]
       yield " |])"
     } |> buildTome
 

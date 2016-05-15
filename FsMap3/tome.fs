@@ -17,7 +17,7 @@ type TomeBuilder() =
   member __.Combine(a, b) = a @ b
   member __.Delay(f) = f()
   member __.Zero() = []
-  member __.For(xs : 'a seq, f : 'a -> string list) = xs |> Seq.fold (fun s x -> f x @ s) []
+  member __.For(xs : 'a seq, f : 'a -> string list) = xs |> Seq.fold (fun s x -> s @ f x) []
 
 
 /// A workflow for building strings. Yielded strings are placed in a list.

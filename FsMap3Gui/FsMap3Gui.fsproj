@@ -63,6 +63,7 @@
     <Compile Include="benchmark.fs" />
     <Compile Include="wpf.fs" />
     <Compile Include="dnagui.fs" />
+    <Compile Include="dnavisualizer.fs" />
     <Compile Include="pixmapgui.fs" />
     <Compile Include="raygui.fs" />
     <Compile Include="map3gui.fs" />

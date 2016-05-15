@@ -238,6 +238,8 @@ type Explorer =
       else Editable
       )
 
+    dnaView.addChoiceVisualizer(DnaVisualizer.fadeChoiceVisualizer 50.0 20.0)
+
     /// Updates the Dna view. This can be called from any thread.
     let updateDna() =
       Wpf.dispatch(window, fun _ ->
@@ -413,13 +415,6 @@ type Explorer =
         mosaicifyItem.Click.Add(fun _ -> mosaicifyView view)
         menu.add(mosaicifyItem)
 
-      let openNewWindow = MenuItem(Header = "Open in New Window")
-      openNewWindow.Click.Add(fun _ ->
-        if viewIsEmpty view = false then
-          Explorer.start(DnaData(!view.controller.dna))
-        )
-      menu.add(openNewWindow)
-
       let zoomOut = MenuItem(Header = "Zoom Out")
       zoomOut.Click.Add(fun _ ->
         view.post(fun _ ->
@@ -463,6 +458,13 @@ type Explorer =
         )
       menu.add(randomizeItem)
 
+      let openNewWindow = MenuItem(Header = "Open in New Window")
+      openNewWindow.Click.Add(fun _ ->
+        if viewIsEmpty view = false then
+          Explorer.start(DnaData(!view.controller.dna))
+        )
+      menu.add(openNewWindow)
+
       let save1920 = MenuItem(Header = "Export 1920 x 1920 Image..")
       save1920.Click.Add(fun _ ->
         setFocus view
@@ -498,6 +500,14 @@ type Explorer =
           exportMap3Png map.map 4096 4096 map.camera
         )
       menu.add(save4096)
+
+      let copySource = MenuItem(Header = "Copy F# Code to Clipboard")
+      copySource.Click.Add(fun _ ->
+        if viewIsEmpty view = false then
+          let data = DnaData(!view.controller.dna)
+          System.Windows.Clipboard.SetText("let data = " + data.sourceCode + "\ndata.generate(RichMap3.generate(Map3Dna.generateExplorerMap))\n")
+        )
+      menu.add(copySource)
 
       let showRayTrace = MenuItem(Header = "Show Ray Trace..")
       showRayTrace.Click.Add(fun _ ->
@@ -713,6 +723,42 @@ type Explorer =
     quitItem.Click.Add(fun _ -> window.Close())
 
     menu.add(fileMenu)
+
+    let helpMenu = MenuItem(Header = "_Help")
+
+    let aboutItem = MenuItem(Header = "About")
+    aboutItem.Click.Add(fun _ ->
+      let bold = FontWeight.FromOpenTypeWeight(900)
+      let medium = FontWeight.FromOpenTypeWeight(400)
+
+      let map =
+        //let data = DnaData([|2168958336u; 2168958336u; 2168958336u; 1976569664u; 0u; 3u; 3215151781u; 3556431876u; 191308989u; 4230806160u; 993128854u; 1940614082u; 2543575076u; 0u; 0u; 1u; 2117560412u; 1370615202u; 3381100919u; 4u; 2161040994u; 1515385934u; 1u; 1821456585u; 4294967295u; 0u; 2632077432u; 4u; 1u; 0u; 1u; 0u; 6u; 624071763u |])
+        //let data = DnaData([|2187850880u; 2184277632u; 2168958336u; 2012125888u; 0u; 2u; 2858539343u; 2507766205u; 122272722u; 1656310387u; 2396211749u; 2170283918u; 2318394434u; 0u; 0u; 2u; 6u; 689147025u; 0u; 70440003u; 1269522304u; 1429693441u; 1165443142u; 13u; 3323016258u; 3129424759u; 0u; 4u; 2089566664u; 1u; 3899637451u; 1u; 2u; 3144111286u; 2u; 0u; 0u; 4u; 2089566664u; 1u; 2102364799u; 1u; 2u; 3144111286u; 2u; 0u; 4u; 1929991886u |])
+        let data = DnaData([|1984925888u; 1837289663u; 2169817984u; 1976569792u; 0u; 3u; 2318414669u; 4273695224u; 3615581560u; 4191462341u; 2335799590u; 3035652516u; 2999101910u; 0u; 0u; 1u; 695873247u; 1781446274u; 949061480u; 2u; 1807085227u; 1493260346u; 0u; 1607091108u; 96009259u; 0u; 1571350661u; 1u; 0u; 14u; 1774363404u; 2680244535u; 0u; 8u; 7u; 0u; 1u; 1847687552u; 683984316u; 3011340127u; 4u; 3433436562u; 1256136275u; 1951839781u; 3557645545u; 2542053710u; 1918366792u; 2891878232u; 1398062778u; 0u; 0u; 8u; 3u; 0u; 2u; 3001995733u; 3595716165u; 777432464u; 4u; 535264218u; 885576282u; 2046382421u; 3691815859u; 2542053710u; 1658463835u; 2423594817u; 1398062778u; 0u; 2u; 4257423528u; 3509203792u |])
+        data.generate(RichMap3.generate(Map3Dna.generateExplorerMap))
+      let brush = ImageBrush.createFrom(map.map, 600, 300, 1.0)
+
+      let aboutWindow = Window(Title = "About FsMap3 Explorer", SizeToContent = SizeToContent.WidthAndHeight, ResizeMode = ResizeMode.NoResize)
+      let aboutCanvas = Canvas(Width = 600.0, Height = 300.0, Background = brush)
+      let title = Label(Content = "FsMap3 Explorer", FontSize = 40.0, FontWeight = bold)
+      let version = Label(Content = "Version 0.20", FontSize = 16.0, FontWeight = bold)
+      aboutCanvas.add(title, 10.0, 10.0)
+      aboutCanvas.add(version, 12.0, 60.0)
+      let copyright = Label(Content = "© Copyright 2016 Sami Perttu", FontSize = 20.0, FontWeight = medium)
+      aboutCanvas.add(copyright, 30.0, 120.0)
+      let license = Label(Content = "This program is distributed under the MIT license.", FontSize = 16.0, FontWeight = medium)
+      aboutCanvas.add(license, 30.0, 150.0)
+      let license2 = Label(Content = "See the file LICENSE.md for more details.", FontSize = 16.0, FontWeight = medium)
+      aboutCanvas.add(license2, 30.0, 172.0)
+      let closeButton = Button(Content = "Close", Width = 100.0, Height = 25.0, Background = Wpf.brush(1.0, 1.0, 1.0, 0.3), withClick = fun _ -> aboutWindow.Close())
+      aboutCanvas.add(closeButton, 490.0, 265.0)
+      aboutWindow.Content <- aboutCanvas
+      aboutWindow.ShowDialog() |> ignore
+      )
+    helpMenu.add(aboutItem)
+
+    menu.add(helpMenu)
+
     menuPanel.add(menu)
 
     let randomizeAllButton = Button(Content = "Randomize All")
@@ -767,7 +813,6 @@ type Explorer =
     canvas.setPixelUnits()
 
     window.Content <- mainPanel
-    //window.KeyDown.Add(fun args -> if args.Key = System.Windows.Input.Key.Escape then window.Close())
     window.Closed.Add(fun _ ->
       iterateViews(fun view _ -> view.stop())
       )

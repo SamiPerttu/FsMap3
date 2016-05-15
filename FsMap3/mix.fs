@@ -22,7 +22,7 @@ end
 
 
 /// Many Map3 functions support a mix operator, which governs how the influence of different features
-/// is composited into a final 3-vector result. The parameters are:
+/// is composited into a final result. The parameters are:
 /// state -> feature weight -> feature value -> result. Weight is in unit range.
 /// (Zero is not a valid weight but the mix operators are still required to handle it gracefully.)
 [<NoEquality; NoComparison>]
@@ -92,7 +92,7 @@ module Mix =
   /// Weighted sum.   
   let sum (state : MixState) (w : float32) (b : Vec3f) = MixState(state.a + w * b)
 
-  /// Composites new features over older features.
+  /// Composites new features over old features.
   let over (state : MixState) (w : float32) (b : Vec3f) = MixState(lerp state.a b w)
 
   /// Softmin (a < 0) or softmax (a > 0) mixing.

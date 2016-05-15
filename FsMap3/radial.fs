@@ -38,8 +38,8 @@ let radial (layout : LayoutFunction) (color : CellColor) (fade : float32 -> floa
     value / W
 
 
-/// Default radial weighted value noise with the standard cell layout and the cubic fade function.
-let inline radiald f = radial hifiLayout anyColor Fade.cubic f
+/// Default radial weighted value noise with the standard cell layout and the smooth-1 fade.
+let inline radiald f = radial hifiLayout anyColor Fade.smooth1 f
 
 
 /// Radial weighted value noise with the standard cell layout.

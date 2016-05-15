@@ -11,7 +11,7 @@ open Map3Info
 [<NoEquality; NoComparison>]
 type RichMap3 =
   {
-    /// The map, normalized and colored, with the view window transformed to the unit square at Z = 0.
+    /// The map, normalized and colored, with the view window transformed to the XY unit square at Z = 0.
     map : Map3
     /// Map view center.
     center : Vec3f

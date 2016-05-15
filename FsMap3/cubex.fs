@@ -33,8 +33,8 @@ let cubex (layout : LayoutFunction) (mix : MixOp) (color : CellColor) (fade : fl
     Mix.result value
 
 
-/// Default cubex noise with the standard cell layout and the smooth fade function.
-let cubexd frequency = cubex hifiLayout Mix.sum anyColor Fade.smooth frequency
+/// Default cubex noise with the standard cell layout and the smooth-2 fade function.
+let cubexd frequency = cubex hifiLayout Mix.sum anyColor Fade.smooth2 frequency
 
 
 /// Cubex noise with the standard cell layout.

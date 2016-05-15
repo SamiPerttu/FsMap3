@@ -16,13 +16,23 @@ open Map3
 type Wpf =
 
   /// Windows color with RGB values in [0, 1].
-  static member color(R, G, B) = Color.FromRgb(byte (clamp01 R * 255.9), byte (clamp01 G * 255.9), byte (clamp01 B * 255.9))
+  static member color(R, G, B) =
+    let value8 x = clamp01 x * 255.99 |> byte
+    Color.FromRgb(value8 R, value8 G, value8 B)
+
+  /// Windows color with RGBA values in [0, 1].
+  static member color(R, G, B, A) =
+    let value8 x = clamp01 x * 255.99 |> byte
+    Color.FromArgb(value8 A, value8 R, value8 G, value8 B)
 
   /// Grayscale windows color with value in [0, 1].
   static member color(V) = Wpf.color(V, V, V)
 
   /// Solid color brush with RGB values in [0, 1].
   static member brush(R, G, B) = SolidColorBrush(Wpf.color(R, G, B))
+
+  /// Solid color brush with RGBA values in [0, 1].
+  static member brush(R, G, B, A) = SolidColorBrush(Wpf.color(R, G, B, A))
 
   /// Returns a solid color brush, given a grayscale value in [0, 1].
   static member brush(V) = Wpf.brush(V, V, V)
@@ -78,6 +88,10 @@ module WpfExtensions =
     member this.setPixelUnits() =
       let setTransform = lazy (this.LayoutTransform <- MatrixTransform(PresentationSource.FromVisual(this).CompositionTarget.TransformFromDevice))
       this.Loaded.Add(fun _ -> !setTransform)
+
+
+  type Primitives.ButtonBase with
+    member this.withClick with set(f) = this.Click.Add(f)
 
 
   type Control with
@@ -156,7 +170,7 @@ module WpfExtensions =
         callback y
       Array.Parallel.iter computeRow [| 0 .. height - 1 |]
       let source = BitmapSource.Create(width, height, 96.0, 96.0, System.Windows.Media.PixelFormats.Rgb24, null, pixelArray, stride)
-      source.Freeze()
+      //source.Freeze()
       source
 
 
@@ -165,6 +179,7 @@ module WpfExtensions =
     /// The viewport is the size of the brush scaled by pixelScale.
     static member createFrom(map : Map3, width, height, pixelScale) =
       let Z = 1.0f / (max width height |> float32)
-      let bitmapSource = BitmapSource.createFrom(map, width, height, fun x y -> Vec3f(x * Z, y * Z, 0.0f))
+      let Zx, Zy = float32 width * Z, float32 height * Z
+      let bitmapSource = BitmapSource.createFrom(map, width, height, fun x y -> Vec3f(x * Zx, y * Zy, 0.0f))
       ImageBrush(bitmapSource, TileMode = TileMode.Tile, Viewport = Rect(0.0, 0.0, float width * pixelScale, float height * pixelScale), ViewportUnits = BrushMappingMode.Absolute)
 
