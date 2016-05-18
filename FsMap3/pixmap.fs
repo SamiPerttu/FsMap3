@@ -165,7 +165,7 @@ type Pixmap =
     let order = int <| ceil (radius * 3.0)
     let kernel = Array.init (order * 2 + 1) (fun i ->
       let x = float (i - order) / radius
-      float32 <| gaussianCdf (x + 0.5 / radius) - gaussianCdf (x - 0.5 / radius)
+      float32 <| Mat.gaussianCdf (x + 0.5 / radius) - Mat.gaussianCdf (x - 0.5 / radius)
       )
     this.filterHorizontal(kernel).filterVertical(kernel)
 

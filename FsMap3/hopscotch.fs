@@ -26,7 +26,7 @@ type Bucket<'k, 'v> = struct
   member inline this.isEmpty = this.occupiedFlag = 0u
   member inline this.isOccupied = this.occupiedFlag <> 0u
 
-  override this.ToString() = sprintf "(%A -> %A)" this.key this.value
+  override this.ToString() = if this.isOccupied then sprintf "(%A -> %A)" this.key this.value else "(empty)"
 end
 
 

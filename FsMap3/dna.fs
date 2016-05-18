@@ -446,22 +446,22 @@ type [<ReferenceEquality>] Dna =
 
   /// Queries a float parameter. Transformation from the unit interval
   /// as well as unit interval type (closed by default) can be specified.
-  member this.float(name, ?transformation : float -> float, ?interval, ?unit) =
+  member this.float(name, ?transformation : float -> float, ?interval, ?suffix) =
     let interval = interval >? Closed
     let transformation = transformation >? id
-    let unit = unit >? ""
+    let suffix = suffix >? ""
     this.addParameter(
       Ordered,
       name,
       float01u interval >> transformation,
-      fun x -> match unit with | "" -> Pretty.string x | unit -> Pretty.string x + " " + unit
+      fun x -> Pretty.string x + suffix
       )
 
 
   /// Queries a float32 parameter. Transformation from the unit interval
   /// as well as unit interval type (closed by default) can be specified.
-  member this.float32(name, ?transformation, ?interval, ?unit) =
-    this.float(name, float32 >> (transformation >? id) >> float, interval >? Closed, unit >? "") |> float32
+  member this.float32(name, ?transformation, ?interval, ?suffix) =
+    this.float(name, float32 >> (transformation >? id) >> float, interval >? Closed, suffix >? "") |> float32
 
 
   /// Queries a categorical parameter.
@@ -674,11 +674,29 @@ and [<AbstractClass>] DnaSource() =
 
 
 /// A Dna source that can replicate an existing genotype.
-and DnaData(data : uint array) =
+and DnaData(data : uint[]) =
   inherit DnaSource()
 
   /// Constructs the source to replicate the given Dna.
-  new(dna : Dna) = DnaData(Array.init dna.size (fun i -> dna.parameter(i).value))
+  new(dna : Dna) = DnaData(Array.init dna.size (fun i -> dna.[i].value))
+
+  /// Constructs the data from a specially encoded byte string,
+  /// which can be obtained from DnaData.sourceCode.
+  new(data : byte[]) =
+    let decodedData = seq {
+      let mutable i = 0
+      while i < data.size do
+        let x = decodeBase64 data.[i]
+        if x < 60 then
+          yield uint x
+          i <- i + 1
+        else
+          let mutable x = x - 60
+          for j = 1 to 5 do x <- (x <<< 6) + decodeBase64 data.[i + j]
+          yield uint x
+          i <- i + 6
+    }
+    DnaData(Seq.toArray decodedData)
 
   override this.choose(dna, i, choices) =
     enforce (i < data.size && data.[i] <= dna.parameter(i).maxValue && choices.weight(data.[i]) > 0.0) "DnaData.choose: Data mismatch."
@@ -688,14 +706,16 @@ and DnaData(data : uint array) =
     enforce (i < data.size && data.[i] <= dna.parameter(i).maxValue) "DnaData.choose: Data mismatch."
     data.[i]
 
-  /// Returns an F# constructor for this source.
+  /// Returns an F# constructor for this source. Employs a special variable length byte string encoding.
   member this.sourceCode =
     tome {
-      yield "DnaData([|"
+      yield "DnaData(\""
       for i = 0 to data.last do
-        if i > 0 then yield "; "
-        yield sprintf "%du" data.[i]
-      yield " |])"
+        let x = data.[i]
+        if x < 60u then yield encodeBase64 (int x) else
+          yield encodeBase64 (int (x >>> 30) + 60)
+          for j = 1 to 5 do yield encodeBase64 (int (x >>> 30 - 6 * j) &&& 63)
+      yield "\"B)"
     } |> buildTome
 
   /// Description length of the (uncompressed) genotype in bytes.

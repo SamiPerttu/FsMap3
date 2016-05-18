@@ -9,11 +9,11 @@ open Common
 // For example, 1 <<< 1 is equal to 1 <<< 257 is equal to 1 <<< -31.
 
 
-/// Returns whether the integer is a power of two.
+/// Returns whether x is a power of two.
 let inline isPowerOf2 x = x > 0G && (x &&& (x - 1G)) = 0G
 
 
-/// Returns x with only the lowest bit set. Returns 0 for 0. Works for all integral types.
+/// Returns x with only the lowest bit set. Returns 0 for 0.
 let inline lowestBitValue x =
   // For signed types, the following is equivalent to x &&& -x (two's complement).
   x &&& (~~~x + 1G)

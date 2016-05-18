@@ -7,11 +7,12 @@ open Common
 /// MixState contains the current state of a mixing operator.
 [<NoComparison>]
 type MixState = struct
-  /// Eextra state, typically a weight.
+  /// Extra state, typically a weight.
   val w : float32
   /// Extra state, typically unused or a "comparand" value.
   val c : Vec3f
-  /// The current result.
+  /// The current result. As this is not weighted, it is like compositing with non-premultiplied alpha, which makes
+  /// some things easier and some things harder.
   val a : Vec3f
 
   new(w : float32, c : Vec3f, a : Vec3f) = { w = w; c = c; a = a }
@@ -97,7 +98,7 @@ module Mix =
 
   /// Softmin (a < 0) or softmax (a > 0) mixing.
   let soft (a : float32) (state : MixState) (w : float32) (b : Vec3f) =
-    let inline mix x y = let wx, wy = qesp(a * x), qesp(a * y) in (x * wx + y * wy) / (wx + wy)
+    let inline mix x y = let wx, wy = Mat.qesp(a * x), Mat.qesp(a * y) in (x * wx + y * wy) / (wx + wy)
     normalizedWeightMix (fun _ a _ b -> Vec3f.bimap(a, b, mix)) state w b
 
   /// Mixes colors according to their squared norms with mixing hardness in [0, 1].

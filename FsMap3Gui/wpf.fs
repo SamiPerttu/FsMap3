@@ -7,6 +7,7 @@ open System.Windows.Media
 open System.Windows.Media.Imaging
 open System.Windows.Shapes
 open System.Windows.Controls
+open System.Windows.Controls.Primitives
 
 open Common
 open Map3
@@ -38,9 +39,10 @@ type Wpf =
   static member brush(V) = Wpf.brush(V, V, V)
 
   /// Vertical gradient brush.
-  static member verticalBrush(topColor, bottomColor, ?height) =
+  static member verticalBrush(topColor, bottomColor, ?height, ?center) =
     let height = height >? 1.0
-    LinearGradientBrush(topColor, bottomColor, Point(0.5, 0.5 - height * 0.5), Point(0.5, 0.5 + height * 0.5))
+    let center = center >? 0.5
+    LinearGradientBrush(topColor, bottomColor, Point(0.5, center - height * 0.5), Point(0.5, center + height * 0.5))
 
   /// Dispatches a task to the UI thread of the given element. If we are that thread, the task
   /// is executed immediately; otherwise it is scheduled to be executed asynchronously.
@@ -122,6 +124,13 @@ module WpfExtensions =
       this.Children.Add(child) |> ignore
 
 
+  type UniformGrid with
+    member this.add(child, column, row) =
+      Grid.SetColumn(child, column)
+      Grid.SetRow(child, row)
+      this.Children.Add(child) |> ignore
+
+
   type Canvas with
     member this.add(child, x, y) =
       Canvas.SetLeft(child, x)
@@ -170,12 +179,12 @@ module WpfExtensions =
         callback y
       Array.Parallel.iter computeRow [| 0 .. height - 1 |]
       let source = BitmapSource.Create(width, height, 96.0, 96.0, System.Windows.Media.PixelFormats.Rgb24, null, pixelArray, stride)
-      //source.Freeze()
+      source.Freeze()
       source
 
 
   type ImageBrush with
-    /// Creates a tiling image brush from a Map3. If width <> height, then only the larger dimension will tile.
+    /// Creates a tiling image brush from a Map3. If width <> height, then only the larger dimension can tile.
     /// The viewport is the size of the brush scaled by pixelScale.
     static member createFrom(map : Map3, width, height, pixelScale) =
       let Z = 1.0f / (max width height |> float32)

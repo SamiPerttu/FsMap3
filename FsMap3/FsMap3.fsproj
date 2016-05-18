@@ -69,12 +69,13 @@
     <Compile Include="quaternion.fs" />
     <Compile Include="fade.fs" />
     <Compile Include="convert.fs" />
+    <Compile Include="rnd.fs" />
+    <Compile Include="permutation.fs" />
     <Compile Include="mangle.fs" />
     <Compile Include="fun.fs" />
     <Compile Include="darray.fs" />
     <Compile Include="allocator.fs" />
     <Compile Include="hopscotch.fs" />
-    <Compile Include="rnd.fs" />
     <Compile Include="wset.fs" />
     <Compile Include="choice.fs" />
     <Compile Include="dna.fs" />
@@ -105,8 +106,8 @@
     <Compile Include="concurrent.fs" />
     <Compile Include="pixmap.fs" />
     <Compile Include="fadedna.fs" />
-    <Compile Include="map3dna.fs" />
     <Compile Include="richmap3.fs" />
+    <Compile Include="map3dna.fs" />
     <Compile Include="ray.fs" />
     <Compile Include="profile.fs" />
     <Content Include="packages.config" />

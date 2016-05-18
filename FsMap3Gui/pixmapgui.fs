@@ -70,9 +70,8 @@ module IPixmapSourceExtensions =
       let dialog = Microsoft.Win32.SaveFileDialog(Title = "Export Image As..", DefaultExt = ".png", Filter = "PNG files (.png)|*.png")
       let result = dialog.ShowDialog()
       if result.HasValue && result.Value = true then
-        let progressWindow = Window(Title = "Exporting Image", Topmost = true, ResizeMode = ResizeMode.CanMinimize, SizeToContent = SizeToContent.WidthAndHeight)
         let progressBar = ProgressBar(Maximum = float height, Width = 400.0, Height = 25.0)
-        progressWindow.Content <- progressBar
+        let progressWindow = Window(Title = "Exporting Image", Content = progressBar, ResizeMode = ResizeMode.CanMinimize, SizeToContent = SizeToContent.WidthAndHeight)
         progressWindow.Show()
         let rows = Atom.Int(0)
         let callback _ =
@@ -94,13 +93,13 @@ type PixmapViewMessage =
 
 
 
-type PixmapView(image : System.Windows.Controls.Image) =
+type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeight) =
   
   let mutable agent = none<Agent<PixmapViewMessage>>
   let mutable currentSource = PixmapSource.zero
 
-  member val renderWidth = Atom.Int(16) with get, set
-  member val renderHeight = Atom.Int(16) with get, set
+  member val renderWidth = Atom.Int(renderWidth >? 16) with get
+  member val renderHeight = Atom.Int(renderHeight >? 16) with get
 
   member this.setRenderSize(width, height) =
     this.renderWidth.set(width)
@@ -109,17 +108,22 @@ type PixmapView(image : System.Windows.Controls.Image) =
   /// How many preview levels to render. Each preview level halves resolution.
   member val previewLevels = 3 with get, set
 
-  member this.setSource(source) = agent.apply(fun agent -> agent.Post(SetSource source))
+  member this.setSource(source) =
+    agent.apply(fun agent -> agent.Post(SetSource source))
 
-  member this.reset() = agent.apply(fun agent -> agent.Post(Reset))
+  member this.reset() =
+    agent.apply(fun agent -> agent.Post(Reset))
 
-  member this.start() =
+  member this.start(?initialSource) =
     enforce (agent.isNone) "PixmapView.start: Renderer has already been started."
     agent <- Some(Agent.Start(this.agentFunction))
-    this.reset()
+    match initialSource with
+    | Some(source) -> this.setSource(source)
+    | None -> this.reset()
 
   member this.stop() =
     agent.apply(fun agent -> agent.Post(Quit))
+    agent <- None
 
   /// Renders a level. Level zero is full resolution.
   member private this.render(inbox : Agent<PixmapViewMessage>, source : IPixmapSource, renderWidth, renderHeight, level, previous : Pixmap option) =
@@ -133,7 +137,7 @@ type PixmapView(image : System.Windows.Controls.Image) =
 
     let computeRowsWith (previous : Pixmap) (Pair(yi0, yi1)) =
       for yi = yi0 to yi1 do
-        if (yi &&& 1 = 1) || (yi >>> 1 > previous.lastY) then
+        if (yi &&& 1 = 1) || (yi >>> 1 >= previous.sizeY) then
           for xi = 0 to pixmap.lastX do pixmap.[xi, yi] <- source.getPixel(renderWidth, renderHeight, xi <<< level, yi <<< level)
         else
           let mutable xi = 0

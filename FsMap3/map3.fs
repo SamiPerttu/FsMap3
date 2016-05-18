@@ -454,7 +454,7 @@ let fractal (roughness : float32) (lacunarity : float32) (initialFrequency : flo
   // Roughness per octave.
   let r = roughness ** (-log2 lacunarity)
   // Set initial weight to make the weights sum to unity.
-  let w0 = 1.0f / geometricSum octaves 1.0f r
+  let w0 = 1.0f / Mat.geometricSum octaves 1.0f r
   // Instantiate basis functions.
   let g = Array.init octaves (fun i -> g (initialFrequency / pow lacunarity i))
   fun (v : Vec3f) ->

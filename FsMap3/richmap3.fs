@@ -34,9 +34,11 @@ type RichMap3 =
 
   member this.camera = fun x y -> Vec3f(x, y, 0.0f)
 
-  static member inline pixmapCamera(w, h, x, y) = Vec3f(float32 x / float32 w, float32 y / float32 h, 0.0f)
+  static member inline pixmapCamera(w, h, x, y) =
+    let Z = 1.0f / float32 (max w h)
+    Vec3f(float32 x * Z, float32 y * Z, 0.0f)
 
-  static member pixmapGenerator(extraTransform : Vec3f -> Vec3f) =
+  static member pixmapSourceWith(extraTransform : Vec3f -> Vec3f) =
     fun (rich : RichMap3) ->
       { new IPixmapSource with
         member __.start(w, h) = ()
@@ -45,7 +47,7 @@ type RichMap3 =
         member __.postFx(pixmap) = ()
       }
 
-  static member pixmapGenerator() =
+  static member pixmapSource =
     fun (rich : RichMap3) ->
       { new IPixmapSource with
         member __.start(w, h) = ()

@@ -5,7 +5,7 @@ open Common
 
 
 /// Some cell based maps support a variable number of features per cell. A feature count function translates
-/// the hash value of a cell into its feature count. The cell hash is clean and does not need rehashing.
+/// the hash value of a cell into its feature count. The cell hash is "almost" clean and needs at most a slight retouch.
 type FeatureCount = int -> int
 
 
@@ -24,9 +24,11 @@ let unityPoisson = poissonCount 1.0
 let exactCount (n : int) (_ : int) = n
 
 /// Rounds number of features up or down probabilistically.
-let flipCount (n : float) (h : int) =
+let flipCount (n : float) =
   let i = int n
-  if Convert.float01 LeftClosed (h * 0x1d39bb4f) < n - float i then i + 1 else i
+  let n = n - float i
+  fun (h : int) ->
+    if Convert.float01 LeftClosed (h * 0x1d39bb4f) < n then i + 1 else i
 
 /// Number of features picked from the geometric distribution with the given mean.
 let geometricCount mean h = Convert.geometric (1.0 / (1.0 + mean)) (int h * 0x46eb1f5)

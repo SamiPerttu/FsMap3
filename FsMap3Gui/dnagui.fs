@@ -6,6 +6,7 @@ open System.Windows
 open System.Windows.Media
 open System.Windows.Shapes
 open System.Windows.Controls
+open System.Windows.Controls.Primitives
 
 open Common
 
@@ -89,11 +90,11 @@ type DnaView() =
   /// Creates a UI element for the parameter.
   member private this.createItemPanel(i : int, parameter : Parameter, editable : bool) =
     let itemPanel = StackPanel(Orientation = Orientation.Horizontal)
-    itemPanel.add(TextBlock(Documents.Span(Documents.Run(parameter.name))))
+    itemPanel.add(TextBlock(Documents.Span(Documents.Run(parameter.name)), Width = 108.0, VerticalAlignment = VerticalAlignment.Center))
     // If we have editable choices, show them in a list.
     if editable && parameter.choices.isSome then
       let choices = !parameter.choices
-      let valueBox = ComboBox(Margin = Thickness(10.0, 0.0, 0.0, 0.0))
+      let valueBox = ComboBox(Margin = Thickness(2.0, 0.0, 0.0, 0.0))
       itemPanel.Margin <- Thickness(0.0, 2.0, 0.0, 2.0)
       for j = 0 to choices.choiceCount - 1 do
         let weight = choices.choiceWeight(j)
@@ -116,7 +117,7 @@ type DnaView() =
       let vw = 140.0
       let vh = 22.0
       let vb = 1.0
-      let vcanvas = Canvas(Margin = Thickness(10.0, 0.0, 0.0, 0.0), Width = vw, Height = vh, Background = Wpf.brush(0.1, 0.1, 0.2))
+      let vcanvas = Canvas(Margin = Thickness(2.0, 0.0, 0.0, 0.0), Width = vw, Height = vh, Background = Wpf.brush(0.1, 0.1, 0.2))
       vcanvas.PreviewMouseLeftButtonDown.Add(fun (args : Input.MouseButtonEventArgs) ->
         let x = args.GetPosition(vcanvas).X
         let value = uint <| round (lerp -0.49 (float parameter.maxValue + 0.49) (delerp01 4.0 (vw - 4.0) x))
@@ -175,7 +176,7 @@ type DnaView() =
         if displayAction = Hidden then
           itemArray.add(DnaItem(Hidden, None))
         else
-          let item = TreeViewItem(Margin = Thickness(1.0))
+          let item = TreeViewItem(Margin = Thickness(-6.0, 1.0, 1.0, 1.0))
           itemArray.add(DnaItem(displayAction, Some item))
           structMap.[item] <- parameter.structuralId
           item.IsExpanded <- expandMap.find(parameter.structuralId) >? true

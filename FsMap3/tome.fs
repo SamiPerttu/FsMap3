@@ -7,6 +7,8 @@ open Common
 type TomeBuilder() =
   member __.Yield(s : string) = [s]
   member __.Yield(c : char) = [string c]
+  /// Yields the byte as an ASCII character.
+  member __.Yield(c : byte) = [string (char c)]
   member __.Yield(f : float) = [Pretty.string(f)]
   member __.Yield(f : float32) = [Pretty.string(f)]
   member __.Yield(i : int) = [string i]

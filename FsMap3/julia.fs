@@ -71,7 +71,7 @@ let julia (layout : LayoutFunction)
       let mutable q = q0
       let mutable iteration = 0
       let mutable result = Vec3f.zero
-      let mutable W = 1.0f / Common.geometricSum iterations 1.0f roughness
+      let mutable W = 1.0f / Mat.geometricSum iterations 1.0f roughness
       while iteration < iterations && q.length2 < 1.0e4f do
         q <- f q
         result <- result + W * q * Zf3 q
@@ -88,7 +88,7 @@ let julia (layout : LayoutFunction)
       let mutable q = q0
       let mutable iteration = 0
       let mutable result = Vec3f.zero
-      let mutable W = 1.0f / Common.geometricSum iterations 1.0f roughness
+      let mutable W = 1.0f / Mat.geometricSum iterations 1.0f roughness
       while iteration < iterations && q.length2 < 1.0e4f do
         q <- Vec2f(q.x * q.x - q.y * q.y, 2.0f * q.x * q.y)
         let Z = Zf2 q

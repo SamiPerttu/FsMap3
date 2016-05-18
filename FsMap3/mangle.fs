@@ -135,17 +135,40 @@ type MCONF =
   static member inline DBITS = 12
   static member inline QBITS = 12
 
-// Array of random direction 3-vectors.
-let directionArray = Array.init (1 <<< MCONF.DBITS) (fun i -> Convert.unitVec3 (mangle32 i) (mangle32b i))
+// A stratified set of random direction 3-vectors.
+let directionArray =
+  enforce (MCONF.DBITS % 2 = 0) "Mangle.directionArray: MCONF.DBITS must be even."
+  let b = MCONF.DBITS / 2
+  let m = (1 <<< b) - 1
+  let M = (1 <<< 32 - b) - 1
+  Array.init (1 <<< MCONF.DBITS) id
+  |> Rnd(1).shuffle
+  |> Array.map (fun i ->
+    let x = ((i &&& m) <<< 32 - b) ||| (mangle32 i &&& M)
+    let y = (((i >>> b) &&& m) <<< 32 - b) ||| (mangle32b i &&& M)
+    Convert.unitVec3 x y
+    )
 
-// Array of random rotations.
-let rotationArray = Array.init (1 <<< MCONF.QBITS) (fun i -> (Convert.unitQuaternion (mangle32b i) (mangle32c i) (mangle32 i)))
+// A stratified set of random 3-rotations.
+let rotationArray =
+  enforce (MCONF.QBITS % 3 = 0) "Mangle.rotationArray: MCONF.QBITS must be divisible by 3."
+  let b = MCONF.QBITS / 3
+  let m = (1 <<< b) - 1
+  let M = (1 <<< 32 - b) - 1
+  Array.init (1 <<< MCONF.QBITS) id
+  |> Rnd(2).shuffle
+  |> Array.map (fun i ->
+    let x = ((i &&& m) <<< 32 - b) ||| (mangle32c i &&& M)
+    let y = (((i >>> b) &&& m) <<< 32 - b) ||| (mangle32 i &&& M)
+    let z = (((i >>> b * 2) &&& m) <<< 32 - b) ||| (mangle32b i &&& M)
+    Convert.unitQuaternion x y z
+    )
 
 
 /// Hashes the lowest 12 bits of an integer to a unit 3-vector.
 let inline mangle12UnitVec3 i = directionArray.[i &&& ((1 <<< MCONF.DBITS) - 1)]
 
-/// Hashes the lowest 12 bits of an integer to a rotation, returned as a single precision quaternion.
+/// Hashes the lowest 12 bits of an integer to a 3-rotation, returned as a single precision quaternion.
 let inline mangle12Rotation i = rotationArray.[i &&& ((1 <<< MCONF.QBITS) - 1)]
 
 

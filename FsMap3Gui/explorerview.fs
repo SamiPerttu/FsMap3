@@ -209,7 +209,7 @@ type View with
 
     // Target number of parameters to mutate at once.
     let mosaicParameters = rnd.int(2, 8)
-    let mutationParameters = rnd.int(1, 3)
+    let mutationParameters = 0 // rnd.int(1, 3)
 
     let mosaicPredicateSet = Darray.create()
     let mutationPredicateSet = Darray.create()

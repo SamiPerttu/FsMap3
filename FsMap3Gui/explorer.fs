@@ -36,12 +36,19 @@ type Explorer =
     /// How far user has to move the mouse before it is recognized as zooming.
     let dragMinimum = 16.0f
     /// Width of tool bar panel.
-    let toolPanelWidth = 150.0
+    let toolPanelWidth = 152.0
     /// Size of tool and view icons.
     let iconSize = 29.0
     let iconMargin = Thickness(0.5)
 
-    // We have 1 full view, 4 half views, and 16 quarter views.
+    let viewBg = Wpf.brush(0.0)
+    let dnaBg = Wpf.brush(0.9)
+    let menuBg = Wpf.verticalBrush(Wpf.color(0.8, 0.88, 0.9), Wpf.color(0.7, 0.78, 0.8))
+    let statusBg = Wpf.verticalBrush(Wpf.color(0.3, 0.55, 0.7), Wpf.color(0.3 * 0.85, 0.55 * 0.85, 0.7 * 0.85))
+    let statusFg = Wpf.brush(1.0)
+    let toolBg = Wpf.brush(0.8, 0.8, 0.8, 0.3)
+
+    // We have 1 full view, 4 half views and 16 quarter views.
     let fN = 1
     let hN = 4
     let qN = 16
@@ -66,9 +73,9 @@ type Explorer =
     /// Current user action.
     let userAction = ref Idle
 
-    let window = Window(Title = "FsMap3 Explorer Version 0.20", ResizeMode = ResizeMode.CanResize, Width = 1024.0, Height = 512.0, SizeToContent = SizeToContent.Manual, Topmost = false, WindowStartupLocation = WindowStartupLocation.CenterScreen)
+    let window = Window(Title = "FsMap3 Explorer", ResizeMode = ResizeMode.CanResize, Width = 1024.0, Height = 512.0, SizeToContent = SizeToContent.Manual, Topmost = false, WindowStartupLocation = WindowStartupLocation.CenterScreen)
 
-    let canvas = Grid(Background = Brushes.Black, ClipToBounds = true, Margin = Thickness(0.0, 0.0, 0.0, 0.0))
+    let canvas = Grid(Background = viewBg, ClipToBounds = true, Margin = Thickness(0.0, 0.0, 0.0, 0.0))
     canvas.ColumnDefinitions.Add(ColumnDefinition())
     canvas.RowDefinitions.Add(RowDefinition())
     canvas.HorizontalAlignment <- HorizontalAlignment.Stretch
@@ -77,14 +84,24 @@ type Explorer =
     let mapInfoBox = RichMap3InfoBox.create(toolPanelWidth)
     mapInfoBox.panel.HorizontalAlignment <- HorizontalAlignment.Center
     mapInfoBox.panel.VerticalAlignment <- VerticalAlignment.Bottom
+    mapInfoBox.reset()
+
+    let statusBar = StackPanel(Orientation = Orientation.Horizontal, Background = statusBg)
+    let statusText = Label(Margin = Thickness(2.0, 0.0, 0.0, 0.0), Foreground = statusFg, Padding = Thickness(2.0), Content = "Ready.", VerticalAlignment = VerticalAlignment.Center)
+    statusBar.add(statusText)
+
+    let setStatus content =
+      Wpf.dispatch(window, fun _ ->
+        statusText.Content <- content
+        )
 
     let mapSeed = Map3.zero
     let richSeed = { RichMap3.map = mapSeed; center = Vec3f(0.5f); zoom = 1.0f; aspectRatio = 1.0f; info = Map3Info.create(mapSeed) }
-    let deepGenerator = RichMap3.generate(generateExplorerMap)
+    let deepGenerator = Map3Dna.generateExplorerMap
     let pixmapGenerator extraTransform =
       match extraTransform with
-      | Some(transform) -> RichMap3.pixmapGenerator(transform)
-      | None -> RichMap3.pixmapGenerator()
+      | Some(transform) -> RichMap3.pixmapSourceWith(transform)
+      | None -> RichMap3.pixmapSource
     let deepFilter = RichMap3.filter
 
     let fullView = ExplorerView.create(FullView, 0, 0, 0, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, true, 4)
@@ -163,12 +180,11 @@ type Explorer =
           view.view.setRenderSize(R, R)
           )
      
-    let toolPanel = DockPanel(Width = toolPanelWidth, Margin = Thickness(1.0))
-    toolPanel.VerticalAlignment <- VerticalAlignment.Stretch
+    let toolPanel = DockPanel(Width = toolPanelWidth, Margin = Thickness(0.0), VerticalAlignment = VerticalAlignment.Stretch)
 
-    let createIconButton imageFile tip = ToggleButton(Content = Wpf.loadImage(imageFile), withToolTip = tip, Width = iconSize, Height = iconSize, Margin = iconMargin)
+    let createIconButton imageFile tip = ToggleButton(Content = Wpf.loadImage(imageFile), withToolTip = tip, Width = iconSize, Height = iconSize, Margin = iconMargin, Background = Wpf.brush(0.0, 0.0, 0.0, 0.1))
 
-    let toolBar = StackPanel(Orientation = Orientation.Horizontal)
+    let toolBar = StackPanel(Orientation = Orientation.Horizontal, Margin = Thickness(1.0))
     let panButton = createIconButton "appbar.cursor.move.png" "Pan Tool: drag view to pan, mouse wheel controls Z."
     toolBar.add(panButton)
     let panZoomButton = createIconButton "pan-zoom-3.png" "Pan-Zoom Tool: drag view to pan, mouse wheel controls zoom."
@@ -194,7 +210,7 @@ type Explorer =
     mutateButton.PreviewMouseDown.Add(fun args -> setToolMode MutateTool; args.Handled <- true)
     joltButton.PreviewMouseDown.Add(fun args -> setToolMode JoltTool; args.Handled <- true)
 
-    let viewBar = StackPanel(Orientation = Orientation.Horizontal)
+    let viewBar = StackPanel(Orientation = Orientation.Horizontal, Margin = Thickness(1.0))
     let fullViewButton = createIconButton "fullview.png" "Big View"
     viewBar.add(fullViewButton)
     let halfViewButton = createIconButton "halfview.png" "2×2 Small Views"
@@ -229,7 +245,7 @@ type Explorer =
       // The layout is generated once at the top level and then propagated as a constraint.
       if parameter.name = "Layout" && parameter.level > 0 then
         Hidden
-      // View parameters are manipulated using the view controls.
+      // View window is manipulated using the view controls.
       elif parameter.name.StartsWith("View") then
         Hidden
       // Version information is of no interest here.
@@ -238,6 +254,7 @@ type Explorer =
       else Editable
       )
 
+    dnaView.treeView.Background <- dnaBg
     dnaView.addChoiceVisualizer(DnaVisualizer.fadeChoiceVisualizer 50.0 20.0)
 
     /// Updates the Dna view. This can be called from any thread.
@@ -304,12 +321,11 @@ type Explorer =
       )
 
     let setViewMode mode =
-      if !viewMode <> mode then
-        viewMode := mode
-        iterateViews (fun view visible -> view.image.Visibility <- if visible then Visibility.Visible else Visibility.Collapsed)
-        fullViewButton.IsChecked <- Nullable((mode = FullView))
-        halfViewButton.IsChecked <- Nullable((mode = HalfView))
-        quarterViewButton.IsChecked <- Nullable((mode = QuarterView))
+      viewMode := mode
+      iterateViews (fun view visible -> view.image.Visibility <- if visible then Visibility.Visible else Visibility.Collapsed)
+      fullViewButton.IsChecked <- Nullable((mode = FullView))
+      halfViewButton.IsChecked <- Nullable((mode = HalfView))
+      quarterViewButton.IsChecked <- Nullable((mode = QuarterView))
 
     dnaView.leftCallback <- fun i value ->
       match !focusView with
@@ -505,11 +521,11 @@ type Explorer =
       copySource.Click.Add(fun _ ->
         if viewIsEmpty view = false then
           let data = DnaData(!view.controller.dna)
-          System.Windows.Clipboard.SetText("let data = " + data.sourceCode + "\ndata.generate(RichMap3.generate(Map3Dna.generateExplorerMap))\n")
+          System.Windows.Clipboard.SetText(data.sourceCode + ".generate(Map3Dna.generateExplorerMap)\n")
         )
       menu.add(copySource)
 
-      let showRayTrace = MenuItem(Header = "Show Ray Trace..")
+      let showRayTrace = MenuItem(Header = "Show Ray Trace")
       showRayTrace.Click.Add(fun _ ->
         if viewIsEmpty view = false then
           let deep = !view.controller.deep
@@ -671,12 +687,14 @@ type Explorer =
 
       )
 
-    let menuPanel = StackPanel(Orientation = Orientation.Horizontal, Background = Wpf.verticalBrush(Wpf.color(0.8), Wpf.color(1.0)))
+    let menuPanel = StackPanel(Orientation = Orientation.Horizontal, Background = menuBg)
     menuPanel.VerticalAlignment <- VerticalAlignment.Center
     menuPanel.HorizontalAlignment <- HorizontalAlignment.Stretch
-    let menu = Menu()
+    let menu = Menu(Background = Wpf.brush(1.0, 1.0, 1.0, 0.2))
 
-    let fileMenu = MenuItem(Header = "_File")
+    let makeTopMenuItem label = MenuItem(Header = label, Margin = Thickness(4.0, 0.0, 4.0, 0.0), Background = Wpf.brush(1.0, 1.0, 1.0, 0.1), Foreground = Wpf.brush(0.0))
+
+    let fileMenu = makeTopMenuItem "_File"
 
     let openItem = MenuItem(Header = "_Open..")
     openItem.Click.Add(fun _ ->
@@ -706,7 +724,7 @@ type Explorer =
         if result.HasValue && result.Value = true then
           try
             let source = SerializerSource(!view.controller.dna)
-            // SerializerSource works by sourcing the specimen we want to serialize from data.
+            // SerializerSource works by regenerating the specimen we want to serialize.
             // During generation it obtains parameters in user readable units.
             source.generate(deepGenerator) |> ignore
             use stream = new System.IO.StreamWriter(dialog.FileName)
@@ -724,49 +742,56 @@ type Explorer =
 
     menu.add(fileMenu)
 
-    let helpMenu = MenuItem(Header = "_Help")
+    let helpMenu = makeTopMenuItem "_Help"
 
     let aboutItem = MenuItem(Header = "About")
     aboutItem.Click.Add(fun _ ->
       let bold = FontWeight.FromOpenTypeWeight(900)
-      let medium = FontWeight.FromOpenTypeWeight(400)
-
+      let medium = FontWeight.FromOpenTypeWeight(500)
+      let effect = Effects.DropShadowEffect(BlurRadius = 3.0, Color = Wpf.color(1.0), Opacity = 1.0, ShadowDepth = 0.0)
       let map =
-        //let data = DnaData([|2168958336u; 2168958336u; 2168958336u; 1976569664u; 0u; 3u; 3215151781u; 3556431876u; 191308989u; 4230806160u; 993128854u; 1940614082u; 2543575076u; 0u; 0u; 1u; 2117560412u; 1370615202u; 3381100919u; 4u; 2161040994u; 1515385934u; 1u; 1821456585u; 4294967295u; 0u; 2632077432u; 4u; 1u; 0u; 1u; 0u; 6u; 624071763u |])
-        //let data = DnaData([|2187850880u; 2184277632u; 2168958336u; 2012125888u; 0u; 2u; 2858539343u; 2507766205u; 122272722u; 1656310387u; 2396211749u; 2170283918u; 2318394434u; 0u; 0u; 2u; 6u; 689147025u; 0u; 70440003u; 1269522304u; 1429693441u; 1165443142u; 13u; 3323016258u; 3129424759u; 0u; 4u; 2089566664u; 1u; 3899637451u; 1u; 2u; 3144111286u; 2u; 0u; 0u; 4u; 2089566664u; 1u; 2102364799u; 1u; 2u; 3144111286u; 2u; 0u; 4u; 1929991886u |])
-        let data = DnaData([|1984925888u; 1837289663u; 2169817984u; 1976569792u; 0u; 3u; 2318414669u; 4273695224u; 3615581560u; 4191462341u; 2335799590u; 3035652516u; 2999101910u; 0u; 0u; 1u; 695873247u; 1781446274u; 949061480u; 2u; 1807085227u; 1493260346u; 0u; 1607091108u; 96009259u; 0u; 1571350661u; 1u; 0u; 14u; 1774363404u; 2680244535u; 0u; 8u; 7u; 0u; 1u; 1847687552u; 683984316u; 3011340127u; 4u; 3433436562u; 1256136275u; 1951839781u; 3557645545u; 2542053710u; 1918366792u; 2891878232u; 1398062778u; 0u; 0u; 8u; 3u; 0u; 2u; 3001995733u; 3595716165u; 777432464u; 4u; 535264218u; 885576282u; 2046382421u; 3691815859u; 2542053710u; 1658463835u; 2423594817u; 1398062778u; 0u; 2u; 4257423528u; 3509203792u |])
-        data.generate(RichMap3.generate(Map3Dna.generateExplorerMap))
-      let brush = ImageBrush.createFrom(map.map, 600, 300, 1.0)
-
+        let data = [|
+          DnaData("ZSjV4+ZJwJ10-1lcK0ZRQ10+03-ac3a0+-KSC0+nwml++VRah+-beny0-QY660-OMGC0001YFuyXvZGbHq+YUAoyv2ZHJuV0Zp0lt00ZvOAd0Y5KfMA0ZtGet010eZFMGb0-vMky008701ZK8nC0YENchw-Pvmq04+cFxm0ZaTNW+ZQlHo++k3lO0-nxay0ZOl+h0-InEZ+ZjlbV0008302-OXJ7m+mkAi0YKlGOw4YvVTOfYQOdavZV-l6++s3ae0-nxay0ZySyp0-gthW0ZjlbV002+ZMO20+haza0"B)
+          DnaData("-1hWS0-1hWS0-1hWS0ZRQ0Z003-+ERa0+j-Ju0YroBWf+YbfG0YXcv5wZPGSM+-F43O0001Z-dSy+ZhIuR0+9xU204-0PJS0ZqkLd01ZIAjz0++++Z+0-sUA-04101060"B)
+          |]
+        data.[rnd.int(data.size)].generate(Map3Dna.generateExplorerMap)
+      let w = 600.0
+      let h = 300.0
+      let bgImage = Image(Width = w, Height = h)
+      let bgView = PixmapView(bgImage, int w, int h)
+      bgView.start(RichMap3.pixmapSource(map))
       let aboutWindow = Window(Title = "About FsMap3 Explorer", SizeToContent = SizeToContent.WidthAndHeight, ResizeMode = ResizeMode.NoResize)
-      let aboutCanvas = Canvas(Width = 600.0, Height = 300.0, Background = brush)
-      let title = Label(Content = "FsMap3 Explorer", FontSize = 40.0, FontWeight = bold)
-      let version = Label(Content = "Version 0.20", FontSize = 16.0, FontWeight = bold)
+      let aboutCanvas = Canvas(Width = w, Height = h)
+      aboutCanvas.add(bgImage, 0.0, 0.0)
+      let title = Label(Content = "FsMap3 Explorer", FontSize = 40.0, FontWeight = bold, Effect = effect)
+      let version = Label(Content = "Version 0.20", FontSize = 16.0, FontWeight = bold, Effect = effect)
       aboutCanvas.add(title, 10.0, 10.0)
       aboutCanvas.add(version, 12.0, 60.0)
-      let copyright = Label(Content = "© Copyright 2016 Sami Perttu", FontSize = 20.0, FontWeight = medium)
+      let copyright = Label(Content = "© Copyright 2016 Sami Perttu", FontSize = 20.0, FontWeight = medium, Effect = effect)
       aboutCanvas.add(copyright, 30.0, 120.0)
-      let license = Label(Content = "This program is distributed under the MIT license.", FontSize = 16.0, FontWeight = medium)
+      let license = Label(Content = "This program is distributed under the MIT license.", FontSize = 16.0, FontWeight = medium, Effect = effect)
       aboutCanvas.add(license, 30.0, 150.0)
-      let license2 = Label(Content = "See the file LICENSE.md for more details.", FontSize = 16.0, FontWeight = medium)
+      let license2 = Label(Content = "See the file LICENSE.md for more details.", FontSize = 16.0, FontWeight = medium, Effect = effect)
       aboutCanvas.add(license2, 30.0, 172.0)
       let closeButton = Button(Content = "Close", Width = 100.0, Height = 25.0, Background = Wpf.brush(1.0, 1.0, 1.0, 0.3), withClick = fun _ -> aboutWindow.Close())
       aboutCanvas.add(closeButton, 490.0, 265.0)
       aboutWindow.Content <- aboutCanvas
       aboutWindow.ShowDialog() |> ignore
+      bgView.stop()
       )
     helpMenu.add(aboutItem)
 
     menu.add(helpMenu)
 
     menuPanel.add(menu)
-
-    let randomizeAllButton = Button(Content = "Randomize All")
+    
+    let randomizeAllButton = Button(Content = "Randomize All", Background = toolBg, Margin = Thickness(1.0))
     randomizeAllButton.Click.Add(fun _ -> randomizeAll())
     toolPanel.add(randomizeAllButton, Dock.Top)
     toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 0.0)), Dock.Top)
+
     toolPanel.add(Label(Content = "Mutation mode"), Dock.Top)
-    let mutationModeBox = ComboBox()
+    let mutationModeBox = ComboBox(Background = toolBg, Margin = Thickness(1.0))
     mutationModeBox.add(ComboBoxItem(Content = "Everything", IsSelected = true, withSelected = fun _ -> mutateMode := Everything))
     mutationModeBox.add(ComboBoxItem(Content = "Colors and Effects", withSelected = fun _ -> mutateMode := ColorsEffects))
     mutationModeBox.add(ComboBoxItem(Content = "Scales and Offsets", withSelected = fun _ -> mutateMode := ScalesOffsets))
@@ -774,22 +799,21 @@ type Explorer =
     mutationModeBox.add(ComboBoxItem(Content = "Choose at Random", withSelected = fun _ -> mutateMode := ExplorerMutateMode.Random))
     toolPanel.add(mutationModeBox, Dock.Top)
 
-    let layoutModeBox = ComboBox()
+    let layoutModeBox = ComboBox(Background = toolBg, Margin = Thickness(1.0))
     for i = 0 to layoutChoices.last do
       layoutModeBox.add(ComboBoxItem(Content = layoutChoices.name(i), IsSelected = (layoutChoices.weight(i) > 1.0), withSelected = fun _ -> layoutMode := layoutChoices.value(i)))
     toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 0.0)), Dock.Top)
     toolPanel.add(Label(Content = "Default layout mode"), Dock.Top)
     toolPanel.add(layoutModeBox, Dock.Top)
-
     toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 6.0)), Dock.Top)
     toolPanel.add(viewBar, Dock.Top)
 
     toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 6.0)), Dock.Top)
     toolPanel.add(toolBar, Dock.Top)
 
-    toolPanel.add(mapInfoBox.container, Dock.Bottom)
+    toolPanel.add(mapInfoBox.panel, Dock.Bottom)
 
-    let splitter = GridSplitter(Width = 4.0, Margin = Thickness(0.0), Foreground = Wpf.brush(0.7), VerticalAlignment = VerticalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Center)
+    let splitter = GridSplitter(Width = 4.0, Margin = Thickness(0.0), Background = Wpf.brush(0.93), VerticalAlignment = VerticalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Center)
 
     dnaView.treeView.HorizontalAlignment <- HorizontalAlignment.Stretch
     dnaView.treeView.VerticalAlignment <- VerticalAlignment.Stretch
@@ -797,11 +821,13 @@ type Explorer =
     let mainPanel = Grid()
     mainPanel.RowDefinitions.Add(RowDefinition(Height = GridLength.Auto))
     mainPanel.RowDefinitions.Add(RowDefinition())
+//    mainPanel.RowDefinitions.Add(RowDefinition(Height = GridLength.Auto))
     mainPanel.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
     mainPanel.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
     mainPanel.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
     mainPanel.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength(1.0, GridUnitType.Star)))
     mainPanel.add(menuPanel, 0, 0, 4, 1)
+//    mainPanel.add(statusBar, 0, 2, 4, 1)
     mainPanel.add(dnaView.treeView, 0, 1)
     mainPanel.add(splitter, 1, 1)
     mainPanel.add(toolPanel, 2, 1)
@@ -831,26 +857,39 @@ type Explorer =
       )
 
     setToolMode PanTool
+    setViewMode FullView
 
    
 (*
 TODO
 
--Add export in F# source format, i.e., DnaData constructor and function that invokes generator.
 -Modify InteractiveSource & stuff so that editing of node tree becomes easier. E.g., delete parent, insert node...
 -Never tile pattern atlases, there is no need. Possibility: temporary Dna injector.
 -Figure out whether atlases are even a good idea. 
 -Add .dds export for 2-D and 3-D textures.
 -Add Map3 display modes: rectangle, depth slices, depth strip, sphere, spiral?
 -Supporting Undo? Or maybe History? I guess we just store past Dnas in a global list?
--Status line. Put this in the menu bar above the view canvas.
 -Add either hover options or extra buttons to parameters in Dna view:
  -display range of parameter values in a gradient, pick new value by clicking.
  -lock parameter.
  -increase chance of mutation of parameter?
+-Is animation support possible?
+
+*)
+
+
+(*
+0.30 Binary Release TODO
+
 -Main menu bar. We should put more stuff there.
  -Defaults: default normalization mode. default tiling mode.
  -Mutation mode belongs in tool options!
--Is animation support possible?
+ -Filtering options.
+-View info box: add at least detail level. Maybe colored bars representing histogram as well -
+ we can represent two dimensions at once in a bar, so could have (average hue + saturation) + value, saturation + hue?
+-Basic DnaGui palette visualizers.
+-Sort out & streamline the view context menu.
+-Link to online help in Help menu.
+-Link to GitHub page in Help menu?
 
 *)

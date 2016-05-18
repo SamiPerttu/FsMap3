@@ -427,15 +427,6 @@ let inline exp2 x = exp(x * G ln2)
 /// Base 10 exponential.
 let inline exp10 x = exp(x * G ln10)
 
-/// Inverse hyperbolic sine.
-let inline asinh (x : 'a) : 'a = log (x + sqrt (1G + squared x))
-
-/// Inverse hyperbolic cosine.
-let inline acosh (x : 'a) : 'a = log (x + (x + 1G) * sqrt ((x - 1G) / (x + 1G)))
-
-/// Inverse hyperbolic tangent.
-let inline atanh (x : 'a) : 'a = Q 1 2 * log ((1G + x) / (1G - x))
-
 /// 7th order Taylor approximation of the exp function at the origin. expTaylor(-2.759) > 0, expTaylor(-2.7591) < 0.
 let inline expTaylor (x : 'a) : 'a =
   1G + x * (1G + Q 1 2 * x * (1G + Q 1 3 * x * (1G + Q 1 4 * x * (1G + Q 1 5 * x * (1G + Q 1 6 * x * (1G + Q 1 7 * x))))))
@@ -515,14 +506,6 @@ let inline ceilmod (x : 'a) (n : 'a) : 'a = forceIntegral x; ((x + n - 1G) / n) 
 /// Truncates x toward zero to a multiple of n. For integral types.
 let inline truncmod (x : 'a) (n : 'a) : 'a = forceIntegral x; (x / n) * n
 
-/// This quadratic response function has a second order discontinuity at the origin but
-/// has the property f(x) = 1.0 / f(-x). f(x) > 0 for all x. Like the exponential function, f(0) = f'(0) = 1.
-let inline qesp (x : 'a) : 'a = if x < 0G then 1G / (1G - x + squared x) else 1G + x + squared x
-
-/// This smooth response function is second order continuous. It has asymmetrical magnitude curves:
-/// linear when x < 0 and quadratic when x > 0. f(x) > 0 for all x. Like the exponential function, f(0) = f'(0) = 1.
-let inline esp (x : 'a) : 'a = if x < 0G then 1G / (1G - x) else 1G + x + squared x
-
 /// Kronecker delta function. Returns 1 if the arguments are equal and 0 otherwise.
 let inline kronecker a b = if a = b then 1G else 0G
 
@@ -533,30 +516,6 @@ let inline isNaN x = x <> x
 /// Returns whether a floating point number is finite, that is, not NaN
 /// (which is neither finite nor non-finite) nor either of the infinities.
 let inline isFinite x = G -infinity < x && x < G infinity
-
-/// An accurate logarithm of the gamma function (n! ~ exp(lgamma(n + 1))).
-let lgamma x =
-  let i = 1.0 / x
-  let i3 = cubed i
-  (x - 0.5) * log x - x + 0.918938533204673 + 0.0833333333333333333 * i - (0.002777777777777777 - 0.000793650793650794 * i * i + 0.000595238095238095 * i3 * i) * i3
-
-/// Logarithm of the complete beta function.
-let lbeta x y = lgamma x + lgamma y - lgamma (x + y)
-
-/// Logarithm of the binomial coefficient (choose n k).
-let lchoose n k = lgamma (float (n + 1)) - lgamma (float (k + 1)) - lgamma (float (n - k + 1))
-
-/// Probability mass function of the binomial distribution B(n, p), with value i in [0, n].
-let binomialPmf n p i =
-  if p <= 0.0 then kronecker i 0
-  elif p >= 1.0 then kronecker i n
-  else lchoose n i + float i * log p + float (n - i) * log (1.0 - p) |> exp
-
-/// Gaussian CDF approximation by W Bryc (2002). Returns probability that the standard normal distribution has value <= x.
-/// The largest absolute error is 0.000019. The largest relative error, 0.5%, occurs in the tail, when abs x > 11.8.
-let gaussianCdf x =
-  let inline cdf z = (z * z + 5.575192695 * z + 12.77436324) / (2.506628274631 * z * z * z + 14.38718147 * z * z + 31.53531977 * z + 25.54872648) * exp(-0.5 * z * z)
-  if x > 0.0 then 1.0 - cdf x else cdf -x
 
 /// Binomial coefficient: (choose n k), where n >= k, is the number of k-element subsets in an n-element set.
 let choose n k =
@@ -584,17 +543,6 @@ let inline pow (a : 'a) b : 'a =
     b <- b >>> 1
   x
 
-/// Sum of a geometric series with n terms. Terms are defined by first term a0 and the ratio between successive terms;
-/// term i is a0 * ratio ** (i - 1), 1 <= i <= n.
-let inline geometricSum n (a0 : 'a) (ratio : 'a) : 'a =
-  if ratio <> 1G then a0 * (1G - pow ratio n) / (1G - ratio) else a0 * G n
-
-/// Sum of an arithmetic series with n terms. Terms are defined by first term a0 and the difference between successive
-/// terms; term i is a0 + delta * (i - 1), 1 <= i <= n.
-let inline arithmeticSum n (a0 : 'a) (delta : 'a) : 'a =
-  G n * (2G * a0 + delta * (G (n - 1))) / 2G
-
-
 
 /// Linear congruential generator MINSTD. Cycles through all int values > 0 if the initial seed is > 0.
 /// Thus, its period is 2^31 - 1.
@@ -621,6 +569,19 @@ let xorshift64u (x : uint64) =
   let x = x ^^^ (x >>> 7)
   x ^^^ (x <<< 17)
 
+
+/// Encodes x in [0, 63[ to a Base64 style byte character.
+let encodeBase64 x =
+  "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+"B.[x]
+
+/// Decodes a Base64 style byte character from Common.encodeBase64 to an int in [0, 63[.
+let decodeBase64 (x : byte) =
+  if x >= '0'B && x <= '9'B then int (x - '0'B)
+  elif x >= 'a'B && x <= 'z'B then int (x - 'a'B) + 10
+  elif x >= 'A'B && x <= 'Z'B then int (x - 'A'B) + 36
+  elif x = '-'B then 62
+  elif x = '+'B then 63
+  else failwith "Common.decodeBase64: Invalid character."
 
 
 /// Dictionary order comparison between (a1, b1) and (a2, b2). This can be faster than

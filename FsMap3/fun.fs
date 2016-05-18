@@ -31,18 +31,18 @@ let inline binarySearchSlot i0 i1 f value =
 
 
 /// Binary searches the argument range [i0, i1]. Returns the argument where the function
-/// comes closest to the value in absolute difference.
-let inline binarySearchClosest i0 i1 f value =
-  let i = binarySearch i0 i1 f value
+/// comes closest to the target in absolute difference.
+let inline binarySearchClosest i0 i1 f target =
+  let i = binarySearch i0 i1 f target
   let mutable closestI = i
-  let mutable closestD = abs(f i - value)
+  let mutable closestD = abs(f i - target)
   if i > i0 then
-    let d = abs(f (i - 1G) - value)
+    let d = abs(f (i - 1G) - target)
     if d < closestD then
       closestI <- i - 1G
       closestD <- d
   if i < i1 then
-    let d = abs(f (i + 1G) - value)
+    let d = abs(f (i + 1G) - target)
     if d < closestD then
       closestI <- i + 1G
       closestD <- d
@@ -69,7 +69,7 @@ let inline iterBack i0 i1 f =
     if i > i0 then i <- i - 1G else loop <- false
 
 
-/// Reduces a projected range with the binary operator.
+/// Reduces a projected range with a binary operator.
 let inline reduce i0 i1 f binop =
   enforce (i0 <= i1) "Fun.reduce: Empty range."
   let mutable v = f i0
@@ -89,11 +89,11 @@ let inline sum i0 i1 f = reduce i0 i1 f (+)
 let inline product i0 i1 f = reduce i0 i1 f (*)
 
 
-/// Returns the minimum of the function in [i0, i1].
+/// Returns the minimum of the function in [i0, i1]. Ties are broken by smallest argument.
 let inline min i0 i1 f = reduce i0 i1 f min
 
 
-/// Returns the maximum of the function in [i0, i1].
+/// Returns the maximum of the function in [i0, i1]. Ties are broken by smallest argument.
 let inline max i0 i1 f = reduce i0 i1 f max
 
 
@@ -102,7 +102,7 @@ let inline count i0 i1 predicate =
   if i0 <= i1 then reduce i0 i1 (fun i -> if predicate i then 1 else 0) (+) else 0
 
 
-/// Returns the function value with the minimum projection in [i0, i1].
+/// Returns the function value with the minimum projection in [i0, i1]. Ties are broken by smallest argument.
 let inline minBy i0 i1 f projection =
   enforce (i0 <= i1) "Fun.minBy: Empty range."
   let mutable minV = f i0
@@ -119,7 +119,7 @@ let inline minBy i0 i1 f projection =
   minV
 
 
-/// Returns the function value with the maximum projection in [i0, i1].
+/// Returns the function value with the maximum projection in [i0, i1]. Ties are broken by smallest argument.
 let inline maxBy i0 i1 f projection =
   enforce (i0 <= i1) "Fun.maxBy: Empty range."
   let mutable maxV = f i0
@@ -136,7 +136,7 @@ let inline maxBy i0 i1 f projection =
   maxV
   
 
-/// Returns the argument of the minimum of f in [i0, i1].
+/// Returns the argument of the minimum of f in [i0, i1]. Ties are broken by smallest argument.
 let inline argMin i0 i1 f =
   enforce (i0 <= i1) "Fun.argMin: Empty range."
   let mutable imin = i0
@@ -152,7 +152,7 @@ let inline argMin i0 i1 f =
   imin
 
 
-/// Returns the argument of the maximum of f in [i0, i1].
+/// Returns the argument of the maximum of f in [i0, i1]. Ties are broken by smallest argument.
 let inline argMax i0 i1 f =
   enforce (i0 <= i1) "Fun.argMax: Empty range."
   let mutable imax = i0
@@ -179,9 +179,7 @@ let inline find i0 i1 f predicate =
     if predicate x then
       result <- Someval x
       loop <- false
-    elif i < i1 then
-      i <- i + 1G
-    else loop <- false
+    elif i < i1 then i <- i + 1G else loop <- false
   result
 
 
@@ -196,9 +194,7 @@ let inline findBack i0 i1 f predicate =
     if predicate x then
       result <- Someval x
       loop <- false
-    elif i > i0 then
-      i <- i - 1G
-    else loop <- false
+    elif i > i0 then i <- i - 1G else loop <- false
   result
 
 
@@ -212,9 +208,7 @@ let inline findArg i0 i1 predicate =
     if predicate i then
       result <- Someval i
       loop <- false
-    elif i < i1 then
-      i <- i + 1G
-    else loop <- false
+    elif i < i1 then i <- i + 1G else loop <- false
   result
 
 
@@ -228,9 +222,7 @@ let inline findArgBack i0 i1 predicate =
     if predicate i then
       result <- Someval i
       loop <- false
-    elif i > i0 then
-      i <- i - 1G
-    else loop <- false
+    elif i > i0 then i <- i - 1G else loop <- false
   result
 
 
@@ -249,7 +241,9 @@ let inline entropy i0 i1 f =
       F <- F + x
       E <- E - x * log2(x)
     if i < i1 then i <- i + 1G else loop <- false
-  if n < 2 then 0G else
+  if n < 2 then
+    0G
+  else
     E / F + log2(F)
 
 
@@ -299,8 +293,7 @@ let inline exists i0 i1 predicate =
     if predicate i then
       result <- true
       loop <- false
-    else
-      if i < i1 then i <- i + 1G else loop <- false
+    elif i < i1 then i <- i + 1G else loop <- false
   result
   
 
@@ -324,13 +317,15 @@ let inline nth i0 i1 n predicate =
 
 /// Reverses the range [i0, i1].
 let inline reverse i0 i1 get set =
-  let rec loop i0 i1 =
-    if i0 < i1 then
-      let tmp = get i0
-      set i0 (get i1)
-      set i1 tmp
-      loop (i0 + 1G) (i1 - 1G)
-  loop i0 i1
+  let mutable i0 = i0
+  let mutable i1 = i1
+  while i0 < i1 do
+    let tmp = get i0
+    set i0 (get i1)
+    set i1 tmp
+    // Because i0 < i1, we know we can represent i0 + 1 and i1 - 1.
+    i0 <- i0 + 1G
+    i1 <- i1 - 1G
 
 
 /// Folds in [i0, i1] using get to retrieve items and fold to fold them into the state.
@@ -417,6 +412,7 @@ let inline quickselect i0 i1 (projection : int -> _) (swap : int -> int -> unit)
 
 
 /// Insertion sorts a range. This is O(n^2) and thus efficient for small ranges only.
+/// The projection function receives the index of the item as argument and returns its projection.
 let inline insertionSort i0 i1 (projection : int -> _) (swap : int -> int -> unit) =
   for i = i0 + 1 to i1 do
     let p = projection i
@@ -427,6 +423,7 @@ let inline insertionSort i0 i1 (projection : int -> _) (swap : int -> int -> uni
 
 
 /// Quicksorts in [i0, i1], comparing arguments with the given projection.
+/// The projection function receives the index of the item as argument and returns its projection.
 /// Quicksort is fast and in-place but not stable.
 let inline quicksort i0 i1 (projection : int -> _) (swap : int -> int -> unit) =
   let inline reorder i0 i1 =
@@ -437,7 +434,7 @@ let inline quicksort i0 i1 (projection : int -> _) (swap : int -> int -> unit) =
       insertionSort i0 i1 projection swap
     else
       // Pick as the pivot the median of first, middle and last elements of the range.
-      let ip = i0 + ((i1 - i0) >>> 1)
+      let ip = i0 + (i1 - i0 >>> 1)
       reorder i0 ip |> ignore
       if reorder ip i1 then reorder i0 ip |> ignore
       let pivot = projection ip
