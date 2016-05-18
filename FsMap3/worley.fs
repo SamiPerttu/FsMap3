@@ -200,7 +200,7 @@ let worleyBasis (cell : BasisData) (count : FeatureCount) maxDistance (distance 
   let mutable faceDistance = 1.0f
   let mutable ready = false
 
-  // Keep expanding until the first 3 distances are known with certainty.
+  // Keep expanding until the first 3 distances are known with certainty up to the maximum distance.
   while not ready do
     if earlyBreak (faceDistance + float32 faceSign * cell.search.[faceIndex].fst) then
       ready <- true
@@ -225,11 +225,10 @@ let worleyBasis (cell : BasisData) (count : FeatureCount) maxDistance (distance 
 /// Worley basis. Components contain Worley patterns p0, p1 and p2.
 let worley (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance : CellDistance) (fade : float32 -> float32) (frequency : float32) =
   let layoutInstance = layout frequency
-
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
-    worleyBasis data count (1.0f / distance.normalizationFactor) distance v
-    let d = Vec3f(data.d0, data.d1, data.d2).map(min 1.0f >> fade)
+    worleyBasis data count (2.0f / distance.normalizationFactor) distance v
+    let d = Vec3f(data.d0, data.d1, data.d2).map(fun d -> fade (min 1.0f (0.5f * d)))
     data.release()
     Vec3f(d *. worleyPattern.[p0], d *. worleyPattern.[p1], d *. worleyPattern.[p2])
 
@@ -243,7 +242,6 @@ let inline worleyd p distance fade frequency v = worley hifiLayout unityPoisson 
 let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (distance : CellDistance) (color : CellColor) (colorSharpness : float32) (v : Vec3f) =
 
   let inline colorWeight d = colorSharpness * -d
-  let inline isSignificant d = colorWeight d > cell.worleyWeight - 10.0f
 
   let scanCell jx jy jz =
     let mutable h = cell.hash(jx, jy, jz)
@@ -251,12 +249,12 @@ let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (dist
       h <- mangle32 h
       let P = cell.d - Vec3f.fromSeed(h) - Vec3f(float32 jx, float32 jy, float32 jz)
       let d = P |> distance.vector |> distance.normalize
-      if isSignificant d then
-        let w = colorWeight d
+      let w = colorWeight d
+      if w > cell.worleyWeight - 10.0f then
         let c = color h
         let linearWeight = exp(min 20.0f (w - cell.worleyWeight))
         cell.worleyColor <- (cell.worleyColor + c * linearWeight) / (1.0f + linearWeight)
-        if linearWeight > 1.0e4f then
+        if linearWeight > 1.0e5f then
           cell.worleyWeight <- w
         elif linearWeight > 1.0e-4f then
           cell.worleyWeight <- cell.worleyWeight + log (1.0f + linearWeight)
@@ -317,8 +315,7 @@ let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (dist
   // Additionally, we require that the maximum color contribution of any unexpanded cell
   // is at most a small fraction of the largest weight.
   let earlyBreak expansionDistance =
-    let d = distance.normalizationFactor * expansionDistance
-    cell.d2 < d && isSignificant d = false
+    cell.d2 + 10.0f / colorSharpness < distance.normalizationFactor * expansionDistance
 
   // The initial search state corresponds to expansion of the nearest far face, from 8 cells to 12 cells.
   let mutable faceSign = -1
@@ -326,8 +323,8 @@ let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (dist
   let mutable faceDistance = 1.0f
   let mutable ready = false
 
-  // Keep expanding until the first 2 distances are known with certainty, and the weighted cell color
-  // is known to a high accuracy.
+  // Keep expanding until the first 3 distances are known with certainty up to the maximum distance,
+  // and the cell color is known with sufficient accuracy.
   while not ready do
     if earlyBreak (faceDistance + float32 faceSign * cell.search.[faceIndex].fst) then
       ready <- true
@@ -345,43 +342,17 @@ let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (dist
         faceIndex <- faceIndex + faceSign
 
 
-
-/// These weight patterns look appropriate in the colored Worley basis.
-let camoPattern =
-  [|
-    Vec3f(1.0f, 0.0f, 0.0f)   //  0-1  cells
-    Vec3f(-1.0f, 0.0f, 0.0f)
-    Vec3f(1.0f, 1.0f, 0.0f)   //  2-3  cells with some subcells
-    Vec3f(-1.0f, -1.0f, 0.0f)
-    Vec3f(1.0f, 1.0f, 1.0f)   //  4-5  cells with more subcells
-    Vec3f(-1.0f, -1.0f, -1.0f)
-    Vec3f(-1.0f, 1.0f, 0.0f)  //  6-7  Voronoi
-    Vec3f(1.0f, -1.0f, 0.0f)
-    Vec3f(-1.0f, 1.0f, 1.0f)  //  8-9  Voronoi + added diamond-like detail
-    Vec3f(1.0f, -1.0f, -1.0f)
-    Vec3f(1.0f, 0.0f, 1.0f)   // 10-11 less sharp crystal pattern
-    Vec3f(-1.0f, 0.0f, -1.0f)
-    Vec3f(0.0f, 1.0f, 1.0f)   // 12-13 least sharp crystal pattern
-    Vec3f(0.0f, -1.0f, -1.0f)
-    Vec3f(0.0f, 1.0f, 0.0f)   // 14-15 crystals with plateaus
-    Vec3f(0.0f, -1.0f, 0.0f)
-  |]
-
-
-
-/// Worley colored generator. Components contain camo weight patterns p0, p1 and p2
-/// multiplied by closest cell color. Color fading distance between closest cells
+/// Worley colored basis. Components contain Worley patterns p0, p1 and p2
+/// adjusted by closest cell color. Color fading distance between closest cells
 /// is 0 < a < 1. It is typically a small value, somewhere around [0.02, 0.2].
 let camo (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance : CellDistance) (color : CellColor) (fade : float32 -> float32) a frequency =
   let layoutInstance = layout frequency
-
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
-    worleyColorBasis data count 1.0f distance color (3.0f / a) v
+    worleyColorBasis data count 2.0f distance color (3.0f / a) v
     // The colored basis stores normalized distances.
-    let d = Vec3f(data.d0, data.d1, data.d2).map(fun d -> fade (max 0.0f (1.0f - d)))
+    let d = Vec3f(data.d0, data.d1, data.d2).map(fun d -> fade (min 1.0f (0.5f * d)))
     let worleyColor = data.worleyColor
     data.release()
-    worleyColor * Vec3f(d *. camoPattern.[p0], d *. camoPattern.[p1], d *. camoPattern.[p2])
-
+    (1G + worleyColor) * Vec3f(d *. worleyPattern.[p0], d *. worleyPattern.[p1], d *. worleyPattern.[p2])
 
