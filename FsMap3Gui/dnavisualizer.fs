@@ -19,7 +19,7 @@ let fadeChoiceVisualizer width height =
 
       let polygon = Polygon(Fill = Wpf.brush(0.25, 0.35, 0.6), StrokeThickness = 0.0)
 
-      let pointKey = parameter.name + parameter.valueString
+      let pointKey = parameter.name + choices.name(i)
       let cached = pointCache.find(pointKey)
       
       if cached.isSome then
