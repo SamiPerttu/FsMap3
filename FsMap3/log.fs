@@ -72,6 +72,7 @@ type Log() =
 
   // PUBLIC INTERFACE
 
+
   static member setMemorySize(size) =
     enforce (size > 0) "Log.setMemorySize: Size must be greater than zero."
     lock memory (fun _ ->
@@ -81,12 +82,35 @@ type Log() =
     )
 
 
+  static member iterMemory(f) =
+    lock memory (fun _ ->
+      for entry in memory do f entry
+      )
+
+
+  static member createLogFile(filename : string) =
+    let stream = new System.IO.StreamWriter(filename, AutoFlush = true)
+    Log.addListener(LogListener(fun (entry : LogEntry) ->
+      stream.WriteLine(string entry)
+      ))
+
+
   static member setConsoleFilter(filter) =
-    lock memory (fun _ -> consoleFilter <- filter)
+    lock memory (fun _ ->
+      consoleFilter <- filter
+      )
 
 
   static member addListener(listener) =
-    lock memory (fun _ -> listenerList.Add(listener))
+    lock memory (fun _ ->
+      listenerList.Add(listener)
+      )
+
+
+  static member removeListener(listener) =
+    lock memory (fun _ ->
+      enforce (listenerList.Remove(listener)) "Log.removeListener: Cannot find listener."
+      )
 
 
   static member info(message : string) =
@@ -106,11 +130,5 @@ type Log() =
   static member warnf(format) =
     Printf.kprintf Log.warn format
 
-
-  static member createLogFile(filename : string) =
-    let stream = new System.IO.StreamWriter(filename, AutoFlush = true)
-    Log.addListener(LogListener(fun (entry : LogEntry) ->
-      stream.WriteLine(string entry)
-      ))
 
   

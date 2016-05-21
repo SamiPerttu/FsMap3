@@ -380,7 +380,7 @@ let inline permute (seed : int) : Map3 =
 
 /// Normalizes a map and colors it with a pseudo-random palette. The output range is [-1, 1].
 let color (seed : int) (f : Map3) =
-  normalize f >> permute (mangle32 seed) >> Dna.generate(seed, Color.genPalette 32)
+  normalize f >> permute (mangle32 seed) >> Dna.generate(seed, ColorDna.genPalette 32)
 
 
 /// Variable shapes v with u. Components of u provide parameters for

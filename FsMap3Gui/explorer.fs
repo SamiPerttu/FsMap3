@@ -44,9 +44,9 @@ type Explorer =
     let viewBg = Wpf.brush(0.0)
     let dnaBg = Wpf.brush(0.9)
     let menuBg = Wpf.verticalBrush(Wpf.color(0.8, 0.88, 0.9), Wpf.color(0.7, 0.78, 0.8))
-    let statusBg = Wpf.verticalBrush(Wpf.color(0.3, 0.55, 0.7), Wpf.color(0.3 * 0.85, 0.55 * 0.85, 0.7 * 0.85))
-    let statusFg = Wpf.brush(1.0)
+    let menuItemBg = Wpf.brush(1.0, 1.0, 1.0, 0.2)
     let toolBg = Wpf.brush(0.8, 0.8, 0.8, 0.3)
+    let splitterBg = Wpf.brush(0.93)
 
     // We have 1 full view, 4 half views and 16 quarter views.
     let fN = 1
@@ -70,10 +70,12 @@ type Explorer =
     /// Current mutation mode.
     let mutateMode = ref Everything
 
+    let logWindow = ref none<LogWindow>
+
     /// Current user action.
     let userAction = ref Idle
 
-    let window = Window(Title = "FsMap3 Explorer", ResizeMode = ResizeMode.CanResize, Width = 1024.0, Height = 512.0, SizeToContent = SizeToContent.Manual, Topmost = false, WindowStartupLocation = WindowStartupLocation.CenterScreen)
+    let window = Window(Title = "FsMap3 Explorer", ResizeMode = ResizeMode.CanResize, Width = 1024.0, Height = 480.0, SizeToContent = SizeToContent.Manual, Topmost = false, WindowStartupLocation = WindowStartupLocation.CenterScreen)
 
     let canvas = Grid(Background = viewBg, ClipToBounds = true, Margin = Thickness(0.0, 0.0, 0.0, 0.0))
     canvas.ColumnDefinitions.Add(ColumnDefinition())
@@ -86,23 +88,23 @@ type Explorer =
     mapInfoBox.panel.VerticalAlignment <- VerticalAlignment.Bottom
     mapInfoBox.reset()
 
-    let statusBar = StackPanel(Orientation = Orientation.Horizontal, Background = statusBg)
-    let statusText = Label(Margin = Thickness(2.0, 0.0, 0.0, 0.0), Foreground = statusFg, Padding = Thickness(2.0), Content = "Ready.", VerticalAlignment = VerticalAlignment.Center)
-    statusBar.add(statusText)
-
-    let setStatus content =
-      Wpf.dispatch(window, fun _ ->
-        statusText.Content <- content
-        )
+    let mapFilter =
+      { 
+        RichMap3Filter.minSlope = 10.0f
+        maxSlope = 500.0f
+        minDeviation = 0.0f
+        minDifference = 0.01f
+        maxDifference = infinityf
+      }
 
     let mapSeed = Map3.zero
-    let richSeed = { RichMap3.map = mapSeed; center = Vec3f(0.5f); zoom = 1.0f; aspectRatio = 1.0f; info = Map3Info.create(mapSeed) }
+    let richSeed = { RichMap3.map = mapSeed; palette = Map3.identity; center = Vec3f(0.5f); zoom = 1.0f; aspectRatio = 1.0f; info = Map3Info.create(mapSeed) }
     let deepGenerator = Map3Dna.generateExplorerMap
     let pixmapGenerator extraTransform =
       match extraTransform with
       | Some(transform) -> RichMap3.pixmapSourceWith(transform)
       | None -> RichMap3.pixmapSource
-    let deepFilter = RichMap3.filter
+    let deepFilter = fun map previous -> mapFilter.filter(map, previous)
 
     let fullView = ExplorerView.create(FullView, 0, 0, 0, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, true, 4)
 
@@ -116,8 +118,6 @@ type Explorer =
       let mosaicTransform (v : Vec3f) = Vec3f((v.x + float32 x) / 4.0f, (v.y + float32 y) / 4.0f, v.z)
       ExplorerView.create(QuarterView, i, x, y, richSeed, deepGenerator, pixmapGenerator (Some mosaicTransform), deepFilter, canvas, false, 3)
       )
-
-    let viewIsEmpty (view : ExplorerView<RichMap3>) = !view.controller.deep === richSeed
 
     let halfQuarterView = Array.append halfView quarterView
 
@@ -255,14 +255,15 @@ type Explorer =
       )
 
     dnaView.treeView.Background <- dnaBg
-    dnaView.addChoiceVisualizer(DnaVisualizer.fadeChoiceVisualizer 50.0 20.0)
+    dnaView.addChoiceVisualizer(DnaVisualizer.fadeChoiceVisualizer 50 20)
+    dnaView.addChoiceVisualizer(DnaVisualizer.colorSpaceChoiceVisualizer 80 30)
 
     /// Updates the Dna view. This can be called from any thread.
     let updateDna() =
       Wpf.dispatch(window, fun _ ->
         match !focusView with
         | Some(view) ->
-          if viewIsEmpty view then
+          if view.isEmpty then
             dnaView.reset()
           else
             dnaView.update(!view.controller.dna)
@@ -275,7 +276,7 @@ type Explorer =
       Wpf.dispatch(window, fun _ ->
         match !focusView with
         | Some(view) ->
-          if viewIsEmpty view then
+          if view.isEmpty then
             mapInfoBox.reset()
           else
             mapInfoBox.update(!view.controller.deep)
@@ -378,7 +379,7 @@ type Explorer =
     let mosaicifyView view =
       let targetView = !minimizeQuarterView
       for qview in quarterView do
-        if qview === targetView || viewIsEmpty qview then
+        if qview === targetView || qview.isEmpty then
           qview.view.reset()
           qview.controller.copyFrom(view.controller)
       setFocus targetView
@@ -435,8 +436,7 @@ type Explorer =
       zoomOut.Click.Add(fun _ ->
         view.post(fun _ ->
           setFocus view
-          if viewIsEmpty view = false then
-            view.controller.alter(View.transform(zoom = ModifyFloat((*) 0.5)))
+          view.controller.alter(View.transform(zoom = ModifyFloat((*) 0.5)))
           updateInfo()
           )
         )
@@ -446,8 +446,7 @@ type Explorer =
       resetZoom.Click.Add(fun _ ->
         view.post(fun _ ->
           setFocus view
-          if viewIsEmpty view = false then
-            view.controller.alter(View.transform(zoom = SelectFloat 1.0))
+          view.controller.alter(View.transform(zoom = SelectFloat 1.0))
           updateInfo()
           )
         )
@@ -457,8 +456,7 @@ type Explorer =
       resetView.Click.Add(fun _ ->
         view.post(fun _ ->
           setFocus view
-          if viewIsEmpty view = false then
-            view.controller.alter(View.transform(centerX = SelectFloat 0.5, centerY = SelectFloat 0.5, centerZ = SelectFloat 0.5, zoom = SelectFloat 1.0))
+          view.controller.alter(View.transform(centerX = SelectFloat 0.5, centerY = SelectFloat 0.5, centerZ = SelectFloat 0.5, zoom = SelectFloat 1.0))
           updateInfo()
           )
         )
@@ -476,63 +474,52 @@ type Explorer =
 
       let openNewWindow = MenuItem(Header = "Open in New Window")
       openNewWindow.Click.Add(fun _ ->
-        if viewIsEmpty view = false then
-          Explorer.start(DnaData(!view.controller.dna))
+        Explorer.start(DnaData(!view.controller.dna))
         )
       menu.add(openNewWindow)
 
       let save1920 = MenuItem(Header = "Export 1920 x 1920 Image..")
       save1920.Click.Add(fun _ ->
-        setFocus view
-        if viewIsEmpty view = false then
-          let map = !view.controller.deep
-          exportMap3Png map.map 1920 1920 map.camera
+        let map = !view.controller.deep
+        exportMap3Png map.map 1920 1920 map.camera
         )
       menu.add(save1920)
 
       let save2048 = MenuItem(Header = "Export 2k Image..")
       save2048.Click.Add(fun _ ->
-        setFocus view
-        if viewIsEmpty view = false then
-          let map = !view.controller.deep
-          exportMap3Png map.map 2048 2048 map.camera
+        let map = !view.controller.deep
+        exportMap3Png map.map 2048 2048 map.camera
         )
       menu.add(save2048)
 
       let save3840 = MenuItem(Header = "Export 3840 x 3840 Image..")
       save3840.Click.Add(fun _ ->
-        setFocus view
-        if viewIsEmpty view = false then
-          let map = !view.controller.deep
-          exportMap3Png map.map 3840 3840 map.camera
+        let map = !view.controller.deep
+        exportMap3Png map.map 3840 3840 map.camera
         )
       menu.add(save3840)
 
       let save4096 = MenuItem(Header = "Export 4k Image..")
       save4096.Click.Add(fun _ ->
-        setFocus view
-        if viewIsEmpty view = false then
-          let map = !view.controller.deep
-          exportMap3Png map.map 4096 4096 map.camera
+        let map = !view.controller.deep
+        exportMap3Png map.map 4096 4096 map.camera
         )
       menu.add(save4096)
 
       let copySource = MenuItem(Header = "Copy F# Code to Clipboard")
       copySource.Click.Add(fun _ ->
-        if viewIsEmpty view = false then
-          let data = DnaData(!view.controller.dna)
-          System.Windows.Clipboard.SetText(data.sourceCode + ".generate(Map3Dna.generateExplorerMap)\n")
+        let data = DnaData(!view.controller.dna)
+        System.Windows.Clipboard.SetText(data.sourceCode + ".generate(Map3Dna.generateExplorerMap)\n")
         )
       menu.add(copySource)
 
       let showRayTrace = MenuItem(Header = "Show Ray Trace")
       showRayTrace.Click.Add(fun _ ->
-        if viewIsEmpty view = false then
-          let deep = !view.controller.deep
-          let diffuse = deep.map >> map11to01 >> Map3.scale 0.7f
-          let specular = Map3.constant (Vec3f 0.4f)
-          let material = Ray.Material.create(Map3.zero, Ray.OrenNayar(Map3.constant (Vec3f 0.25f)), diffuse, Ray.Phong(Map3.constant (Vec3f 80.0f)), specular, Map3.zero)
-          RayGui.visualize 800 material
+        let deep = !view.controller.deep
+        let diffuse = deep.map >> map11to01 >> Map3.scale 0.7f
+        let specular = Map3.constant (Vec3f 0.4f)
+        let material = Ray.Material.create(Map3.zero, Ray.OrenNayar(Map3.constant (Vec3f 0.25f)), diffuse, Ray.Phong(Map3.constant (Vec3f 80.0f)), specular, Map3.zero)
+        RayGui.visualize 800 material
         )
       menu.add(showRayTrace)
 
@@ -542,7 +529,7 @@ type Explorer =
       // The logic here is: if just pressing the left button causes something to happen,
       // then the first click on an unfocused view only brings the view to focus.
       image.PreviewMouseLeftButtonDown.Add(fun (args : Input.MouseButtonEventArgs) ->
-        if viewIsEmpty view then
+        if view.isEmpty then
           setFocus view
         else
           match !toolMode with
@@ -596,7 +583,7 @@ type Explorer =
         )
 
       let iteratePanZoomViews(f) =
-        if viewIsEmpty view = false then
+        if view.isEmpty = false then
           match view.mainMode with
           | QuarterView -> for qview in quarterView do f qview
           | _ -> f view
@@ -681,8 +668,20 @@ type Explorer =
       image.ContextMenuOpening.Add(fun (args : ContextMenuEventArgs) ->
         // Do not open the context menu while the mouse is captured (something bad will happen if we open it).
         match !userAction with
-        | Zooming(_, _) | Panning(_, _) -> args.Handled <- true
-        | _ -> ()
+        | Zooming(_, _) | Panning(_, _) ->
+          args.Handled <- true
+        | _ ->
+          // Disable most items if the view is empty.
+          if view.isEmpty then
+            for item in menu.Items do
+              match item with
+              | :? MenuItem as item -> item.IsEnabled <- unbox item.Header = "Randomize"
+              | _ -> ()
+          else
+            for item in menu.Items do
+              match item with
+              | :? MenuItem as item -> item.IsEnabled <- true
+              | _ -> ()
         )
 
       )
@@ -690,9 +689,73 @@ type Explorer =
     let menuPanel = StackPanel(Orientation = Orientation.Horizontal, Background = menuBg)
     menuPanel.VerticalAlignment <- VerticalAlignment.Center
     menuPanel.HorizontalAlignment <- HorizontalAlignment.Stretch
-    let menu = Menu(Background = Wpf.brush(1.0, 1.0, 1.0, 0.2))
+    let menu = Menu(Background = menuItemBg, IsMainMenu = true, Margin = Thickness(0.0))
 
-    let makeTopMenuItem label = MenuItem(Header = label, Margin = Thickness(4.0, 0.0, 4.0, 0.0), Background = Wpf.brush(1.0, 1.0, 1.0, 0.1), Foreground = Wpf.brush(0.0))
+    let makeTopMenuItem label =
+      MenuItem(Header = label, Margin = Thickness(4.0, 0.0, 4.0, 0.0), Background = Wpf.brush(1.0, 1.0, 1.0, 0.1), Foreground = Wpf.brush(0.0))
+
+    let viewMenu = Menu(Background = menuItemBg, Margin = Thickness(0.0))
+    let filterMenu = makeTopMenuItem "Filters"
+
+    let minDetailItem = MenuItem(Header = "Minimum Detail Level")
+    let minDetailAnyItem = MenuItem(Header = "any", IsCheckable = true)
+    minDetailItem.add(minDetailAnyItem)
+    let minDetail20Item = MenuItem(Header = "20 px", IsCheckable = true)
+    minDetailItem.add(minDetail20Item)
+    let minDetail50Item = MenuItem(Header = "50 px", IsCheckable = true)
+    minDetailItem.add(minDetail50Item)
+    let minDetail100Item = MenuItem(Header = "100 px", IsCheckable = true)
+    minDetailItem.add(minDetail100Item)
+    let minDetail200Item = MenuItem(Header = "200 px", IsCheckable = true)
+    minDetailItem.add(minDetail200Item)
+
+    let setMinDetailLevel px =
+      mapFilter.minSlope <- px * 0.5f
+      minDetailAnyItem.IsChecked <- (px = 0.0f)
+      minDetail20Item.IsChecked <- (px = 20.0f)
+      minDetail50Item.IsChecked <- (px = 50.0f)
+      minDetail100Item.IsChecked <- (px = 100.0f)
+      minDetail200Item.IsChecked <- (px = 200.0f)
+
+    minDetailAnyItem.Click.Add(fun _ -> setMinDetailLevel 0.0f)
+    minDetail20Item.Click.Add(fun _ -> setMinDetailLevel 20.0f)
+    minDetail50Item.Click.Add(fun _ -> setMinDetailLevel 50.0f)
+    minDetail100Item.Click.Add(fun _ -> setMinDetailLevel 100.0f)
+    minDetail200Item.Click.Add(fun _ -> setMinDetailLevel 200.0f)
+    filterMenu.add(minDetailItem)
+
+    let maxDetailItem = MenuItem(Header = "Maximum Detail Level")
+    let maxDetail500Item = MenuItem(Header = "500 px", IsCheckable = true)
+    maxDetailItem.add(maxDetail500Item)
+    let maxDetail1000Item = MenuItem(Header = "1000 px", IsCheckable = true)
+    maxDetailItem.add(maxDetail1000Item)
+    let maxDetail2000Item = MenuItem(Header = "2000 px", IsCheckable = true)
+    maxDetailItem.add(maxDetail2000Item)
+    let maxDetail4000Item = MenuItem(Header = "4000 px", IsCheckable = true)
+    maxDetailItem.add(maxDetail4000Item)
+    let maxDetail8000Item = MenuItem(Header = "8000 px", IsCheckable = true)
+    maxDetailItem.add(maxDetail8000Item)
+    let maxDetailUnlimitedItem = MenuItem(Header = "unlimited")
+    maxDetailItem.add(maxDetailUnlimitedItem)
+
+    let setMaxDetailLevel px =
+      mapFilter.maxSlope <- px * 0.5f
+      maxDetail500Item.IsChecked <- (px = 500.0f)
+      maxDetail1000Item.IsChecked <- (px = 1000.0f)
+      maxDetail2000Item.IsChecked <- (px = 2000.0f)
+      maxDetail4000Item.IsChecked <- (px = 4000.0f)
+      maxDetail8000Item.IsChecked <- (px = 8000.0f)
+      maxDetailUnlimitedItem.IsChecked <- (px = infinityf)
+
+    maxDetail500Item.Click.Add(fun _ -> setMaxDetailLevel 500.0f)
+    maxDetail1000Item.Click.Add(fun _ -> setMaxDetailLevel 1000.0f)
+    maxDetail2000Item.Click.Add(fun _ -> setMaxDetailLevel 2000.0f)
+    maxDetail4000Item.Click.Add(fun _ -> setMaxDetailLevel 4000.0f)
+    maxDetail8000Item.Click.Add(fun _ -> setMaxDetailLevel 8000.0f)
+    maxDetailUnlimitedItem.Click.Add(fun _ -> setMaxDetailLevel infinityf)
+    filterMenu.add(maxDetailItem)
+
+    //viewMenu.add(filterMenu)
 
     let fileMenu = makeTopMenuItem "_File"
 
@@ -742,17 +805,38 @@ type Explorer =
 
     menu.add(fileMenu)
 
+    let toolsMenu = makeTopMenuItem "_Tools"
+    let logItem = MenuItem(Header = "Log")
+    logItem.Click.Add(fun _ ->
+      match !logWindow with
+      | Some(logWindow) when logWindow.isOpen -> logWindow.show()
+      | _ -> logWindow := Some(LogWindow())
+      )
+    toolsMenu.add(logItem)
+    menu.add(toolsMenu)
+
     let helpMenu = makeTopMenuItem "_Help"
 
-    let aboutItem = MenuItem(Header = "About")
+    let manualItem = MenuItem(Header = "Online Manual")
+    manualItem.Click.Add(fun _ ->
+      System.Diagnostics.Process.Start("https://raw.githubusercontent.com/SamiPerttu/FsMap3/master/docs/UserGuide.html") |> ignore
+      )
+    helpMenu.add(manualItem)
+
+    let githubItem = MenuItem(Header = "GitHub Page")
+    githubItem.Click.Add(fun _ ->
+      System.Diagnostics.Process.Start("https://github.com/SamiPerttu/FsMap3") |> ignore
+      )
+    helpMenu.add(githubItem)
+
+    let aboutItem = MenuItem(Header = "About..")
     aboutItem.Click.Add(fun _ ->
       let bold = FontWeight.FromOpenTypeWeight(900)
       let medium = FontWeight.FromOpenTypeWeight(500)
       let effect = Effects.DropShadowEffect(BlurRadius = 3.0, Color = Wpf.color(1.0), Opacity = 1.0, ShadowDepth = 0.0)
       let map =
         let data = [|
-          DnaData("ZSjV4+ZJwJ10-1lcK0ZRQ10+03-ac3a0+-KSC0+nwml++VRah+-beny0-QY660-OMGC0001YFuyXvZGbHq+YUAoyv2ZHJuV0Zp0lt00ZvOAd0Y5KfMA0ZtGet010eZFMGb0-vMky008701ZK8nC0YENchw-Pvmq04+cFxm0ZaTNW+ZQlHo++k3lO0-nxay0ZOl+h0-InEZ+ZjlbV0008302-OXJ7m+mkAi0YKlGOw4YvVTOfYQOdavZV-l6++s3ae0-nxay0ZySyp0-gthW0ZjlbV002+ZMO20+haza0"B)
-          DnaData("-1hWS0-1hWS0-1hWS0ZRQ0Z003-+ERa0+j-Ju0YroBWf+YbfG0YXcv5wZPGSM+-F43O0001Z-dSy+ZhIuR0+9xU204-0PJS0ZqkLd01ZIAjz0++++Z+0-sUA-04101060"B)
+          DnaData("ZSjV4+ZJwJ10-1lcK0ZRQ10+03-ac3a0+-KSC0+nwml++VRah+-beny0-QY660-OMGC0001YFuyXvZGbHq+YUAoyv2ZHJuV0Zp0lt00ZvOAd0Y5KfMA0ZtGet010dZFMGb0-vMky008701ZK8nC0YENchw-Pvmq04+cFxm0ZaTNW+ZQlHo++k3lO0-nxay0ZOl+h0-InEZ+ZjlbV0008302-OXJ7m+mkAi0YKlGOw4YvVTOfYQOdavZV-l6++s3ae0-nxay0ZySyp0-gthW0ZjlbV002+ZMO20+haza0"B)
           |]
         data.[rnd.int(data.size)].generate(Map3Dna.generateExplorerMap)
       let w = 600.0
@@ -764,7 +848,7 @@ type Explorer =
       let aboutCanvas = Canvas(Width = w, Height = h)
       aboutCanvas.add(bgImage, 0.0, 0.0)
       let title = Label(Content = "FsMap3 Explorer", FontSize = 40.0, FontWeight = bold, Effect = effect)
-      let version = Label(Content = "Version 0.20", FontSize = 16.0, FontWeight = bold, Effect = effect)
+      let version = Label(Content = "Version " + Map3Dna.ExplorerVersion, FontSize = 16.0, FontWeight = bold, Effect = effect)
       aboutCanvas.add(title, 10.0, 10.0)
       aboutCanvas.add(version, 12.0, 60.0)
       let copyright = Label(Content = "© Copyright 2016 Sami Perttu", FontSize = 20.0, FontWeight = medium, Effect = effect)
@@ -780,6 +864,8 @@ type Explorer =
       bgView.stop()
       )
     helpMenu.add(aboutItem)
+
+    menu.add(filterMenu)
 
     menu.add(helpMenu)
 
@@ -802,6 +888,7 @@ type Explorer =
     let layoutModeBox = ComboBox(Background = toolBg, Margin = Thickness(1.0))
     for i = 0 to layoutChoices.last do
       layoutModeBox.add(ComboBoxItem(Content = layoutChoices.name(i), IsSelected = (layoutChoices.weight(i) > 1.0), withSelected = fun _ -> layoutMode := layoutChoices.value(i)))
+
     toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 0.0)), Dock.Top)
     toolPanel.add(Label(Content = "Default layout mode"), Dock.Top)
     toolPanel.add(layoutModeBox, Dock.Top)
@@ -813,7 +900,7 @@ type Explorer =
 
     toolPanel.add(mapInfoBox.panel, Dock.Bottom)
 
-    let splitter = GridSplitter(Width = 4.0, Margin = Thickness(0.0), Background = Wpf.brush(0.93), VerticalAlignment = VerticalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Center)
+    let splitter = GridSplitter(Width = 4.0, Margin = Thickness(0.0), Padding = Thickness(0.0), Background = splitterBg, VerticalAlignment = VerticalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Center)
 
     dnaView.treeView.HorizontalAlignment <- HorizontalAlignment.Stretch
     dnaView.treeView.VerticalAlignment <- VerticalAlignment.Stretch
@@ -821,13 +908,11 @@ type Explorer =
     let mainPanel = Grid()
     mainPanel.RowDefinitions.Add(RowDefinition(Height = GridLength.Auto))
     mainPanel.RowDefinitions.Add(RowDefinition())
-//    mainPanel.RowDefinitions.Add(RowDefinition(Height = GridLength.Auto))
     mainPanel.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
     mainPanel.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
     mainPanel.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
     mainPanel.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength(1.0, GridUnitType.Star)))
     mainPanel.add(menuPanel, 0, 0, 4, 1)
-//    mainPanel.add(statusBar, 0, 2, 4, 1)
     mainPanel.add(dnaView.treeView, 0, 1)
     mainPanel.add(splitter, 1, 1)
     mainPanel.add(toolPanel, 2, 1)
@@ -841,6 +926,7 @@ type Explorer =
     window.Content <- mainPanel
     window.Closed.Add(fun _ ->
       iterateViews(fun view _ -> view.stop())
+      (!logWindow).apply(fun logWindow -> logWindow.close())
       )
     window.LayoutUpdated.Add(fun _ -> layoutCanvas())
 
@@ -858,14 +944,18 @@ type Explorer =
 
     setToolMode PanTool
     setViewMode FullView
+    setMinDetailLevel 20.0f
+    setMaxDetailLevel 1000.0f
 
    
 (*
 TODO
 
+-Check CIELch conversion, the palette looks a little weird.
 -Modify InteractiveSource & stuff so that editing of node tree becomes easier. E.g., delete parent, insert node...
 -Never tile pattern atlases, there is no need. Possibility: temporary Dna injector.
 -Figure out whether atlases are even a good idea. 
+-Figure out a nice way of setting Map3Info sampling diameter based on layout.
 -Add .dds export for 2-D and 3-D textures.
 -Add Map3 display modes: rectangle, depth slices, depth strip, sphere, spiral?
 -Supporting Undo? Or maybe History? I guess we just store past Dnas in a global list?
@@ -874,6 +964,8 @@ TODO
  -lock parameter.
  -increase chance of mutation of parameter?
 -Is animation support possible?
+-Add screen space filters to PixmapView. These would be run when the first mosaic level is computed, to decide
+ whether to display and continue or reject and stop.
 
 *)
 
@@ -881,15 +973,11 @@ TODO
 (*
 0.30 Binary Release TODO
 
--Main menu bar. We should put more stuff there.
- -Defaults: default normalization mode. default tiling mode.
- -Mutation mode belongs in tool options!
- -Filtering options.
+-Presets.
 -View info box: add at least detail level. Maybe colored bars representing histogram as well -
  we can represent two dimensions at once in a bar, so could have (average hue + saturation) + value, saturation + hue?
--Basic DnaGui palette visualizers.
--Sort out & streamline the view context menu.
--Link to online help in Help menu.
--Link to GitHub page in Help menu?
+-Rewrite scatter shape. Revisit bleed & shift.
+-Move export items from context menu to File menu.
+-Enable/disable File menu items based on active view.
 
 *)

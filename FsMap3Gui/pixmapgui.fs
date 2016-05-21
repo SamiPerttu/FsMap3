@@ -263,7 +263,7 @@ type PixmapController<'a> =
     let dna = Dna.create()
     let fingerprint = (!this.dna).fingerprint
 
-    let mutable attemptsLeft = 10
+    let mutable attemptsLeft = 20
     let mutable success = false
 
     while success = false do

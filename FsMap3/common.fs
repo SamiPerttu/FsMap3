@@ -615,6 +615,12 @@ let unionLabel (x : 'a) =
   match FSharp.Reflection.FSharpValue.GetUnionFields(x, typeof<'a>) with
   | case, _ -> case.Name
 
+/// Creates a (parameterless) discriminated union case from its label or returns None if there is no such case.
+let createUnionFromLabel (unionType : System.Type) (label : string) =
+  FSharp.Reflection.FSharpType.GetUnionCases unionType
+  |> Array.tryFind (fun case -> case.Name = label)
+  |> Option.map (fun case -> FSharp.Reflection.FSharpValue.MakeUnion(case, [||]))
+
 
 
 /// Regular expression active pattern. Captures matched groups into a list.

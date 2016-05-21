@@ -8,7 +8,47 @@ open System.Windows.Controls
 open Common
 
 
-let fadeChoiceVisualizer width height =
+let colorSpaceChoiceVisualizer (width : int) (height : int) =
+
+  let bitmapCache = HashMap.create(Mangle.mangleString)
+
+  fun (parameter : Parameter) (i : int) ->
+    match parameter.choices with
+
+    | Some(:? Choices<ColorSpace> as choices) ->
+      let image = Controls.Image(Width = float width, Height = float height, Margin = Thickness(1.0))
+      let space = choices.value(i)
+      let spaceKey = choices.name(i)
+
+      match bitmapCache.find(spaceKey) with
+      | Someval(bitmap) -> 
+        image.Source <- bitmap
+
+      | Noneval ->
+        let pixmap = Pixmap.create(width, height)
+        for x = 0 to pixmap.lastX do
+          let h = float32 x / float32 pixmap.lastX
+          for y = 0 to pixmap.lastY do
+            let v = 1.0f - 0.9f * float32 y / float32 pixmap.lastY
+            pixmap.[x, y] <- space.rgb(h, 1.0f, v)
+        let bitmap = pixmap.bitmapSource()
+        image.Source <- bitmap
+        bitmapCache.[spaceKey] <- bitmap
+
+      let panel = StackPanel(Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Stretch)
+      panel.add(image)
+      panel.add(Label(Content = choices.name(i)))
+
+      Some(box panel)
+
+    | _ -> None
+
+
+
+let fadeChoiceVisualizer (width : int) (height : int) =
+
+  let width = float width
+  let height = float height
 
   let pointCache = HashMap.create(Mangle.mangleString)
 
@@ -55,6 +95,4 @@ let fadeChoiceVisualizer width height =
       Some(box panel)
 
     | _ -> None
-
-
 

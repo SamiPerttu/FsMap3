@@ -6,6 +6,14 @@ open Basis3
 open Map3
 
 
+type Map3InfoConfig =
+  /// Resolution of the sampling grid.
+  static member R = 16
+  /// Number of tasks to split sampling into.
+  static member T = 8
+
+
+
 [<NoEquality; NoComparison>]
 type Map3Info =
   {
@@ -15,37 +23,47 @@ type Map3Info =
     min : Vec3f
     /// Estimated maximum component values of the original map.
     max : Vec3f
+    /// The normalized map.
+    map : Map3
     /// Sampled 90 percentile slope of the normalized map.
     slope90 : float32 Optionval
     /// Sampled 99 percentile slope of the normalized map.
     slope99 : float32 Optionval
     /// Sampled average standard deviation of component values in the normalized map.
     deviation : float32 Optionval
+    /// Sampling diameter. For tiling maps the optimal value is 1, as then the samples are stratified in the unit cube.
+    sampleDiameter : float32
     /// Sample set of values from pseudo-random points in the normalized map. Can be used for fingerprinting.
     sampleArray : Vec3f[]
     /// Sample set of gradients from pseudo-random points in the normalized map. Can be used for fingerprinting.
     gradientArray : Vec3f[]
   }
 
-  /// Returns a normalizer map for the source map. The slopes are defined in this map.
+  /// A normalizer for the source map.
   member inline this.normalizer =
-    let rZ = Vec3f(2.0f) / (this.max - this.min)
-    let rM = average this.min this.max
-    fun (v : Vec3f) -> (v - rM) * rZ
+    let Z = Vec3f(2.0f) / (this.max - this.min)
+    let mean = average this.min this.max
+    fun (v : Vec3f) -> (v - mean) * Z
 
 
 
 let map3InfoCache = HashMap<int64, Map3Info>.create(int)
 
+let map3InfoTasks =
+  let taskSize = Map3InfoConfig.R / Map3InfoConfig.T
+  enforce (taskSize * Map3InfoConfig.T = Map3InfoConfig.R) "Map3InfoConfig: Invalid task configuration."
+  Array.init Map3InfoConfig.T (fun i -> (i * taskSize, i * taskSize + taskSize - 1))
 
+  
 
 type Map3Info with
 
-  static member create(map : Map3, ?fingerprint, ?retainSamples, ?computeDeviation, ?computeSlopes) =
+  static member create(map : Map3, ?fingerprint, ?retainSamples, ?computeDeviation, ?computeSlopes, ?sampleDiameter) =
 
     let retainSamples = retainSamples >? false
     let computeDeviation = computeDeviation >? false
     let computeSlopes = computeSlopes >? false
+    let sampleDiameter = sampleDiameter >? 4.0f
 
     let cache = map3InfoCache
     let existing = match fingerprint with | Some fingerprint -> lock cache (fun _ -> cache.find(fingerprint)) | None -> Noneval
@@ -68,8 +86,9 @@ type Map3Info with
 
     else
       // There may be an existing Map3Info but it does not contain all the information we need.
-      let R = 16
-      let Ri = 1.0f / float32 R
+      let R = Map3InfoConfig.R
+      let Zi = sampleDiameter / float32 R
+      let Ci = Vec3f(sampleDiameter * 0.5f)
       let N = cubed R
       let epsilon = 1.0e-4f
 
@@ -77,33 +96,32 @@ type Map3Info with
       let gradientArray = if computeGradients then Array.zeroCreate N else Array.createEmpty
       let sampleArray = Array.zeroCreate N
 
-      let sampleZ z =
-        let rnd = Rnd(z)
+      let sampleZ(z0, z1) =
+        let rnd = Rnd(z0)
         let mutable minV = Vec3f(infinityf)
         let mutable maxV = Vec3f(-infinityf)
-        for x = 0 to R - 1 do
-          for y = 0 to R - 1 do
-            let i = (z * R + x) * R + y
-            // We sample copies of the unit cube in a stratified pattern. If the map does not tile, then
-            // the sampling pattern is more spread out, and not stratified.
-            let S = Vec3f(rnd.int(-3, 3) |> float32, rnd.int(-3, 3) |> float32, rnd.int(-3, 3) |> float32)
-            let P = S + Ri * (Vec3f(float32 x, float32 y, float32 z) + rnd.vec3f())
-            let v = map P
-            minV <- Vec3f.minimize minV v
-            maxV <- Vec3f.maximize maxV v
-            sampleArray.[i] <- v
-            if computeGradients then
-              let u = map (P + epsilon * rnd.unitVec3f())
-              let gradient = (u - v) / epsilon
-              minV <- Vec3f.minimize minV u
-              maxV <- Vec3f.maximize maxV u
-              gradientArray.[i] <- gradient
+        for z = z0 to z1 do
+          for x = 0 to R - 1 do
+            for y = 0 to R - 1 do
+              let i = (z * R + x) * R + y
+              // We sample an origin centered cube in a stratified pattern.
+              let P = (Vec3f(float32 x, float32 y, float32 z) + rnd.vec3f()) * Zi + Ci
+              let v = map P
+              minV <- Vec3f.minimize minV v
+              maxV <- Vec3f.maximize maxV v
+              sampleArray.[i] <- v
+              if computeGradients then
+                let u = map (P + epsilon * rnd.unitVec3f())
+                let gradient = (u - v) / epsilon
+                minV <- Vec3f.minimize minV u
+                maxV <- Vec3f.maximize maxV u
+                gradientArray.[i] <- gradient
         (minV, maxV)
 
       let mutable minV = Vec3f(infinityf)
       let mutable maxV = Vec3f(-infinityf)
 
-      for (v0, v1) in Array.Parallel.map sampleZ [| 0 .. R - 1 |] do
+      for (v0, v1) in Array.Parallel.map sampleZ map3InfoTasks do
         minV <- Vec3f.minimize minV v0
         maxV <- Vec3f.maximize maxV v1
       minV <- minV - abs minV * 1.0e-3f - Vec3f(1.0e-6f)
@@ -111,11 +129,11 @@ type Map3Info with
 
       let rangeV = maxV - minV
       let meanV = average minV maxV
-      let Z = Vec3f(2.0f) / rangeV
+      let rangeZ = Vec3f(2.0f) / rangeV
 
       // Normalize value and gradient samples.
-      sampleArray.modify(fun v -> (v - meanV) * Z)
-      gradientArray.modify((*) Z)
+      sampleArray.modify(fun v -> (v - meanV) * rangeZ)
+      gradientArray.modify((*) rangeZ)
 
       let sd =
         if existing.isSomeAnd(fun existing -> existing.deviation.isSome) then
@@ -154,9 +172,11 @@ type Map3Info with
           Map3Info.fingerprint = fingerprint >? 0L
           min = minV
           max = maxV
+          map = fun (v : Vec3f) -> (map v - meanV) * rangeZ
           slope90 = slope90
           slope99 = slope99
           deviation = sd
+          sampleDiameter = sampleDiameter
           sampleArray = if retainSamples then sampleArray else Array.createEmpty
           gradientArray = if retainSamples then gradientArray else Array.createEmpty
         }
@@ -178,14 +198,14 @@ type Map3Info with
       hash.hash(dna.[i].value)
     hash.hashEnd()
     let info = Map3Info.create(map, hash.a64, retainSamples >? false, computeDeviation >? false, computeSlopes >? false)
-    info, map
+    info
 
 
 
 /// Normalizes the map from the generator, including extraId in the hash. Cache aware.
 let normalizeWithId extraId (generator : Dna -> Map3) (dna : Dna) =
-  let info, map = Map3Info.create(generator, dna)
-  map >> info.normalizer
+  let info = Map3Info.create(generator, dna)
+  info.map
 
 
 
@@ -205,7 +225,7 @@ let normalizeBasis (basisGenerator : Dna -> float32 -> Map3) (dna : Dna) =
     // Instantiate the basis with an arbitrary high frequency for sampling.
     !basis 200.0f
 
-  let info, _ = Map3Info.create(generator, dna, extraId = 0xba515)
+  let info = Map3Info.create(generator, dna, extraId = 0xba515)
 
   fun frequency ->
     let map = !basis frequency

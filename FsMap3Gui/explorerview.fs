@@ -72,6 +72,9 @@ type ExplorerView<'a> =
     this.wake()
     this.post(f)
 
+  member this.isEmpty =
+    !this.controller.deep === this.controller.deepSeed
+
   static member create(mainMode, gridI, gridX, gridY, deepSeed : 'a, deepGenerator, pixmapGenerator, deepFilter, grid : Grid, visible : bool, previewLevels) : 'a ExplorerView =
     let image = Image(SnapsToDevicePixels = true, Visibility = match visible with | true -> Visibility.Visible | false -> Visibility.Collapsed)
     let view = PixmapView(image, previewLevels = previewLevels)

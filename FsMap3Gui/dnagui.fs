@@ -90,7 +90,7 @@ type DnaView() =
   /// Creates a UI element for the parameter.
   member private this.createItemPanel(i : int, parameter : Parameter, editable : bool) =
     let itemPanel = StackPanel(Orientation = Orientation.Horizontal)
-    itemPanel.add(TextBlock(Documents.Span(Documents.Run(parameter.name)), Width = 108.0, VerticalAlignment = VerticalAlignment.Center))
+    itemPanel.add(TextBlock(Documents.Run(parameter.name), Width = 108.0, VerticalAlignment = VerticalAlignment.Center))
     // If we have editable choices, show them in a list.
     if editable && parameter.choices.isSome then
       let choices = !parameter.choices

@@ -360,10 +360,10 @@ let rec genBasis maxDepth (dna : Dna) =
       let period = dna.int("Weave period", 2, 4)
       // TODO. When the period changes, the fade changes as well: we need to update the visualization in DnaGui somehow.
       // This will happen in the future to other visualizations, too, so we need a general solution.
-      let fade   = dna.category("Weave", C("threaded", Fade.wave period), 
-                                         C("quilted", Fade.wave period >> Fade.smooth2),
-                                         C("wired", Fade.wave period >> Fade.shelf),
-                                         C("tiled", Fade.clone period Fade.power4))
+      let fade = dna.category("Weave", C("threaded", Fade.wave period), 
+                                       C("quilted", Fade.wave period >> Fade.smooth2),
+                                       C("wired", Fade.wave period >> Fade.shelf),
+                                       C("tiled", Fade.clone period Fade.power4))
       // The wave fade increases the range so scale down a little.
       shapeBasis (scale 0.4f) (perlin (genFixedLayout dna |> layoutFunction) fade)
       ),
@@ -453,14 +453,6 @@ let rec genBasis maxDepth (dna : Dna) =
       let mix        = genBasisMixOp dna
       let atlas      = genAtlas genPattern dna
       orbit (genLayout dna |> layoutFunction) count formula iterations cOrigin qOrigin cRange qRange cScale qScale fade trap trapR trapFade atlas mix radius
-      ),
-    C(dualWeight, "geopard", fun _ ->
-      let radius    = dna.float32("Geopard radius", xerp 0.25f 1.0f)
-      let curvature = dna.float32("Curvature")
-      let count     = genFeatureCount dna
-      let fade      = genPotentialFade dna
-      let mix       = genBasisMixOp dna
-      geopard (genLayout dna |> layoutFunction) count mix fade radius curvature (genAtlas genPattern dna)
       ),
     C(dualWeight, "displace", fun _ ->
       let factor   = genFactor()
@@ -698,9 +690,12 @@ let rec genNode (E : float) (dna : Dna) =
     )
 
 
-/// Map generator for the Explorer GUI. This is placed here to enable Explorer data to be read on any platform.
+
+let ExplorerVersion = "0.3.0"
+
+/// Map generator for Explorer. This is placed here to enable Explorer created textures to be read on any platform.
 let generateExplorerMap = RichMap3.generate(fun dna ->
-  dna.addLabel("FsMap3 Explorer Version 0.20")
+  dna.addLabel("FsMap3 Explorer Version " + ExplorerVersion)
   let layout = genLayout dna
   dna.addInjector(DnaInjector.create(fun _ _ choices -> Someval(choices.numberOf((=) layout))))
   genNode 5.0 dna

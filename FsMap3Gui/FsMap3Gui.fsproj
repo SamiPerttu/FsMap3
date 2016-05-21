@@ -62,9 +62,10 @@
     <None Include="App.config" />
     <Compile Include="benchmark.fs" />
     <Compile Include="wpf.fs" />
+    <Compile Include="logwindow.fs" />
     <Compile Include="dnagui.fs" />
-    <Compile Include="dnavisualizer.fs" />
     <Compile Include="pixmapgui.fs" />
+    <Compile Include="dnavisualizer.fs" />
     <Compile Include="raygui.fs" />
     <Compile Include="map3gui.fs" />
     <Compile Include="richmap3gui.fs" />
