@@ -33,6 +33,11 @@ type ChoiceVisualizer = Parameter -> int -> obj option
 type ValueVisualizer = Parameter -> UIElement option
 
 
+/// Expresses extra dependencies in the visualization of a parameter as a list of
+/// pairs (maximum distance to dependency source, dependency source parameter name).
+type VisualizerDependency = Parameter -> (int *string) list
+
+
 
 /// Displays a tree view of the parameters of a Dna.
 /// Synchronization model: Construct from the UI thread. After publication, access only from the UI thread.
@@ -52,12 +57,21 @@ type DnaView() =
 
   let choiceVisualizers = Darray.create()
   let valueVisualizers = Darray.create()
+  let visualizerDependencies = Darray.create()
 
   member this.addChoiceVisualizer(v : ChoiceVisualizer) = choiceVisualizers.add(v)
   member this.addValueVisualizer(v : ValueVisualizer) = valueVisualizers.add(v)
+  member this.addVisualizerDependency (v : VisualizerDependency) = visualizerDependencies.add(v)
 
   /// The tree view component should be added to a GUI by the client.
   member val treeView = TreeView(BorderThickness = Thickness(0.0))
+
+  member val nameWidth = 108.0 with get, set
+  member val valueBoxBg = Wpf.brush(0.1, 0.1, 0.2) with get, set
+  member val valueBoxFg = Wpf.brush(0.25, 0.35, 0.6) with get, set
+  member val valueBoxText = Wpf.brush(1.0, 1.0, 1.0) with get, set
+  member val valueBoxWidth = 144.0 with get, set
+  member val valueBoxHeight = 22.0 with get, set
 
   /// Parameter display filtering. Read-only by default. Note that read-only parameters still receive callbacks.
   member val viewFilter = fun (_ : Parameter) -> ReadOnly with get, set
@@ -90,7 +104,7 @@ type DnaView() =
   /// Creates a UI element for the parameter.
   member private this.createItemPanel(i : int, parameter : Parameter, editable : bool) =
     let itemPanel = StackPanel(Orientation = Orientation.Horizontal)
-    itemPanel.add(TextBlock(Documents.Run(parameter.name), Width = 108.0, VerticalAlignment = VerticalAlignment.Center))
+    itemPanel.add(TextBlock(Documents.Run(parameter.name), Width = this.nameWidth, VerticalAlignment = VerticalAlignment.Center))
     // If we have editable choices, show them in a list.
     if editable && parameter.choices.isSome then
       let choices = !parameter.choices
@@ -114,10 +128,10 @@ type DnaView() =
         )
       itemPanel.add(valueBox)
     elif parameter.maxValue > 0u || parameter.valueString.Length > 0 then
-      let vw = 140.0
-      let vh = 22.0
+      let vw = this.valueBoxWidth
+      let vh = this.valueBoxHeight
       let vb = 1.0
-      let vcanvas = Canvas(Margin = Thickness(2.0, 0.0, 0.0, 0.0), Width = vw, Height = vh, Background = Wpf.brush(0.1, 0.1, 0.2))
+      let vcanvas = Canvas(Margin = Thickness(2.0, 0.0, 0.0, 0.0), Width = vw, Height = vh, Background = this.valueBoxBg)
       vcanvas.PreviewMouseLeftButtonDown.Add(fun (args : Input.MouseButtonEventArgs) ->
         let x = args.GetPosition(vcanvas).X
         let value = uint <| round (lerp -0.49 (float parameter.maxValue + 0.49) (delerp01 4.0 (vw - 4.0) x))
@@ -129,9 +143,9 @@ type DnaView() =
         args.Handled <- true
         )
       if parameter.format = Ordered then
-        let vrect = Rectangle(Fill = Wpf.brush(0.25, 0.35, 0.6), Width = max 1.0 ((vw - vb * 2.0) * (float parameter.value / float parameter.maxValue)), Height = vh - vb * 2.0)
+        let vrect = Rectangle(Fill = this.valueBoxFg, Width = max 1.0 ((vw - vb * 2.0) * (float parameter.value / float parameter.maxValue)), Height = vh - vb * 2.0)
         vcanvas.add(vrect, vb, vb)
-      let vtext = TextBlock(Documents.Span(Documents.Run(parameter.valueString)), Foreground = Brushes.White)
+      let vtext = TextBlock(Documents.Span(Documents.Run(parameter.valueString)), Foreground = this.valueBoxText)
       vcanvas.add(vtext, 2.0, 2.0)
       itemPanel.add(vcanvas)
     itemPanel
@@ -157,11 +171,21 @@ type DnaView() =
 
       // If the fingerprint is identical as well we assume nothing has changed.
       if dna'.fingerprint <> dna.fingerprint then
+
+        let valueHasChanged = Array.init dna.size (fun i -> dna'.[i].value <> dna.[i].value || dna'.[i].valueString <> dna.[i].valueString)
+
         dna.fingerprint <- dna'.fingerprint
+
         for i = 0 to dna'.last do
-          let valueHasChanged = dna'.[i].value <> dna.[i].value || dna'.[i].valueString <> dna.[i].valueString
+
+          let updateIsNeeded =
+            valueHasChanged.[i] || Fun.exists 0 visualizerDependencies.last (fun j ->
+              visualizerDependencies.[j] dna.[i] |> List.exists (fun (windowSize, parameterName) ->
+                Fun.exists (i - windowSize) (i - 1) (fun k -> k >= 0 && valueHasChanged.[k] && dna.[k].name = parameterName))
+              )
+                 
           dna.parameterArray.[i] <- dna'.[i]
-          if displayArray.[i] <> Hidden && valueHasChanged then
+          if displayArray.[i] <> Hidden && updateIsNeeded then
             let item = !itemArray.[i].treeItem
             item.Header <- this.createItemPanel(i, dna.[i], displayArray.[i] = Editable)
 

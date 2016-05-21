@@ -358,8 +358,6 @@ let rec genBasis maxDepth (dna : Dna) =
       ),
     C(0.5, "weave", fun _ ->
       let period = dna.int("Weave period", 2, 4)
-      // TODO. When the period changes, the fade changes as well: we need to update the visualization in DnaGui somehow.
-      // This will happen in the future to other visualizations, too, so we need a general solution.
       let fade = dna.category("Weave", C("threaded", Fade.wave period), 
                                        C("quilted", Fade.wave period >> Fade.smooth2),
                                        C("wired", Fade.wave period >> Fade.shelf),

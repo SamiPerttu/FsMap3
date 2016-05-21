@@ -170,16 +170,16 @@ module ColorDna =
     let hm = dna.float32("Hue origin")
     let hr = dna.float32("Hue range", squared >> lerp 0.05f 0.8f)
     let hM = hm + hr
-    let hfade = Fade.skew -(dna.float32("Hue skew", lerp -2.0f 2.0f))
+    let hfade = Fade.skew (dna.float32("Hue skew", lerp -2.0f 2.0f))
 
     let sr = dna.float32("Saturation range", lerp 0.2f 0.8f)
     let sm = dna.float32("Saturation minimum", squared >> lerp 0.0f (1.0f - sr))
     let sM = sm + sr
-    let sfade = Fade.skew -(dna.float32("Saturation skew", lerp -2.0f 2.0f))
+    let sfade = Fade.skew (dna.float32("Saturation skew", lerp -2.0f 2.0f))
 
     let vm = 0.0f
     let vM = 1.0f
-    let vfade = Fade.skew -(dna.float32("Value skew", lerp -2.0f 2.0f))
+    let vfade = Fade.skew (dna.float32("Value skew", lerp -2.0f 2.0f))
 
     let pick x y z =
       let h = float32 x / float32 (n - 1)

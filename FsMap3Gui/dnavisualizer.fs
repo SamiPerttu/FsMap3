@@ -82,7 +82,9 @@ let fadeChoiceVisualizer (width : int) (height : int) =
         for i = 0 to n do
           points.Add(Point(1.0 + (width - 2.0) * float i / float n, height - 1.0 - (height - 2.0) * float (f (float32 i / float32 n))))
         polygon.Points <- points
-        pointCache.[pointKey] <- points
+        // Extra hack: don't cache Weave fades because another parameter has an effect on them.
+        if parameter.name <> "Weave" then
+          pointCache.[pointKey] <- points
 
       let canvas = Canvas(Width = width, Height = height, Background = Brushes.Transparent)
       canvas.add(Rectangle(Width = width, Height = height, StrokeThickness = 1.0, Stroke = Wpf.brush(0.0)), 0.0, 0.0)

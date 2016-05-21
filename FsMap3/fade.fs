@@ -5,6 +5,11 @@ module FsMap3.Fade
 
 open Common
 
+(*
+Note. The continuity property talked about in some comments here applies when
+a fade is used piecewise, e.g., as a bump, staircase or threshold function.
+*)
+
 
 /// Linear fade.
 let inline line x = x
@@ -41,9 +46,6 @@ let inline smoothLine (x : 'a) : 'a =
 // TODO: Fix this to machine precision.
 let inline sine (x : 'a) : 'a = (1G - sinTaylor ((Q 1 2 - x) * G 3.14110099335114)) * Q 1 2
 
-// Note. The continuity order we are talking about here applies when a fade is used
-// as a bump, staircase or threshold function.
-
 /// First order continuous, smooth cubic fade.
 let inline smooth1 (x : 'a) : 'a = x * x * (3G - 2G * x)
 
@@ -78,12 +80,13 @@ let inline uparc (x : 'a) : 'a = 1G - sqrt(max 0G (1G - squared x))
 /// A quarter circle fade that slopes downwards. Inverse function of Fade.uparc.
 let inline downarc (x : 'a) : 'a = sqrt(max 0G (2G * x - squared x))
 
-/// Skewed fade, starts faster ("skew left") if a < 0 or slower ("skew right") if a > 0.
-let inline skew (a : 'a) : 'a -> 'a =
-  if a >= 0G then
-    let b = exp2 a in fun x -> x ** b
+/// Skewed fade, starts faster (positive skew) if bias > 0 or slower (negative skew) if bias < 0.
+/// Linear fade when bias = 0.
+let inline skew (bias : 'a) : 'a -> 'a =
+  if bias >= 0G then
+    let p = exp2 -bias in fun x -> x ** p
   else
-    let b = exp2 -a in fun x -> 1G - max 0G (1G - x) ** b
+    let p = exp2 bias in fun x -> 1G - max 0G (1G - x) ** p
 
 /// Saturated linear fade that reaches 1 at 0 <= 1 - a <= 1.
 let inline saturate (a : 'a) (x : 'a) : 'a = let b = 1G - a in if x < b then x / b else 1G

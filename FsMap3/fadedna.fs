@@ -31,7 +31,7 @@ let genPotentialFade (dna : Dna) : float32 -> float32 =
     C("downward arc", Fade.downarc),
     C("reverse power-3", Fade.reverse Fade.power3),
     C("reverse power-2", Fade.reverse Fade.power2),
-    C("saturated smooth", Fade.skew -1.0f >> Fade.smooth2),
+    C("saturated smooth", Fade.skew 1.0f >> Fade.smooth2),
     C("line", Fade.line),
     C("smooth line", Fade.smoothLine),
     C("sine", Fade.sine),
@@ -77,7 +77,7 @@ let genWorleyFade (dna : Dna) : float32 -> float32 =
 /// Generates a parameter interpolating fade for the fractal bases Julia and orbit.
 let genJuliaFade (dna : Dna) : float32 -> float32 =
   dna.category("Feature fade",
-    C("saturated sine", Fade.skew -1.0f >> Fade.sine),
+    C("saturated sine", Fade.skew 1.0f >> Fade.sine),
     C("smooth line", Fade.smoothLine),
     C("sine", Fade.sine),
     C("smooth-2", Fade.smooth2),

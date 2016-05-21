@@ -90,9 +90,9 @@ type Explorer =
 
     let mapFilter =
       { 
-        RichMap3Filter.minSlope = 10.0f
-        maxSlope = 500.0f
-        minDeviation = 0.0f
+        RichMap3Filter.minDetail = 50.0f
+        maxDetail = 1000.0f
+        minDeviation = 0.1f
         minDifference = 0.01f
         maxDifference = infinityf
       }
@@ -256,7 +256,8 @@ type Explorer =
 
     dnaView.treeView.Background <- dnaBg
     dnaView.addChoiceVisualizer(DnaVisualizer.fadeChoiceVisualizer 50 20)
-    dnaView.addChoiceVisualizer(DnaVisualizer.colorSpaceChoiceVisualizer 80 30)
+    dnaView.addChoiceVisualizer(DnaVisualizer.colorSpaceChoiceVisualizer (int dnaView.valueBoxWidth - 8) 30)
+    dnaView.addVisualizerDependency(fun parameter -> if parameter.name = "Weave" then [(1, "Weave period")] else List.empty)
 
     /// Updates the Dna view. This can be called from any thread.
     let updateDna() =
@@ -423,14 +424,24 @@ type Explorer =
         let maximizeItem = MenuItem(Header = "Maximize")
         maximizeItem.Click.Add(fun _ -> maximizeView view)
         menu.add(maximizeItem)
-      elif view.mainMode = FullView then
-        let minimizeItem = MenuItem(Header = "Minimize")
+      elif view.mainMode = FullView || view.mainMode = QuarterView then
+        let minimizeItem = MenuItem(Header = "View in 2x2")
         minimizeItem.Click.Add(fun _ -> minimizeView view)
         menu.add(minimizeItem)
       if view.mainMode = FullView || view.mainMode = HalfView then
-        let mosaicifyItem = MenuItem(Header = "View Mosaic")
+        let mosaicifyItem = MenuItem(Header = "View in Mosaic")
         mosaicifyItem.Click.Add(fun _ -> mosaicifyView view)
         menu.add(mosaicifyItem)
+
+      let zoomIn = MenuItem(Header = "Zoom In")
+      zoomIn.Click.Add(fun _ ->
+        view.post(fun _ ->
+          setFocus view
+          view.controller.alter(View.transform(zoom = ModifyFloat((*) 2.0)))
+          updateInfo()
+          )
+        )
+      menu.add(zoomIn)
 
       let zoomOut = MenuItem(Header = "Zoom Out")
       zoomOut.Click.Add(fun _ ->
@@ -477,34 +488,6 @@ type Explorer =
         Explorer.start(DnaData(!view.controller.dna))
         )
       menu.add(openNewWindow)
-
-      let save1920 = MenuItem(Header = "Export 1920 x 1920 Image..")
-      save1920.Click.Add(fun _ ->
-        let map = !view.controller.deep
-        exportMap3Png map.map 1920 1920 map.camera
-        )
-      menu.add(save1920)
-
-      let save2048 = MenuItem(Header = "Export 2k Image..")
-      save2048.Click.Add(fun _ ->
-        let map = !view.controller.deep
-        exportMap3Png map.map 2048 2048 map.camera
-        )
-      menu.add(save2048)
-
-      let save3840 = MenuItem(Header = "Export 3840 x 3840 Image..")
-      save3840.Click.Add(fun _ ->
-        let map = !view.controller.deep
-        exportMap3Png map.map 3840 3840 map.camera
-        )
-      menu.add(save3840)
-
-      let save4096 = MenuItem(Header = "Export 4k Image..")
-      save4096.Click.Add(fun _ ->
-        let map = !view.controller.deep
-        exportMap3Png map.map 4096 4096 map.camera
-        )
-      menu.add(save4096)
 
       let copySource = MenuItem(Header = "Copy F# Code to Clipboard")
       copySource.Click.Add(fun _ ->
@@ -709,13 +692,13 @@ type Explorer =
     let minDetail200Item = MenuItem(Header = "200 px", IsCheckable = true)
     minDetailItem.add(minDetail200Item)
 
-    let setMinDetailLevel px =
-      mapFilter.minSlope <- px * 0.5f
-      minDetailAnyItem.IsChecked <- (px = 0.0f)
-      minDetail20Item.IsChecked <- (px = 20.0f)
-      minDetail50Item.IsChecked <- (px = 50.0f)
-      minDetail100Item.IsChecked <- (px = 100.0f)
-      minDetail200Item.IsChecked <- (px = 200.0f)
+    let setMinDetailLevel level =
+      mapFilter.minDetail <- level
+      minDetailAnyItem.IsChecked <- (level = 0.0f)
+      minDetail20Item.IsChecked <- (level = 20.0f)
+      minDetail50Item.IsChecked <- (level = 50.0f)
+      minDetail100Item.IsChecked <- (level = 100.0f)
+      minDetail200Item.IsChecked <- (level = 200.0f)
 
     minDetailAnyItem.Click.Add(fun _ -> setMinDetailLevel 0.0f)
     minDetail20Item.Click.Add(fun _ -> setMinDetailLevel 20.0f)
@@ -738,14 +721,14 @@ type Explorer =
     let maxDetailUnlimitedItem = MenuItem(Header = "unlimited")
     maxDetailItem.add(maxDetailUnlimitedItem)
 
-    let setMaxDetailLevel px =
-      mapFilter.maxSlope <- px * 0.5f
-      maxDetail500Item.IsChecked <- (px = 500.0f)
-      maxDetail1000Item.IsChecked <- (px = 1000.0f)
-      maxDetail2000Item.IsChecked <- (px = 2000.0f)
-      maxDetail4000Item.IsChecked <- (px = 4000.0f)
-      maxDetail8000Item.IsChecked <- (px = 8000.0f)
-      maxDetailUnlimitedItem.IsChecked <- (px = infinityf)
+    let setMaxDetailLevel level =
+      mapFilter.maxDetail <- level
+      maxDetail500Item.IsChecked <- (level = 500.0f)
+      maxDetail1000Item.IsChecked <- (level = 1000.0f)
+      maxDetail2000Item.IsChecked <- (level = 2000.0f)
+      maxDetail4000Item.IsChecked <- (level = 4000.0f)
+      maxDetail8000Item.IsChecked <- (level = 8000.0f)
+      maxDetailUnlimitedItem.IsChecked <- (level = infinityf)
 
     maxDetail500Item.Click.Add(fun _ -> setMaxDetailLevel 500.0f)
     maxDetail1000Item.Click.Add(fun _ -> setMaxDetailLevel 1000.0f)
@@ -754,8 +737,6 @@ type Explorer =
     maxDetail8000Item.Click.Add(fun _ -> setMaxDetailLevel 8000.0f)
     maxDetailUnlimitedItem.Click.Add(fun _ -> setMaxDetailLevel infinityf)
     filterMenu.add(maxDetailItem)
-
-    //viewMenu.add(filterMenu)
 
     let fileMenu = makeTopMenuItem "_File"
 
@@ -799,9 +780,46 @@ type Explorer =
       )
     fileMenu.add(saveItem)
 
+    let exportItem = MenuItem(Header = "Export PNG Image")
+
+    let addExportItem resolution =
+      let exportResolutionItem = MenuItem(Header = sprintf "%d x %d" resolution resolution)
+      exportResolutionItem.Click.Add(fun _ ->
+        match !focusView with
+        | Some(view) ->
+          let map = !view.controller.deep
+          exportMap3Png map.map resolution resolution map.camera
+        | None -> ()
+        )
+      exportItem.add(exportResolutionItem)
+
+    addExportItem 512
+    addExportItem 1024
+    addExportItem 1920
+    addExportItem 2048
+    addExportItem 3840
+    addExportItem 4096
+    addExportItem 8192
+
+    fileMenu.add(exportItem)
+
     let quitItem = MenuItem(Header = "Quit")
     fileMenu.add(quitItem)
     quitItem.Click.Add(fun _ -> window.Close())
+
+    // Disable save & export if there is no focus or if the focused view is empty.
+    fileMenu.SubmenuOpened.Add(fun (args : RoutedEventArgs) ->
+      if (!focusView).isNoneOr(fun view -> view.isEmpty) then
+        for item in fileMenu.Items do
+          match item with
+          | :? MenuItem as item -> item.IsEnabled <- item <>= exportItem && item <>= saveItem
+          | _ -> ()
+      else
+        for item in fileMenu.Items do
+          match item with
+          | :? MenuItem as item -> item.IsEnabled <- true
+          | _ -> ()
+      )
 
     menu.add(fileMenu)
 
@@ -819,7 +837,7 @@ type Explorer =
 
     let manualItem = MenuItem(Header = "Online Manual")
     manualItem.Click.Add(fun _ ->
-      System.Diagnostics.Process.Start("https://raw.githubusercontent.com/SamiPerttu/FsMap3/master/docs/UserGuide.html") |> ignore
+      System.Diagnostics.Process.Start("https://cdn.rawgit.com/SamiPerttu/FsMap3/master/docs/UserGuide.html") |> ignore
       )
     helpMenu.add(manualItem)
 
@@ -871,7 +889,7 @@ type Explorer =
 
     menuPanel.add(menu)
     
-    let randomizeAllButton = Button(Content = "Randomize All", Background = toolBg, Margin = Thickness(1.0))
+    let randomizeAllButton = Button(Content = "Randomize All", Background = toolBg, Margin = Thickness(1.0, 2.0, 1.0, 1.0))
     randomizeAllButton.Click.Add(fun _ -> randomizeAll())
     toolPanel.add(randomizeAllButton, Dock.Top)
     toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 0.0)), Dock.Top)
@@ -944,7 +962,7 @@ type Explorer =
 
     setToolMode PanTool
     setViewMode FullView
-    setMinDetailLevel 20.0f
+    setMinDetailLevel 50.0f
     setMaxDetailLevel 1000.0f
 
    
@@ -966,18 +984,17 @@ TODO
 -Is animation support possible?
 -Add screen space filters to PixmapView. These would be run when the first mosaic level is computed, to decide
  whether to display and continue or reject and stop.
+-Add file name info to views to make a "Save" menu item possible. Display file name in window title.
 
 *)
 
 
 (*
-0.30 Binary Release TODO
+0.3.0 Binary Release TODO
 
 -Presets.
 -View info box: add at least detail level. Maybe colored bars representing histogram as well -
  we can represent two dimensions at once in a bar, so could have (average hue + saturation) + value, saturation + hue?
 -Rewrite scatter shape. Revisit bleed & shift.
--Move export items from context menu to File menu.
--Enable/disable File menu items based on active view.
 
 *)
