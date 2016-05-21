@@ -1,12 +1,20 @@
 # FsMap3 Explorer User Guide
 
+** Table of Contents **
+
 [TOC]
 
 ## Introduction
 
 **FsMap3 Explorer** is a Windows GUI for creating and exploring *[procedural textures](http://en.wikipedia.org/wiki/Procedural_texture)*. Texture descriptions can be edited, loaded and saved, exported as images, randomized, mutated and evolved. This user guide helps you get started.
 
-At the time of this writing, **FsMap3** is considered to be in alpha, which means that things are still changing rapidly. Backward compatibility of saved textures is not guaranteed until we move to beta.
+At the time of this writing **FsMap3** is considered to be in alpha, which means that things are still changing rapidly. Backward compatibility of saved textures is not guaranteed until we move to beta.
+
+### What Can You Do With It?
+
+* Create repeating backgrounds, wallpapers and abstract art.
+* Create textures for games that can be stored in procedural form and unpacked during installation. Procedural descriptions typically fit within 1 kB, promising ridiculous compression ratios.
+* Create *ad hoc* graphics for your .NET program that are inserted directly as source code and unpacked when needed.
 
 ## What Are Procedural Textures?
 
@@ -17,6 +25,14 @@ Because solid textures have a color everywhere in *3-space*, they can texture an
 Technically, a **3-texture** is a box that accepts 3 numbers (**X**, **Y** and **Z**), processes them somehow, and cranks out another 3 numbers. The numbers that come out of the box can be interpreted as a color (for instance, in RGB format) and displayed, or they can be interpreted as another set of coordinates and forwarded to some other box for further processing.
 
 These boxes are typically called **nodes** in texture editors. A complete procedural texture is built by connecting several nodes in a tree or graph.
+
+### Examples
+
+Here are some example images. Each image is a 2-dimensional cross section of a 3-texture created with **FsMap3**.
+
+<img src="../examples/fireplace.jpg" alt="Fireplace" style="width: 320px;"/> <img src="../examples/clouds.jpg" alt="Fireplace" style="width: 320px;"/>
+<img src="../examples/jupiter.jpg" alt="Fireplace" style="width: 320px;"/> <img src="../examples/haze.jpg" alt="Fireplace" style="width: 320px;"/>
+
 
 ## A Quick Look at the User Interface
 
@@ -97,9 +113,9 @@ The textures are displayed here. Any change to the parameters of a texture trigg
 * **View Mosaic**: Take the texture to the mosaic view mode.
 * **Zoom Out**: Reduce zoom level by 50%.
 * **Reset Zoom**: Reset zoom to default, which is a view area of 1x1 units.
-* **Reset View**: Reset zoom and view area to *0..1* on **X** and **Y** axes. Reset **Z** to *0.5*.
+* **Reset View**: Reset zoom and view area to the 1x1 square between 0 and 1 on **X** and **Y** axes. Reset **Z** to *0.5*.
 * **Randomize**: Create a new random texture in this view.
 * **Open in New Window**: Open the texture in a new explorer window.
-* **Ray Traced Preview**: Open a window displaying a simple scene with diffuse textured cube, sphere and cylinder. For reflectance models we have Oren-Nayar for diffuse and Phong for specular. The camera strafes around the scene.
+* **Show Ray Trace**: Open a window displaying a simple scene with diffuse textured cube, sphere and cylinder. For reflectance models we have Oren-Nayar for diffuse and Phong for specular. The camera strafes around the scene.
 
 
