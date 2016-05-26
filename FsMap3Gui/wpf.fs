@@ -92,6 +92,10 @@ module WpfExtensions =
       this.Loaded.Add(fun _ -> !setTransform)
 
 
+  type UIElement with
+    member this.withPreviewMouseDown with set(f) = this.PreviewMouseDown.Add(f)
+
+
   type Primitives.ButtonBase with
     member this.withClick with set(f) = this.Click.Add(f)
 

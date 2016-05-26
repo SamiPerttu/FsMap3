@@ -14,7 +14,7 @@ type ColorSpace =
 
 module Color =
 
-  /// Gamma converts a linear component (one of RGB) value to sRGB.
+  /// Gamma converts a linear component value to sRGB.
   let gammaConvert x =
     if x <= 0.0031308f then 12.92f * x else 1.055f * x ** Q 1 2.4 - 0.055f
 
@@ -40,7 +40,7 @@ module Color =
   /// Converts a HSL (hue-saturation-lightness) color to RGB.
   /// Each component is in unit range.
   let HSLtoRGB H S L =
-    // Compared to the bog standard conversion, we smooth out the discontinuity at L = 1/2.
+    // Compared to the bog standard conversion, we smooth out the slope discontinuity at L = 1/2.
     let C  = Fade.smoothLine (1.0f - abs(2.0f * L - 1G)) * S
     let H' = H * 6.0f
     let X  = C * (1.0f - abs((emodf H' 2.0f) - 1.0f))
@@ -86,33 +86,35 @@ module Color =
     let Y = (L + 16.0f) / 116.0f
     let X = a / 500.0f + Y
     let Z = Y - b / 200.0f
-    let Y = if cubed Y > 0.008856f then cubed Y else (Y - 16.0f / 116.0f) / 7.787f
-    let X = if cubed X > 0.008856f then cubed X else (X - 16.0f / 116.0f) / 7.787f
-    let Z = if cubed Z > 0.008856f then cubed Z else (Z - 16.0f / 116.0f) / 7.787f
+    let epsilon = 0.008856f
+    let kappa = 903.3f
+    let Y = if L > epsilon * kappa then cubed Y else L / kappa
+    let X = if cubed X > epsilon then cubed X else (116.0f * X - 16.0f) / kappa
+    let Z = if cubed Z > epsilon then cubed Z else (116.0f * Z - 16.0f) / kappa
     // Multiply with reference coordinates, here - observer at 2 degrees with a D65 illuminant.
     Vec3f(X * 95.047f, Y * 100.0f, Z * 108.883f)
 
 
   /// Converts a CIELch color to CIELab. Hue h is in unit range.
-  let CIELCHtoCIELAB L c h =
-    Vec3f(L, c * cosr(h), c * sinr(h))
+  let CIELCHtoCIELAB h c L =
+    Vec3f(L, c * cosrFast(h), c * sinrFast(h))
 
 
   /// Converts a Munsell chart style color to RGB. The letter 'g' in Mugsell
   /// comes from genetic programming, which came up with this approximation.
   /// All arguments are in unit range; H is wrapped to unit range if it is not in it.
   /// H value at zero (and one - hue wraps around) approximates Munsell Hue R2.5.
-  /// V is Munsell Value divided by 9 (V = 0 is thus extrapolated).
-  /// C values run from Munsell Chroma 2 at zero to Chroma 16 at one, with C values
+  /// C values run from Munsell Chroma 2 at C = 0 to Chroma 16 at C = 1, with C values
   /// biased toward lower Munsell Chromas. Higher Chromas than 16 are not considered.
-  let MugsellToRGB H V C =
+  /// V is Munsell Value divided by 9 (V = 0 is thus extrapolated).
+  let MugsellToRGB H C V =
     let C = sqrt (max 0.0f (cubed C))
-    let CH1 = C * cosr H / (1.0f + C)
-    let CH2 = exp (C * sinr H)
+    let CH1 = C * cosrFast H / (1.0f + C)
+    let CH2 = exp (C * sinrFast H)
     let CV = C * V
-    let R = -0.13661939063f + CH1 * 1.0254504025f + V * 0.8887657987f + CH2 * 0.1404878269f - CV * 0.22558629703f
-    let G = -0.06665101167f - CH1 * 0.3521260182f + V * 0.9363955443f + CH2 * 0.0267202001f - CV * 0.07914511401f
-    let B = +0.64061183186f - CH1 * 0.1703769390f + V * 0.7830775712f - CH2 * 0.6006639740f + CV * 0.04047916710f
+    let R = -0.13661939063f + CH1 * 1.0254504025f + V * 0.9777657987f + CH2 * 0.1404878269f - CV * 0.24758629703f
+    let G = -0.06665101167f - CH1 * 0.3521260182f + V * 1.0296955443f + CH2 * 0.0267202001f - CV * 0.08724511401f
+    let B = +0.64061183186f - CH1 * 0.1703769390f + V * 0.8613775712f - CH2 * 0.6006639740f + CV * 0.04047916710f
     Vec3f(R, G, B).map(clamp01)
 
 
@@ -124,7 +126,7 @@ module ColorSpaceExtensions =
     /// Converts a color from this space to RGB. Input and output components are in [0, 1].
     /// Parameter a represents red, X or hue.
     /// Parameter b represents green, yellow, Y or saturation.
-    /// Parameter c represents blue, Z, value, lightness or (inverse) darkness.
+    /// Parameter c represents blue, Z, value or lightness.
     member this.rgb(a, b, c) =
       match this with
       | RGB ->
@@ -142,11 +144,11 @@ module ColorSpaceExtensions =
         let ryb = Color.HSVtoRGB a b c
         Color.RYBtoRGB ryb.x ryb.y ryb.z
       | CIELch ->
-        let lab = Color.CIELCHtoCIELAB (c * 10.0f) (b * 10.0f) a
+        let lab = Color.CIELCHtoCIELAB a (b * 9.0f) (c * 9.0f)
         let xyz = Color.CIELABtoXYZ lab.x lab.y lab.z
         Color.XYZtoRGB xyz.x xyz.y xyz.z
       | Mugsell ->
-        Color.MugsellToRGB a c b
+        Color.MugsellToRGB a b c
 
 
 

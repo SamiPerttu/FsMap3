@@ -117,16 +117,15 @@ let softmix3 (a : float32) (v : Vec3f) (u : Vec3f) =
   Vec3f.bimap(v, u, soft)
 
 
-/// Scatters vector components by a wavified fade function.
-let scatterf (amount : Vec3f) (offset : Vec3f) (fade : float32 -> float32) =
-  let amount = amount * 0.5f
+/// Shifts vector components by a wavified fade function.
+let shiftf (offset : Vec3f) (fade : float32 -> float32) =
   let wavef = Fade.sinefyr fade
-  fun (v : Vec3f) -> (v * amount + offset).map(wavef)
+  fun (v : Vec3f) -> (v * 0.25f + offset).map(wavef)
 
 
-/// Scatters vector components by feeding them to a wave function with an offset.
-let scatter (wave : float32 -> float32) (offset : Vec3f) =
-  fun (v : Vec3f) -> (v + offset).map(wave)
+/// Shifts vector components by feeding them to a (unity period) wave function with an offset.
+let shift (wave : float32 -> float32) (offset : Vec3f) =
+  fun (v : Vec3f) -> (v * 0.25f + offset).map(wave)
 
 
 /// Displaces map g by samples from map f scaled by a.
@@ -483,7 +482,7 @@ let fractald (roughness : float32) (lacunarity : float32) (highpass : float32) (
     let mutable h = 1.0f - highpass
     for i = 0 to g.last do
       let a = g.[i] (v + d)
-      value <- mix value (w * h) a
+      value <- mix value w h a
       F <- F / lacunarity
       w <- w * r
       h <- sqrt h
@@ -529,7 +528,7 @@ let multid roughness lacunarity minDisplace maxDisplace minTwist maxTwist initia
           let L = sqrt L2
           rotation <- Quaternionf(Vec3f(y.y, y.z, -y.x) / L, L * twist) * rotation
         v <- v + displace / F * y * rotation
-        value <- mix value (w * P) y
+        value <- mix value w P y
       F <- F / lacunarity
       w <- w * r
 

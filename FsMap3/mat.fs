@@ -31,6 +31,10 @@ let inline qesp (x : 'a) : 'a = if x < 0G then 1G / (1G - x + squared x) else 1G
 /// linear when x < 0 and quadratic when x > 0. f(x) > 0 for all x. Like the exponential function, f(0) = f'(0) = 1.
 let inline esp (x : 'a) : 'a = if x < 0G then 1G / (1G - x) else 1G + x + squared x
 
+/// This exp-like, smooth response function is second order continuous. It has asymmetrical magnitude curves:
+/// linear when x < 0 and quartic when x > 0. f(x) > 0 for all x. Like the exponential function, f(0) = f'(0) = 1.
+let inline eqp (x : 'a) : 'a = if x < 0G then 1G / (1G - x) else 1G + x + squared x * (1G + Q 1 8 * squared x)
+
 /// An accurate logarithm of the gamma function (n! ~ exp(lgamma(n + 1))).
 let lgamma x =
   let i = 1.0 / x

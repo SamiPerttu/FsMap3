@@ -65,7 +65,7 @@ let genCellColor (dna : Dna) =
 
 /// Generates a potential function.
 let genPotential (dna : Dna) =
-  dna.branch("Potential function",
+  dna.branch("Potential",
     C(1.5, "rounded cube", fun _ -> roundedCube),
     C("teardrop", fun _ -> teardrop),
     C(1.5, "rounded cylinder", fun _ ->
@@ -118,7 +118,7 @@ let genMixOp (dna : Dna) =
     C(4.0, "sum", fun _ -> Mix.sum),
     C(1.5, "over", fun _ -> Mix.over),
     C(1.5, "norm", fun _ -> Mix.norm (dna.float32("Hardness"))),
-    C(2.0, "soft", fun _ -> Mix.soft (dna.float32("Bias", lerp -5.0f 5.0f))),
+    C(2.0, "soft", fun _ -> Mix.soft (dna.float32("Bias", lerp -1.0f 1.0f))),
     C(3.0, "layer", fun _ -> Mix.layer (dna.float32("Layer width", lerp 0.1f 1.0f)) (genLayerFade dna) (dna.float32("Layer persist", lerp 0.0f 1.0f)))
     )
 
@@ -131,7 +131,7 @@ let genBasisMixOp (dna : Dna) =
     C(0.75, "min", fun _ -> Mix.min),
     C(0.75, "max", fun _ -> Mix.max),
     C(1.0, "norm", fun _ -> Mix.norm (dna.float32("Hardness"))),
-    C(1.0, "soft", fun _ -> Mix.soft (dna.float32("Bias", lerp -5.0f 5.0f)))
+    C(1.0, "soft", fun _ -> Mix.soft (dna.float32("Bias", lerp -1.0f 1.0f)))
     )
 
 
@@ -158,29 +158,20 @@ let genShift (dna : Dna) =
                                         C("smooth triangle", fun x -> Fade.cosifyr Fade.smoothLine (x - Q 1 4)),
                                         C("sine", sinrFast)
                                         )
-  scatter wave (Vec3f(dx, dy, dz))
+  shift wave (Vec3f(dx, dy, dz))
 
 
 /// Generates a scattering map.
 let genScatter (dna : Dna) =
-  let seed = dna.data("Scatter seed")
-  let wave = dna.category("Scatter wave", C("triangle", trir),
-                                          C("smooth triangle", fun x -> Fade.cosifyr Fade.smoothLine (x - Q 1 4)),
-                                          C("sine", sinrFast)
-                                          )
-  let seed' = mangle32 seed
-  let t1 = dna.float32("Scatter finetuning 1")
-  let t2 = dna.float32("Scatter finetuning 2")
-  let t3 = dna.float32("Scatter finetuning 3")
-  let phase = Vec3f.fromSeed(seed, 0.0f, 1.0f)
-  let fx = Vec3f.fromSeed(mangle32c seed, -0.5f, 0.5f)
-  let fy = Vec3f.fromSeed(mangle32c seed', -0.5f, 0.5f)
-  let fz = Vec3f.fromSeed(mangle32d seed, -0.5f, 0.5f)
-  let vx = Vec3f.fromSeed(seed', -0.5f, 0.5f) + t1 * fx
-  let vy = Vec3f.fromSeed(mangle32b seed, -0.5f, 0.5f) + t2 * fy
-  let vz = Vec3f.fromSeed(mangle32b seed', -0.5f, 0.5f) + t3 * fz
+  let rnd = Rnd(dna.data("Scatter seed"))
+  let amount = dna.float32("Scatter amount")
+  let t = dna.float32("Scatter tuning")
+  let p() = Vec3f.fromSeed(rnd.tick).map(squared) + t * Vec3f.fromSeed(rnd.tick).map(squared)
+  let f() = Vec3f.fromSeed(rnd.tick) * Vec3f.fromSeed(rnd.tick, -0.5f, 0.5f)
+  let px, py, pz = p(), p(), p()
+  let fx, fy, fz = f(), f(), f()
   fun (v : Vec3f) ->
-    Vec3f(wave (vx *. v + phase.x), wave (vy *. v + phase.y), wave (vz *. v + phase.z))
+    Vec3f.lerp v (Vec3f((fx * v + px).sinr.sum, (fy * v + py).sinr.sum, (fz * v + pz).sinr.sum)) amount
 
 
 /// Generates a bleed map.
@@ -250,8 +241,8 @@ let genWavePacket (dna : Dna) =
 let genShape (dna : Dna) =
   dna.branch("Shape",
     C(8.0, "none", always identity),
-    C(1.0, "shift", genShift),
     C(1.0, "bleed", genBleed),
+    C(1.0, "shift", genShift),
     C(1.0, "scatter", genScatter),
     C(1.0, "wave packet", genWavePacket),
     C(0.8, "component overdrive", genOverdrive),
@@ -271,8 +262,8 @@ let genUnary (subGen : Dna -> Map3) (dna : Dna) =
     subGen dna >> shape
 
   dna.branch("Unary op",
-    C(1.0, "shift", unaryShape genShift),
     C(1.0, "bleed", unaryShape genBleed),
+    C(1.0, "shift", unaryShape genShift),
     C(1.0, "scatter", unaryShape genScatter),
     C(1.0, "wave packet", unaryShape genWavePacket),
     C(1.0e-3, "curl", Map3Info.normalizeWithId 0xc081 (subGen >> curl)),
@@ -375,7 +366,7 @@ let rec genBasis maxDepth (dna : Dna) =
       let count   = genFeatureCount dna
       let fade    = genPotentialFade dna
       let mix     = genBasisMixOp dna
-      let shading = dna.float32("Leopard shading")
+      let shading = dna.float32("Shading")
       let color   = genCellColor dna
       leopard (genLayout dna |> layoutFunction) count mix color fade shading radius
       ),
@@ -516,8 +507,8 @@ let rec genBasis maxDepth (dna : Dna) =
       binaryBasis variableShape factor (shapeBasis (Vec3f(overdrive, monoization, scattering) |> scale) basis1) basis2
       ),
     C(dualWeight, "capsule flow", fun _ ->
-      let radius        = dna.float32("Radius", lerp 0.1f 1.0f)
-      let length        = dna.float32("Length", squared >> lerp 0.5f 4.0f)
+      let radius        = dna.float32("Capsule radius", lerp 0.1f 1.0f)
+      let length        = dna.float32("Capsule length", squared >> lerp 0.5f 4.0f)
       let fade          = genPotentialFade dna
       let shading       = dna.float32("Shading", squared)
       let cellColor     = genCellColor dna
@@ -560,7 +551,7 @@ let genShapedBasis maxDepth (dna : Dna) =
 
 /// Generates a walk operator.
 let genWalk minAmount maxAmount (dna : Dna) =
-  let amount = dna.float32("Displace amount", xerp minAmount maxAmount)
+  let amount = dna.float32("Displace amount", squared >> lerp minAmount maxAmount)
   let fade = genDisplaceFade dna
   let amount = amount / Fade.area fade
   dna.category("Walk operator",
@@ -585,17 +576,17 @@ let genFractalizer (subGen : Dna -> Map3) (dna : Dna) =
     dna.branch("Fractalizer",
       C(1.0, "mix and displace", fun (dna : Dna) ->
         let lacunarity = genLacunarity()
-        let highpass   = dna.float32("Highpass filter", lerp 0.0f 0.99f)
+        let highpass   = dna.float32("Highpass filter", lerp 0.0f 0.9f)
         let mix        = genMixOp dna
-        let walk       = genWalk 0.1f 2.0f dna
+        let walk       = genWalk 0.0f 2.0f dna
         let basis      = genBasis 2 dna
         fractald roughness lacunarity highpass mix walk basef octaves basis
         ),
       C(1.0, "inverted mix and displace", fun (dna : Dna) ->
         let lacunarity = genLacunarity()
-        let lowpass    = dna.float32("Lowpass filter", lerp 0.0f 0.99f)
+        let lowpass    = dna.float32("Lowpass filter", lerp 0.0f 0.9f)
         let mix        = genMixOp dna
-        let walk       = genWalk 0.05f 0.5f dna
+        let walk       = genWalk 0.0f 0.5f dna
         let basis      = genBasis 2 dna
         fractaldi roughness lacunarity lowpass mix walk basef octaves basis
         ),

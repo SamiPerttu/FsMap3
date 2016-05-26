@@ -24,10 +24,35 @@ type UserAction =
 
 
 
+let getDirectoryContents (path : string) =
+  let directories = Darray.create()
+  let files = Darray.create()
+  let rec addContents (relativePath : string) (absolutePath : string) =
+    for directory in System.IO.Directory.GetDirectories(absolutePath) do
+      let relative = (if relativePath.size > 0 then relativePath + "/" else "") + System.IO.Path.GetFileName(directory)
+      directories.add(relative, directory)
+      addContents relative directory
+    for file in System.IO.Directory.GetFiles(absolutePath) do
+      let relative = (if relativePath.size > 0 then relativePath + "/" else "") + System.IO.Path.GetFileName(file)
+      files.add(relative, file)
+  try
+    addContents "" path
+  with
+    | _ -> ()
+  directories, files
+
+
+let isTextureFile (file : string) =
+  System.IO.Path.GetExtension(file) = ".yaml"
+
+
+
 /// Interactive Map3 explorer.
 type Explorer =
 
   static member start(?initialDnaSource) =
+
+    let presetDirectory = "Presets"
 
     /// Minimum resolution of each quarter view.
     let minimumR = 16
@@ -40,6 +65,8 @@ type Explorer =
     /// Size of tool and view icons.
     let iconSize = 29.0
     let iconMargin = Thickness(0.5)
+
+    let previewSize = 160.0
 
     let viewBg = Wpf.brush(0.0)
     let dnaBg = Wpf.brush(0.9)
@@ -315,11 +342,13 @@ type Explorer =
 
     /// Randomizes all visible views.
     let randomizeAll() =
-      clearFocus()
       scheduleTask(fun _ ->
         iterateViews(fun view visible ->
           if visible then view.controller.restart(randomizePredicate)
         )
+        match !viewMode with
+        | FullView -> setFocus fullView
+        | _ -> clearFocus()
       )
 
     let setViewMode mode =
@@ -415,6 +444,298 @@ type Explorer =
       | _ -> ()
       )
 
+    let loadYaml (file : string) =
+      let view = !focusView >? match !viewMode with | FullView -> fullView | HalfView -> halfView.[0] | QuarterView -> quarterView.[0]
+      setFocus view
+      try
+        use stream = new System.IO.StreamReader(file)
+        let readLine() = match stream.EndOfStream with | false -> Some(stream.ReadLine()) | true -> None
+        let source = DeserializerSource(readLine)
+        view.controller.generate(true, dnaSource = (source :> DnaSource))
+        stream.Close()
+        updateDna()
+        updateInfo()
+      with
+        | ex -> MessageBox.Show(ex.ToString()) |> ignore
+
+    let loadYamlPreview (file : string) =
+      try
+        use stream = new System.IO.StreamReader(file)
+        let readLine() = match stream.EndOfStream with | false -> Some(stream.ReadLine()) | true -> None
+        let source = DeserializerSource(readLine)
+        let map = source.generate(deepGenerator)
+        stream.Close()
+        Some(map)
+      with
+        | ex -> None
+
+    let saveYaml (file : string) =
+      match !focusView with
+      | Some(view) ->
+        try
+          let source = SerializerSource(!view.controller.dna)
+          // SerializerSource works by regenerating the specimen we want to serialize.
+          // During generation it obtains parameters in user readable units.
+          source.generate(deepGenerator) |> ignore
+          use stream = new System.IO.StreamWriter(file)
+          stream.Write(source.yamlString)
+          stream.Close()
+        with
+          | ex -> MessageBox.Show(ex.ToString()) |> ignore
+      | _ -> ()
+
+    let menuPanel = StackPanel(Orientation = Orientation.Horizontal, Background = menuBg)
+    menuPanel.VerticalAlignment <- VerticalAlignment.Center
+    menuPanel.HorizontalAlignment <- HorizontalAlignment.Stretch
+    let menu = Menu(Background = menuItemBg, IsMainMenu = true, Margin = Thickness(0.0))
+
+    let makeTopMenuItem label =
+      MenuItem(Header = label, Margin = Thickness(4.0, 0.0, 4.0, 0.0), Background = Wpf.brush(1.0, 1.0, 1.0, 0.1), Foreground = Wpf.brush(0.0))
+
+    let fileMenu = makeTopMenuItem "_File"
+
+    let openItem = MenuItem(Header = "_Open..")
+    openItem.Click.Add(fun _ ->
+      let dialog = new Microsoft.Win32.OpenFileDialog(Title = "Load Map File..", Filter = "YAML files (.yaml)|*.yaml")
+      let result = dialog.ShowDialog()
+      if result.HasValue && result.Value then loadYaml dialog.FileName
+      )
+    fileMenu.add(openItem)
+
+    let saveItem = MenuItem(Header = "_Save As..")
+    saveItem.Click.Add(fun _ ->
+      match !focusView with
+      | Some(view) ->
+        let dialog = new Microsoft.Win32.SaveFileDialog(Title = "Save Map File As..", DefaultExt = ".yaml", Filter = "YAML files (.yaml)|*.yaml")
+        let result = dialog.ShowDialog()
+        if result.HasValue && result.Value then saveYaml dialog.FileName
+      | None -> ()
+      )
+    fileMenu.add(saveItem)
+
+    let exportItem = MenuItem(Header = "Export PNG Image")
+
+    let addExportItem resolution =
+      let exportResolutionItem = MenuItem(Header = sprintf "%d x %d" resolution resolution)
+      exportResolutionItem.Click.Add(fun _ ->
+        match !focusView with
+        | Some(view) ->
+          let map = !view.controller.deep
+          exportMap3Png map.map resolution resolution map.camera
+        | None -> ()
+        )
+      exportItem.add(exportResolutionItem)
+
+    addExportItem 512
+    addExportItem 1024
+    addExportItem 1920
+    addExportItem 2048
+    addExportItem 3840
+    addExportItem 4096
+    addExportItem 8192
+
+    fileMenu.add(exportItem)
+
+    let quitItem = MenuItem(Header = "Quit")
+    fileMenu.add(quitItem)
+    quitItem.Click.Add(fun _ -> window.Close())
+
+    // Disable save & export if there is no focus or if the focused view is empty.
+    fileMenu.SubmenuOpened.Add(fun (args : RoutedEventArgs) ->
+      if (!focusView).isNoneOr(fun view -> view.isEmpty) then
+        for item in fileMenu.Items do
+          match item with
+          | :? MenuItem as item -> item.IsEnabled <- item <>= exportItem && item <>= saveItem
+          | _ -> ()
+      else
+        for item in fileMenu.Items do
+          match item with
+          | :? MenuItem as item -> item.IsEnabled <- true
+          | _ -> ()
+      )
+
+    menu.add(fileMenu)
+
+    let toolsMenu = makeTopMenuItem "_Tools"
+    let logItem = MenuItem(Header = "Log")
+    logItem.Click.Add(fun _ ->
+      match !logWindow with
+      | Some(logWindow) when logWindow.isOpen -> logWindow.show()
+      | _ -> logWindow := Some(LogWindow())
+      )
+    toolsMenu.add(logItem)
+    menu.add(toolsMenu)
+
+    let filterMenu = makeTopMenuItem "Filters"
+
+    let minDetailItem = MenuItem(Header = "Minimum Detail Level")
+    let minDetailAnyItem = MenuItem(Header = "any", IsCheckable = true)
+    minDetailItem.add(minDetailAnyItem)
+    let minDetail20Item = MenuItem(Header = "20 px", IsCheckable = true)
+    minDetailItem.add(minDetail20Item)
+    let minDetail50Item = MenuItem(Header = "50 px", IsCheckable = true)
+    minDetailItem.add(minDetail50Item)
+    let minDetail100Item = MenuItem(Header = "100 px", IsCheckable = true)
+    minDetailItem.add(minDetail100Item)
+    let minDetail200Item = MenuItem(Header = "200 px", IsCheckable = true)
+    minDetailItem.add(minDetail200Item)
+
+    let setMinDetailLevel level =
+      mapFilter.minDetail <- level
+      minDetailAnyItem.IsChecked <- (level = 0.0f)
+      minDetail20Item.IsChecked <- (level = 20.0f)
+      minDetail50Item.IsChecked <- (level = 50.0f)
+      minDetail100Item.IsChecked <- (level = 100.0f)
+      minDetail200Item.IsChecked <- (level = 200.0f)
+
+    minDetailAnyItem.Click.Add(fun _ -> setMinDetailLevel 0.0f)
+    minDetail20Item.Click.Add(fun _ -> setMinDetailLevel 20.0f)
+    minDetail50Item.Click.Add(fun _ -> setMinDetailLevel 50.0f)
+    minDetail100Item.Click.Add(fun _ -> setMinDetailLevel 100.0f)
+    minDetail200Item.Click.Add(fun _ -> setMinDetailLevel 200.0f)
+    filterMenu.add(minDetailItem)
+
+    let maxDetailItem = MenuItem(Header = "Maximum Detail Level")
+    let maxDetail500Item = MenuItem(Header = "500 px", IsCheckable = true)
+    maxDetailItem.add(maxDetail500Item)
+    let maxDetail1000Item = MenuItem(Header = "1000 px", IsCheckable = true)
+    maxDetailItem.add(maxDetail1000Item)
+    let maxDetail2000Item = MenuItem(Header = "2000 px", IsCheckable = true)
+    maxDetailItem.add(maxDetail2000Item)
+    let maxDetail4000Item = MenuItem(Header = "4000 px", IsCheckable = true)
+    maxDetailItem.add(maxDetail4000Item)
+    let maxDetail8000Item = MenuItem(Header = "8000 px", IsCheckable = true)
+    maxDetailItem.add(maxDetail8000Item)
+    let maxDetailUnlimitedItem = MenuItem(Header = "unlimited")
+    maxDetailItem.add(maxDetailUnlimitedItem)
+
+    let setMaxDetailLevel level =
+      mapFilter.maxDetail <- level
+      maxDetail500Item.IsChecked <- (level = 500.0f)
+      maxDetail1000Item.IsChecked <- (level = 1000.0f)
+      maxDetail2000Item.IsChecked <- (level = 2000.0f)
+      maxDetail4000Item.IsChecked <- (level = 4000.0f)
+      maxDetail8000Item.IsChecked <- (level = 8000.0f)
+      maxDetailUnlimitedItem.IsChecked <- (level = infinityf)
+
+    maxDetail500Item.Click.Add(fun _ -> setMaxDetailLevel 500.0f)
+    maxDetail1000Item.Click.Add(fun _ -> setMaxDetailLevel 1000.0f)
+    maxDetail2000Item.Click.Add(fun _ -> setMaxDetailLevel 2000.0f)
+    maxDetail4000Item.Click.Add(fun _ -> setMaxDetailLevel 4000.0f)
+    maxDetail8000Item.Click.Add(fun _ -> setMaxDetailLevel 8000.0f)
+    maxDetailUnlimitedItem.Click.Add(fun _ -> setMaxDetailLevel infinityf)
+    filterMenu.add(maxDetailItem)
+    menu.add(filterMenu)
+
+    let presetMenu = makeTopMenuItem "_Presets"
+
+    let rec addPresets (menuItem : MenuItem) directory =
+      try
+        for directory in System.IO.Directory.GetDirectories(directory) |> Array.sort do
+          let directoryItem = MenuItem(Header = System.IO.Path.GetFileName(directory))
+          addPresets directoryItem directory
+          menuItem.add(directoryItem)
+        for file in System.IO.Directory.GetFiles(directory) |> Array.sort do
+          if System.IO.Path.GetExtension(file) = ".yaml" then
+            let presetItem = MenuItem(Header = System.IO.Path.GetFileNameWithoutExtension(file))
+            let openPopup = ref None
+            presetItem.GotFocus.Add(fun _ ->
+              let w = previewSize
+              let h = previewSize
+              let popup = Popup(IsOpen = true, PlacementTarget = presetItem, Placement = PlacementMode.Right, HorizontalOffset = 100.0, IsHitTestVisible = false)
+              openPopup := Some(popup)
+              match loadYamlPreview file with
+              | Some(map) ->
+                let image = Image(Width = w, Height = h, Margin = Thickness(1.0), SnapsToDevicePixels = true)
+                let view = PixmapView(image, int w, int h, quitWhenReady = true)
+                view.start(RichMap3.pixmapSource(map))
+                popup.Child <- image
+              | None ->
+                popup.Child <- Label(Width = w * 0.5, Height = h * 0.5, Content = "?", FontSize = 40.0)
+              )
+            // TODO. This does not work well if the popup overlaps with the menu item: if the mouse moves over
+            // the popup, the menu item loses focus, causing the popup to disappear. Then GotFocus fires once more
+            // on the menu item, creating a new popup, and so on. A supposedly clean solution would be to
+            // create a trigger for IsMouseOver, which involves templates and styles.
+            presetItem.LostFocus.Add(fun _ ->
+              if presetItem.IsMouseDirectlyOver = false then
+                match !openPopup with
+                | Some(popup) ->
+                  popup.IsOpen <- false
+                  openPopup := None
+                | _ -> ()
+              )
+            presetItem.Click.Add(fun _ -> loadYaml file)
+            menuItem.add(presetItem)
+      with
+        | _ -> ()
+
+    let refreshPresetItem = MenuItem(Header = "Refresh")
+
+    let recreatePresets() =
+      presetMenu.Items.Clear()
+      presetMenu.add(refreshPresetItem)
+      presetMenu.add(Separator())
+      addPresets presetMenu presetDirectory
+
+    refreshPresetItem.Click.Add(fun _ -> recreatePresets())
+    recreatePresets()
+    menu.add(presetMenu)
+
+    let helpMenu = makeTopMenuItem "_Help"
+
+    let manualItem = MenuItem(Header = "Online Manual")
+    manualItem.Click.Add(fun _ ->
+      System.Diagnostics.Process.Start("https://cdn.rawgit.com/SamiPerttu/FsMap3/master/docs/UserGuide.html") |> ignore
+      )
+    helpMenu.add(manualItem)
+
+    let githubItem = MenuItem(Header = "GitHub Page")
+    githubItem.Click.Add(fun _ ->
+      System.Diagnostics.Process.Start("https://github.com/SamiPerttu/FsMap3") |> ignore
+      )
+    helpMenu.add(githubItem)
+
+    let aboutItem = MenuItem(Header = "About..")
+    aboutItem.Click.Add(fun _ ->
+      let bold = FontWeight.FromOpenTypeWeight(900)
+      let medium = FontWeight.FromOpenTypeWeight(500)
+      let effect = Effects.DropShadowEffect(BlurRadius = 3.0, Color = Wpf.color(1.0), Opacity = 1.0, ShadowDepth = 0.0)
+      let map =
+        let data = [|
+          DnaData("ZSjV4+ZJwJ10-1lcK0ZRQ10+03-ac3a0+-KSC0+nwml++VRah+-beny0-QY660-OMGC0001YFuyXvZGbHq+YUAoyv2ZHJuV0Zp0lt00ZvOAd0Y5KfMA0ZtGet010dZFMGb0-vMky008701ZK8nC0YENchw-Pvmq04+cFxm0ZaTNW+ZQlHo++k3lO0-nxay0ZOl+h0-InEZ+ZjlbV0008302-OXJ7m+mkAi0YKlGOw4YvVTOfYQOdavZV-l6++s3ae0-nxay0ZySyp0-gthW0ZjlbV001+ZMO20+haza0"B)
+          |]
+        data.[rnd.int(data.size)].generate(Map3Dna.generateExplorerMap)
+      let w = 600.0
+      let h = 300.0
+      let bgImage = Image(Width = w, Height = h, SnapsToDevicePixels = true)
+      let bgView = PixmapView(bgImage, int w, int h)
+      bgView.start(RichMap3.pixmapSource(map))
+      let aboutWindow = Window(Title = "About FsMap3 Explorer", SizeToContent = SizeToContent.WidthAndHeight, ResizeMode = ResizeMode.NoResize)
+      let aboutCanvas = Canvas(Width = w, Height = h)
+      aboutCanvas.add(bgImage, 0.0, 0.0)
+      let title = Label(Content = "FsMap3 Explorer", FontSize = 40.0, FontWeight = bold, Effect = effect)
+      let version = Label(Content = "Version " + Map3Dna.ExplorerVersion, FontSize = 16.0, FontWeight = bold, Effect = effect)
+      aboutCanvas.add(title, 10.0, 10.0)
+      aboutCanvas.add(version, 12.0, 60.0)
+      let copyright = Label(Content = "© Copyright 2016 Sami Perttu", FontSize = 20.0, FontWeight = medium, Effect = effect)
+      aboutCanvas.add(copyright, 30.0, 120.0)
+      let license = Label(Content = "This program is distributed under the MIT license.", FontSize = 16.0, FontWeight = medium, Effect = effect)
+      aboutCanvas.add(license, 30.0, 150.0)
+      let license2 = Label(Content = "See the file LICENSE.md for more details.", FontSize = 16.0, FontWeight = medium, Effect = effect)
+      aboutCanvas.add(license2, 30.0, 172.0)
+      let closeButton = Button(Content = "Close", Width = 100.0, Height = 25.0, Background = Wpf.brush(1.0, 1.0, 1.0, 0.3), withClick = fun _ -> aboutWindow.Close())
+      aboutCanvas.add(closeButton, 490.0, 265.0)
+      aboutWindow.Content <- aboutCanvas
+      aboutWindow.ShowDialog() |> ignore
+      bgView.stop()
+      )
+    helpMenu.add(aboutItem)
+
+    menu.add(helpMenu)
+
+    menuPanel.add(menu)
+
     // Add context menus and event handlers to images.
     iterateViews (fun view _ ->
 
@@ -488,6 +809,80 @@ type Explorer =
         Explorer.start(DnaData(!view.controller.dna))
         )
       menu.add(openNewWindow)
+
+      let createPreset = MenuItem(Header = "Create Preset..")
+      createPreset.Click.Add(fun _ ->
+        let grid = Grid()
+        let presetWindow = Window(Title = "Add Preset", ResizeMode = ResizeMode.CanMinimize, SizeToContent = SizeToContent.WidthAndHeight, Content = grid)
+        grid.RowDefinitions.Add(RowDefinition(Height = GridLength.Auto))
+        grid.RowDefinitions.Add(RowDefinition(Height = GridLength.Auto))
+        grid.RowDefinitions.Add(RowDefinition(Height = GridLength.Auto))
+        grid.RowDefinitions.Add(RowDefinition(Height = GridLength.Auto))
+        grid.RowDefinitions.Add(RowDefinition(Height = GridLength.Auto))
+        grid.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
+        grid.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
+        grid.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
+        let image = Image(Width = previewSize, Height = previewSize, Margin = Thickness(4.0), SnapsToDevicePixels = true)
+        let preview = PixmapView(image, int previewSize, int previewSize, quitWhenReady = true)
+        preview.start(view.pixmapSource)
+        let w = 200.0
+        let boxH = 24.0
+        let boxMargin = Thickness(5.0, 2.0, 5.0, 2.0)
+        let submenuLabel = Label(Content = "Submenu", HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center)
+        let submenuBox = TextBox(Width = w, Height = boxH, Margin = boxMargin)
+        let submenuCombo = ComboBox(Width = w, Height = boxH, Margin = boxMargin, VerticalAlignment = VerticalAlignment.Top)
+        submenuCombo.add(ComboBoxItem(Content = "", withPreviewMouseDown = fun _ -> submenuBox.Text <- ""))
+        let presetDirs, presetFiles = getDirectoryContents presetDirectory
+
+        for relX, absX in presetDirs do
+          submenuCombo.add(ComboBoxItem(Content = relX, withPreviewMouseDown = fun _ -> submenuBox.Text <- relX))
+
+        let nameLabel = Label(Content = "Preset name", HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center)
+        let nameBox = TextBox(Width = w, Height = boxH, Margin = boxMargin)
+
+        let saveIt() = 
+          let file = nameBox.Text + ".yaml"
+          if file.size > 0 then
+            let directory = if submenuBox.Text.size > 0 then System.IO.Path.Combine(presetDirectory, submenuBox.Text) else presetDirectory
+            if System.IO.Directory.Exists(directory) = false then
+              System.IO.Directory.CreateDirectory(directory) |> ignore
+            saveYaml (System.IO.Path.Combine(directory, file))
+            recreatePresets()
+            presetWindow.Close()
+
+        nameBox.PreviewKeyDown.Add(fun (args : Input.KeyEventArgs) ->
+          if args.Key = Input.Key.Return then
+            saveIt()
+            args.Handled <- true
+          )
+        let nameCombo = ComboBox(Width = w, Height = boxH, Margin = boxMargin, VerticalAlignment = VerticalAlignment.Top)
+        nameCombo.add(ComboBoxItem(Content = "", withPreviewMouseDown = fun _ -> nameBox.Text <- ""; submenuBox.Text <- ""))
+        for relX, absX in presetFiles do
+          if isTextureFile relX then
+            nameCombo.add(ComboBoxItem(Content = System.IO.Path.ChangeExtension(relX, nullRef), withPreviewMouseDown = fun _ -> submenuBox.Text <- System.IO.Path.GetDirectoryName(relX); nameBox.Text <- System.IO.Path.GetFileNameWithoutExtension(relX)))
+
+        let buttonW = 90.0
+
+        let buttonBg = Wpf.brush(1.0, 1.0, 1.0, 0.3)
+
+        let saveButton = Button(Content = "Save", Background = buttonBg, HorizontalAlignment = HorizontalAlignment.Left, Width = buttonW, Margin = Thickness(4.0, 2.0, 4.0, 4.0), Padding = Thickness(2.0))
+        saveButton.Click.Add(fun _ -> saveIt())
+        let cancelButton = Button(Content = "Cancel", Background = buttonBg, HorizontalAlignment = HorizontalAlignment.Right, Width = buttonW, Margin = Thickness(4.0, 2.0, 4.0, 4.0), Padding = Thickness(2.0))
+        cancelButton.Click.Add(fun _ -> presetWindow.Close())
+        grid.add(Border(Background = Wpf.verticalBrush(Wpf.color(0.9), Wpf.color(0.8))), 0, 4, 3, 1)
+        grid.add(submenuLabel, 0, 0)
+        grid.add(submenuBox, 1, 0)
+        grid.add(submenuCombo, 1, 1)
+        grid.add(nameLabel, 0, 2)
+        grid.add(nameBox, 1, 2)
+        grid.add(nameCombo, 1, 3)
+        grid.add(image, 2, 0, 1, 4)
+        grid.add(saveButton, 0, 4)
+        grid.add(cancelButton, 2, 4)
+        nameBox.Focus() |> ignore
+        presetWindow.ShowDialog() |> ignore
+        )
+      menu.add(createPreset)
 
       let copySource = MenuItem(Header = "Copy F# Code to Clipboard")
       copySource.Click.Add(fun _ ->
@@ -669,225 +1064,6 @@ type Explorer =
 
       )
 
-    let menuPanel = StackPanel(Orientation = Orientation.Horizontal, Background = menuBg)
-    menuPanel.VerticalAlignment <- VerticalAlignment.Center
-    menuPanel.HorizontalAlignment <- HorizontalAlignment.Stretch
-    let menu = Menu(Background = menuItemBg, IsMainMenu = true, Margin = Thickness(0.0))
-
-    let makeTopMenuItem label =
-      MenuItem(Header = label, Margin = Thickness(4.0, 0.0, 4.0, 0.0), Background = Wpf.brush(1.0, 1.0, 1.0, 0.1), Foreground = Wpf.brush(0.0))
-
-    let viewMenu = Menu(Background = menuItemBg, Margin = Thickness(0.0))
-    let filterMenu = makeTopMenuItem "Filters"
-
-    let minDetailItem = MenuItem(Header = "Minimum Detail Level")
-    let minDetailAnyItem = MenuItem(Header = "any", IsCheckable = true)
-    minDetailItem.add(minDetailAnyItem)
-    let minDetail20Item = MenuItem(Header = "20 px", IsCheckable = true)
-    minDetailItem.add(minDetail20Item)
-    let minDetail50Item = MenuItem(Header = "50 px", IsCheckable = true)
-    minDetailItem.add(minDetail50Item)
-    let minDetail100Item = MenuItem(Header = "100 px", IsCheckable = true)
-    minDetailItem.add(minDetail100Item)
-    let minDetail200Item = MenuItem(Header = "200 px", IsCheckable = true)
-    minDetailItem.add(minDetail200Item)
-
-    let setMinDetailLevel level =
-      mapFilter.minDetail <- level
-      minDetailAnyItem.IsChecked <- (level = 0.0f)
-      minDetail20Item.IsChecked <- (level = 20.0f)
-      minDetail50Item.IsChecked <- (level = 50.0f)
-      minDetail100Item.IsChecked <- (level = 100.0f)
-      minDetail200Item.IsChecked <- (level = 200.0f)
-
-    minDetailAnyItem.Click.Add(fun _ -> setMinDetailLevel 0.0f)
-    minDetail20Item.Click.Add(fun _ -> setMinDetailLevel 20.0f)
-    minDetail50Item.Click.Add(fun _ -> setMinDetailLevel 50.0f)
-    minDetail100Item.Click.Add(fun _ -> setMinDetailLevel 100.0f)
-    minDetail200Item.Click.Add(fun _ -> setMinDetailLevel 200.0f)
-    filterMenu.add(minDetailItem)
-
-    let maxDetailItem = MenuItem(Header = "Maximum Detail Level")
-    let maxDetail500Item = MenuItem(Header = "500 px", IsCheckable = true)
-    maxDetailItem.add(maxDetail500Item)
-    let maxDetail1000Item = MenuItem(Header = "1000 px", IsCheckable = true)
-    maxDetailItem.add(maxDetail1000Item)
-    let maxDetail2000Item = MenuItem(Header = "2000 px", IsCheckable = true)
-    maxDetailItem.add(maxDetail2000Item)
-    let maxDetail4000Item = MenuItem(Header = "4000 px", IsCheckable = true)
-    maxDetailItem.add(maxDetail4000Item)
-    let maxDetail8000Item = MenuItem(Header = "8000 px", IsCheckable = true)
-    maxDetailItem.add(maxDetail8000Item)
-    let maxDetailUnlimitedItem = MenuItem(Header = "unlimited")
-    maxDetailItem.add(maxDetailUnlimitedItem)
-
-    let setMaxDetailLevel level =
-      mapFilter.maxDetail <- level
-      maxDetail500Item.IsChecked <- (level = 500.0f)
-      maxDetail1000Item.IsChecked <- (level = 1000.0f)
-      maxDetail2000Item.IsChecked <- (level = 2000.0f)
-      maxDetail4000Item.IsChecked <- (level = 4000.0f)
-      maxDetail8000Item.IsChecked <- (level = 8000.0f)
-      maxDetailUnlimitedItem.IsChecked <- (level = infinityf)
-
-    maxDetail500Item.Click.Add(fun _ -> setMaxDetailLevel 500.0f)
-    maxDetail1000Item.Click.Add(fun _ -> setMaxDetailLevel 1000.0f)
-    maxDetail2000Item.Click.Add(fun _ -> setMaxDetailLevel 2000.0f)
-    maxDetail4000Item.Click.Add(fun _ -> setMaxDetailLevel 4000.0f)
-    maxDetail8000Item.Click.Add(fun _ -> setMaxDetailLevel 8000.0f)
-    maxDetailUnlimitedItem.Click.Add(fun _ -> setMaxDetailLevel infinityf)
-    filterMenu.add(maxDetailItem)
-
-    let fileMenu = makeTopMenuItem "_File"
-
-    let openItem = MenuItem(Header = "_Open..")
-    openItem.Click.Add(fun _ ->
-      let view = !focusView >? match !viewMode with | FullView -> fullView | HalfView -> halfView.[0] | QuarterView -> quarterView.[0]
-      setFocus view
-      let dialog = new Microsoft.Win32.OpenFileDialog(Title = "Load Map File..", Filter = "YAML files (.yaml)|*.yaml")
-      let result = dialog.ShowDialog()
-      if result.HasValue && result.Value = true then
-        try
-          use stream = new System.IO.StreamReader(dialog.FileName)
-          let readLine() = match stream.EndOfStream with | false -> Some(stream.ReadLine()) | true -> None
-          let source = DeserializerSource(readLine)
-          view.controller.generate(true, dnaSource = (source :> DnaSource))
-          stream.Close()
-          updateDna()
-        with
-          | ex -> MessageBox.Show(ex.ToString()) |> ignore
-      )
-    fileMenu.add(openItem)
-
-    let saveItem = MenuItem(Header = "_Save As..")
-    saveItem.Click.Add(fun _ ->
-      match !focusView with
-      | Some(view) ->
-        let dialog = new Microsoft.Win32.SaveFileDialog(Title = "Save Map File As..", DefaultExt = ".yaml", Filter = "YAML files (.yaml)|*.yaml")
-        let result = dialog.ShowDialog()
-        if result.HasValue && result.Value = true then
-          try
-            let source = SerializerSource(!view.controller.dna)
-            // SerializerSource works by regenerating the specimen we want to serialize.
-            // During generation it obtains parameters in user readable units.
-            source.generate(deepGenerator) |> ignore
-            use stream = new System.IO.StreamWriter(dialog.FileName)
-            stream.Write(source.yamlString)
-            stream.Close()
-          with
-            | ex -> MessageBox.Show(ex.ToString()) |> ignore
-      | None -> ()
-      )
-    fileMenu.add(saveItem)
-
-    let exportItem = MenuItem(Header = "Export PNG Image")
-
-    let addExportItem resolution =
-      let exportResolutionItem = MenuItem(Header = sprintf "%d x %d" resolution resolution)
-      exportResolutionItem.Click.Add(fun _ ->
-        match !focusView with
-        | Some(view) ->
-          let map = !view.controller.deep
-          exportMap3Png map.map resolution resolution map.camera
-        | None -> ()
-        )
-      exportItem.add(exportResolutionItem)
-
-    addExportItem 512
-    addExportItem 1024
-    addExportItem 1920
-    addExportItem 2048
-    addExportItem 3840
-    addExportItem 4096
-    addExportItem 8192
-
-    fileMenu.add(exportItem)
-
-    let quitItem = MenuItem(Header = "Quit")
-    fileMenu.add(quitItem)
-    quitItem.Click.Add(fun _ -> window.Close())
-
-    // Disable save & export if there is no focus or if the focused view is empty.
-    fileMenu.SubmenuOpened.Add(fun (args : RoutedEventArgs) ->
-      if (!focusView).isNoneOr(fun view -> view.isEmpty) then
-        for item in fileMenu.Items do
-          match item with
-          | :? MenuItem as item -> item.IsEnabled <- item <>= exportItem && item <>= saveItem
-          | _ -> ()
-      else
-        for item in fileMenu.Items do
-          match item with
-          | :? MenuItem as item -> item.IsEnabled <- true
-          | _ -> ()
-      )
-
-    menu.add(fileMenu)
-
-    let toolsMenu = makeTopMenuItem "_Tools"
-    let logItem = MenuItem(Header = "Log")
-    logItem.Click.Add(fun _ ->
-      match !logWindow with
-      | Some(logWindow) when logWindow.isOpen -> logWindow.show()
-      | _ -> logWindow := Some(LogWindow())
-      )
-    toolsMenu.add(logItem)
-    menu.add(toolsMenu)
-
-    let helpMenu = makeTopMenuItem "_Help"
-
-    let manualItem = MenuItem(Header = "Online Manual")
-    manualItem.Click.Add(fun _ ->
-      System.Diagnostics.Process.Start("https://cdn.rawgit.com/SamiPerttu/FsMap3/master/docs/UserGuide.html") |> ignore
-      )
-    helpMenu.add(manualItem)
-
-    let githubItem = MenuItem(Header = "GitHub Page")
-    githubItem.Click.Add(fun _ ->
-      System.Diagnostics.Process.Start("https://github.com/SamiPerttu/FsMap3") |> ignore
-      )
-    helpMenu.add(githubItem)
-
-    let aboutItem = MenuItem(Header = "About..")
-    aboutItem.Click.Add(fun _ ->
-      let bold = FontWeight.FromOpenTypeWeight(900)
-      let medium = FontWeight.FromOpenTypeWeight(500)
-      let effect = Effects.DropShadowEffect(BlurRadius = 3.0, Color = Wpf.color(1.0), Opacity = 1.0, ShadowDepth = 0.0)
-      let map =
-        let data = [|
-          DnaData("ZSjV4+ZJwJ10-1lcK0ZRQ10+03-ac3a0+-KSC0+nwml++VRah+-beny0-QY660-OMGC0001YFuyXvZGbHq+YUAoyv2ZHJuV0Zp0lt00ZvOAd0Y5KfMA0ZtGet010dZFMGb0-vMky008701ZK8nC0YENchw-Pvmq04+cFxm0ZaTNW+ZQlHo++k3lO0-nxay0ZOl+h0-InEZ+ZjlbV0008302-OXJ7m+mkAi0YKlGOw4YvVTOfYQOdavZV-l6++s3ae0-nxay0ZySyp0-gthW0ZjlbV002+ZMO20+haza0"B)
-          |]
-        data.[rnd.int(data.size)].generate(Map3Dna.generateExplorerMap)
-      let w = 600.0
-      let h = 300.0
-      let bgImage = Image(Width = w, Height = h)
-      let bgView = PixmapView(bgImage, int w, int h)
-      bgView.start(RichMap3.pixmapSource(map))
-      let aboutWindow = Window(Title = "About FsMap3 Explorer", SizeToContent = SizeToContent.WidthAndHeight, ResizeMode = ResizeMode.NoResize)
-      let aboutCanvas = Canvas(Width = w, Height = h)
-      aboutCanvas.add(bgImage, 0.0, 0.0)
-      let title = Label(Content = "FsMap3 Explorer", FontSize = 40.0, FontWeight = bold, Effect = effect)
-      let version = Label(Content = "Version " + Map3Dna.ExplorerVersion, FontSize = 16.0, FontWeight = bold, Effect = effect)
-      aboutCanvas.add(title, 10.0, 10.0)
-      aboutCanvas.add(version, 12.0, 60.0)
-      let copyright = Label(Content = "© Copyright 2016 Sami Perttu", FontSize = 20.0, FontWeight = medium, Effect = effect)
-      aboutCanvas.add(copyright, 30.0, 120.0)
-      let license = Label(Content = "This program is distributed under the MIT license.", FontSize = 16.0, FontWeight = medium, Effect = effect)
-      aboutCanvas.add(license, 30.0, 150.0)
-      let license2 = Label(Content = "See the file LICENSE.md for more details.", FontSize = 16.0, FontWeight = medium, Effect = effect)
-      aboutCanvas.add(license2, 30.0, 172.0)
-      let closeButton = Button(Content = "Close", Width = 100.0, Height = 25.0, Background = Wpf.brush(1.0, 1.0, 1.0, 0.3), withClick = fun _ -> aboutWindow.Close())
-      aboutCanvas.add(closeButton, 490.0, 265.0)
-      aboutWindow.Content <- aboutCanvas
-      aboutWindow.ShowDialog() |> ignore
-      bgView.stop()
-      )
-    helpMenu.add(aboutItem)
-
-    menu.add(filterMenu)
-
-    menu.add(helpMenu)
-
-    menuPanel.add(menu)
     
     let randomizeAllButton = Button(Content = "Randomize All", Background = toolBg, Margin = Thickness(1.0, 2.0, 1.0, 1.0))
     randomizeAllButton.Click.Add(fun _ -> randomizeAll())
@@ -969,10 +1145,10 @@ type Explorer =
 (*
 TODO
 
--Check CIELch conversion, the palette looks a little weird.
 -Modify InteractiveSource & stuff so that editing of node tree becomes easier. E.g., delete parent, insert node...
 -Never tile pattern atlases, there is no need. Possibility: temporary Dna injector.
 -Figure out whether atlases are even a good idea. 
+-Add crossover tool.
 -Figure out a nice way of setting Map3Info sampling diameter based on layout.
 -Add .dds export for 2-D and 3-D textures.
 -Add Map3 display modes: rectangle, depth slices, depth strip, sphere, spiral?
@@ -992,9 +1168,5 @@ TODO
 (*
 0.3.0 Binary Release TODO
 
--Presets.
--View info box: add at least detail level. Maybe colored bars representing histogram as well -
- we can represent two dimensions at once in a bar, so could have (average hue + saturation) + value, saturation + hue?
--Rewrite scatter shape. Revisit bleed & shift.
-
+-Prepare a nice set of presets.
 *)

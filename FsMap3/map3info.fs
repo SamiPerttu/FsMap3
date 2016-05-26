@@ -63,7 +63,7 @@ type Map3Info with
     let retainSamples = retainSamples >? false
     let computeDeviation = computeDeviation >? false
     let computeSlopes = computeSlopes >? false
-    let sampleDiameter = sampleDiameter >? 4.0f
+    let sampleDiameter = sampleDiameter >? 7.0f
 
     let cache = map3InfoCache
     let existing = match fingerprint with | Some fingerprint -> lock cache (fun _ -> cache.find(fingerprint)) | None -> Noneval

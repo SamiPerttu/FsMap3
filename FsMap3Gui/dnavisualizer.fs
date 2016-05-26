@@ -1,4 +1,5 @@
-﻿module FsMap3.DnaVisualizer
+﻿// Dna view parameter visualizers.
+module FsMap3.DnaVisualizer
 
 open System.Windows
 open System.Windows.Media

@@ -5,8 +5,7 @@ open Common
 
 
 /// Dynamic array with amortized constant time insertion and removal from the end of the array.
-[<NoEquality; NoComparison>]
-type Darray<'a> =
+type [<NoEquality; NoComparison>] Darray<'a> =
   {
     mutable a : 'a[]
     /// Logical size of the array.
@@ -367,4 +366,34 @@ type Darray<'a> =
   static member createFrom(a : array<'a>) =
     { a = a; n = a.Length; autoTrimMask = ~~~0 }
 
+
+  interface System.Collections.IEnumerable with
+    member this.GetEnumerator() = { DarrayEnumerator.i = -1; a = this } :> System.Collections.IEnumerator
+
+
+  interface System.Collections.Generic.IEnumerable<'a> with
+    member this.GetEnumerator() = { DarrayEnumerator.i = -1; a = this } :> System.Collections.Generic.IEnumerator<'a>
+
+
+
+and [<NoEquality; NoComparison>] DarrayEnumerator<'a> =
+  {
+    mutable i : int
+    a : 'a Darray
+  }
+
+  interface System.Collections.IEnumerator with
+    member this.Current = box this.a.[this.i]
+    member this.MoveNext() =
+      if this.i < this.a.last then
+        this.i <- this.i + 1
+        true
+      else
+        this.i <- this.a.size
+        false
+    member this.Reset() = this.i <- -1
+
+  interface System.Collections.Generic.IEnumerator<'a> with
+    member this.Dispose() = ()
+    member this.Current = this.a.[this.i]
 

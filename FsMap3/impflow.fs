@@ -45,7 +45,7 @@ let impflow (layout : LayoutFunction) (count : FeatureCount) (potential : Potent
                 let g = Potential.gradient potential v * 0.5f
                 let gN = g.length2
                 let g = if gN > 1G then g / sqrt gN else g
-                value <- mix value w (color h * (1G + shading * p * 2.0f * g))
+                value <- mix value 1.0f w (color h * (1G + shading * p * 2.0f * g))
     data.release()
     Mix.result value
 
@@ -90,6 +90,6 @@ let patflow (layout : LayoutFunction) (count : FeatureCount) (potential : Potent
                 let g = Potential.gradient potential v * 0.5f
                 let gN2 = g.length2
                 let g = if gN2 > 1G then g / sqrt gN2 else g
-                value <- mix value w (pattern h (lerp v (g * p) curvature))
+                value <- mix value 1.0f w (pattern h (lerp v (g * p) curvature))
     data.release()
     Mix.result value

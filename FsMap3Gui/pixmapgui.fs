@@ -100,6 +100,7 @@ type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeig
 
   member val renderWidth = Atom.Int(renderWidth >? 16) with get
   member val renderHeight = Atom.Int(renderHeight >? 16) with get
+  member val quitWhenReady = false with get, set
 
   member this.setRenderSize(width, height) =
     this.renderWidth.set(width)
@@ -193,6 +194,7 @@ type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeig
       | SetSource(source) ->
         currentSource <- source
 
+        // Returns whether rendering was finished.
         let rec handleLevel level (previousPixmap : Pixmap option) renderWidth renderHeight =
           let t0 = Common.timeNow()
           match this.render(inbox, source, renderWidth, renderHeight, level, previousPixmap) with
@@ -211,13 +213,17 @@ type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeig
               Wpf.dispatch(image, fun _ -> image.Source <- levelPixmap.bitmapSource())
             if level > 0 && inbox.CurrentQueueLength = 0 then
               handleLevel (level - 1) previousPixmap' renderWidth renderHeight
-          | None -> ()
+            else level = 0
+          | None ->
+            false
 
         if inbox.CurrentQueueLength = 0 then
           let renderWidth = !this.renderWidth
           let renderHeight = !this.renderHeight
           source.start(renderWidth, renderHeight)
-          handleLevel this.previewLevels None renderWidth renderHeight
+          let ready = handleLevel this.previewLevels None renderWidth renderHeight
+          if ready && this.quitWhenReady then
+            alive <- false
     }
 
 

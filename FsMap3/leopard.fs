@@ -45,7 +45,7 @@ let leopard (layout : LayoutFunction)
             if d2 < R2 then
               let d = sqrt d2 * Ri
               let w = fade (1.0f - d)
-              value <- mix value w (color h * (1G + shading * Ri * P))
+              value <- mix value 1.0f w (color h * (1G + shading * Ri * P))
     data.release()
     Mix.result value
 

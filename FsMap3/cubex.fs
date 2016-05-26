@@ -27,7 +27,7 @@ let cubex (layout : LayoutFunction) (mix : MixOp) (color : CellColor) (fade : fl
           if r2 < 1G then
             let h = data.hashZ(jz, hxy)
             let w = fade (1G - sqrt r2)
-            value <- mix value w (P *. mangle12UnitVec3 h * 2.0f * color h)
+            value <- mix value 1.0f w (P *. mangle12UnitVec3 h * 2.0f * color h)
 
     data.release()
     Mix.result value

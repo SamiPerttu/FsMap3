@@ -51,9 +51,9 @@ let peacock (layout : LayoutFunction)
                   let g = Potential.gradient potential v * 0.5f
                   let gN2 = g.length2
                   let g = if gN2 > 1G then g / sqrt gN2 else g
-                  value <- mix value w (color h * (1G + shading * p * 2.0f * g))
+                  value <- mix value 1.0f w (color h * (1G + shading * p * 2.0f * g))
                 else
-                  value <- mix value w (color h)
+                  value <- mix value 1.0f w (color h)
     data.release()
     Mix.result value
 

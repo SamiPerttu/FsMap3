@@ -42,6 +42,6 @@ let capflow (layout : LayoutFunction) (count : FeatureCount) (mix : MixOp) (colo
             if distance2 < R2 then
               let distance = sqrt distance2
               let w = fade (1G - distance * Ri)
-              value <- mix value w (color h * (1G + Ri * shading * S))
+              value <- mix value 1.0f w (color h * (1G + Ri * shading * S))
     data.release()
     Mix.result value

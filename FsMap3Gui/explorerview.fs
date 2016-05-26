@@ -75,6 +75,9 @@ type ExplorerView<'a> =
   member this.isEmpty =
     !this.controller.deep === this.controller.deepSeed
 
+  member this.pixmapSource =
+    !this.controller.pixmapSource
+
   static member create(mainMode, gridI, gridX, gridY, deepSeed : 'a, deepGenerator, pixmapGenerator, deepFilter, grid : Grid, visible : bool, previewLevels) : 'a ExplorerView =
     let image = Image(SnapsToDevicePixels = true, Visibility = match visible with | true -> Visibility.Visible | false -> Visibility.Collapsed)
     let view = PixmapView(image, previewLevels = previewLevels)
@@ -132,7 +135,7 @@ type ExplorerView<'a> =
 type View with
 
   static member shouldRetainAlways(name) =
-    name = "Generator" || name = "Layout" || name.StartsWith("View")
+    name = "Layout" || name.StartsWith("View")
 
 
   static member mutationPredicate(rnd : Rnd, view : ExplorerView<_>, mutateMode : ExplorerMutateMode) =
@@ -145,6 +148,7 @@ type View with
               | _ -> rnd.exp(0.25, 0.5)
 
     match mutateMode with
+
     | ColorsEffects ->
       fun (rnd : Rnd) (dna : Dna) i ->
         let name = dna.[i].name
@@ -157,7 +161,9 @@ type View with
           Jolt01(rnd.exp(0.01, 1.0))
         elif name = "Shape" || parentName = "Shape" then
           rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
-        elif name = "Cell color" || parentName = "Cell color" then
+        elif name = "Unary op" || parentName = "Unary op" then
+          rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
+        elif name = "Shading" || name = "Cell color" || parentName = "Cell color" then
           rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
         else Retain
 
@@ -168,7 +174,7 @@ type View with
           Retain
         elif name = "X offset" || name = "Y offset" || name = "Z offset" then
           rnd.choose(1.5, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
-        elif name = "Frequency" || name = "Frequency factor" || name = "Flow frequency factor" then
+        elif name = "Frequency" || name = "Frequency factor" || name = "Flow frequency" then
           rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
         elif name = "Lacunarity" then
           rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
@@ -184,13 +190,11 @@ type View with
           rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.05, 0.5)))
         elif name = "Octaves" then
           rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.05, 0.3)))
-        elif name = "Layer hardness" || name = "Layer width" || name = "Rotate width" then
+        elif name = "Curvature" then
           rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
-        elif name = "Walk operator" || name = "Displace amount" || name = "Basis displace amount" || name = "Rotate amount" || parentName = "Displace response" || name = "Basis displace response" then
+        elif name = "Walk operator" || parentName = "Mix operator" || parentName = "Features per cell" || parentName = "Potential" then
           rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
-        elif parentName = "Mix operator" || parentName = "Shape" || parentName = "Features per cell" || parentName = "Potential function" || parentName = "Basis" then
-          rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
-        elif name.EndsWith("fade") || name.EndsWith("shading") || name.EndsWith("radius") then
+        elif name.EndsWith("amount") || name.EndsWith("hardness") || name.EndsWith("width") || name.EndsWith("filter") || name.EndsWith("fade") || name.EndsWith("radius") || name.EndsWith("length") || name.EndsWith("variability") || name.EndsWith("power") then
           rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
         else Retain
 
@@ -252,5 +256,4 @@ type View with
         if applyMutations then snd mutationPredicateSet.[j] else Retain
       | _ ->
         Retain
-
 

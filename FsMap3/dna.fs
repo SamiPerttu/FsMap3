@@ -437,6 +437,11 @@ type [<ReferenceEquality>] Dna =
     this.injectorArray.add(injector)
 
 
+  /// Removes the most recently added injector.
+  member this.popInjector() =
+    this.injectorArray.pop()
+
+
   /// Calls a subgenerator in a child node in the parameter tree. Adds a dummy parameter
   /// as a label for the subtree.
   member this.descend(label : string, generator : Dna -> _) =
@@ -680,8 +685,7 @@ and DnaData(data : uint[]) =
   /// Constructs the source to replicate the given Dna.
   new(dna : Dna) = DnaData(Array.init dna.size (fun i -> dna.[i].value))
 
-  /// Constructs the data from a specially encoded byte string,
-  /// which can be obtained from DnaData.sourceCode.
+  /// Constructs the data from a specially encoded byte string in the format produced from DnaData.sourceCode.
   new(data : byte[]) =
     let decodedData = seq {
       let mutable i = 0
@@ -698,6 +702,9 @@ and DnaData(data : uint[]) =
     }
     DnaData(Seq.toArray decodedData)
 
+  /// Constructs the data from a specially encoded string in the format produced from DnaData.sourceCode.
+  new(data : string) = DnaData(System.Text.Encoding.ASCII.GetBytes(data))
+
   override this.choose(dna, i, choices) =
     enforce (i < data.size && data.[i] <= dna.parameter(i).maxValue && choices.weight(data.[i]) > 0.0) "DnaData.choose: Data mismatch."
     data.[i]
@@ -712,9 +719,9 @@ and DnaData(data : uint[]) =
       yield "DnaData(\""
       for i = 0 to data.last do
         let x = data.[i]
-        if x < 60u then yield encodeBase64 (int x) else
-          yield encodeBase64 (int (x >>> 30) + 60)
-          for j = 1 to 5 do yield encodeBase64 (int (x >>> 30 - 6 * j) &&& 63)
+        if x < 60u then yield int x |> encodeBase64 |> char else
+          yield int (x >>> 30) + 60 |> encodeBase64 |> char
+          for j = 1 to 5 do yield int (x >>> 30 - 6 * j) &&& 63 |> encodeBase64 |> char
       yield "\"B)"
     } |> buildTome
 

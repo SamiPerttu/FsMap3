@@ -83,7 +83,7 @@ let orbit (layout : LayoutFunction)
         let d2 = (q - trap).length2
         if d2 < tR2 then
           let w = trapFade(1.0f - sqrt d2 * tRi)
-          value <- mix value w (trapPattern iteration (Vec3f((q.x - trap.x) * tRi, (q.y - trap.y) * tRi, 1.0f)))
+          value <- mix value 1.0f w (trapPattern iteration (Vec3f((q.x - trap.x) * tRi, (q.y - trap.y) * tRi, 1.0f)))
         iteration <- iteration + 1
       Mix.result value
 
@@ -96,7 +96,7 @@ let orbit (layout : LayoutFunction)
         let d2 = (q - trap).length2
         if d2 < tR2 then
           let w = trapFade (1.0f - sqrt d2 * tRi)
-          value <- mix value w (trapPattern iteration ((q - trap) * tRi))
+          value <- mix value 1.0f w (trapPattern iteration ((q - trap) * tRi))
         iteration <- iteration + 1
       Mix.result value
 
@@ -109,7 +109,7 @@ let orbit (layout : LayoutFunction)
         let d2 = (q - trap).length2
         if d2 < tR2 then
           let w = trapFade (1.0f - sqrt d2 * tRi)
-          value <- mix value w (trapPattern iteration ((q - trap) * tRi))
+          value <- mix value 1.0f w (trapPattern iteration ((q - trap) * tRi))
         iteration <- iteration + 1
       Mix.result value
 
@@ -127,7 +127,7 @@ let orbit (layout : LayoutFunction)
         let d2 = (q - trap).length2
         if d2 < tR2 then
           let w = trapFade (1.0f - sqrt d2 * tRi)
-          value <- mix value w (trapPattern iteration ((q - trap) * tRi))
+          value <- mix value 1.0f w (trapPattern iteration ((q - trap) * tRi))
         iteration <- iteration + 1
       Mix.result value
 
@@ -140,7 +140,7 @@ let orbit (layout : LayoutFunction)
         let d2 = (q - trap).length2
         if d2 < tR2 then
           let w = trapFade (1.0f - sqrt d2 * tRi)
-          value <- mix value w (trapPattern iteration ((q - trap) * tRi))
+          value <- mix value 1.0f w (trapPattern iteration ((q - trap) * tRi))
         iteration <- iteration + 1
       Mix.result value
 

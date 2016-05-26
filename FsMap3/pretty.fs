@@ -6,7 +6,7 @@ open Common
 type Pretty =
 
   /// Pretty-converts a float to a string. The result is at most 9 characters long.
-  /// Note: output is not meant as an F# float constant.
+  /// The output is not meant as an F# float constant.
   static member string(x : float) =
     let a = abs x
     if a < 1.0e-7 then
@@ -36,6 +36,6 @@ type Pretty =
       let m = (round (m * 1.0e3)) / 1.0e3
       (string m) + "e" + (string e)
 
-  /// Pretty-converts a float32 to a string. Note: output is not meant as an F# float32 constant.
+  /// Pretty-converts a float32 to a string. The output is not meant as an F# float32 constant.
   static member string(x : float32) = Pretty.string(float x)
 
