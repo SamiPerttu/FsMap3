@@ -106,9 +106,9 @@ type RichMap3Filter =
     let detailLevel0 = map0.map(fun map0 -> map0.detailLevel)
     let deviation0 = map0.map(fun map0 -> map0.info.deviation >? 0.0f)
 
-    let detailMin = min this.minDetail (detailLevel0 >? infinityf)
-    let detailMax = max this.maxDetail (detailLevel0 >? 0.0f)
-    let deviationMin = min this.minDeviation (deviation0 >? 0.0f)
+    let detailMin = min this.minDetail (detailLevel0 >? infinityf |> (*) 0.9f)
+    let detailMax = max this.maxDetail (detailLevel0 >? 0.0f |> (*) 1.1f)
+    let deviationMin = min this.minDeviation (deviation0 >? infinityf |> (*) 0.9f)
 
     if map.detailLevel < detailMin || map.detailLevel > detailMax then
       Log.infof "Map detail level rejected: minimum %d actual %d maximum %d" (int detailMin) (int map.detailLevel) (int detailMax)

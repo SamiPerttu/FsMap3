@@ -111,6 +111,10 @@ module WpfExtensions =
       this.Loaded.Add(fun _ -> !setTransform)
 
 
+  type MenuItem with
+    member this.withClick with set(f) = this.Click.Add(f)
+
+
   type Panel with
     member this.add(child) = ignore <| this.Children.Add(child)
 

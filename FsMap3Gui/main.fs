@@ -12,8 +12,7 @@ type App() as app =
   inherit System.Windows.Application()  
   do app.Startup.Add(fun _ ->
     //Log.createLogFile("fsmap3.log")
-    //Benchmark.benchmark()
-    Explorer.Explorer.start()
+    Editor.start()
     )
 
 [<STAThread>]

@@ -69,8 +69,11 @@
     <Compile Include="raygui.fs" />
     <Compile Include="map3gui.fs" />
     <Compile Include="richmap3gui.fs" />
-    <Compile Include="explorerview.fs" />
-    <Compile Include="explorer.fs" />
+    <Compile Include="fileutil.fs" />
+    <Compile Include="busyimage.fs" />
+    <Compile Include="editorabout.fs" />
+    <Compile Include="editorview.fs" />
+    <Compile Include="editor.fs" />
     <None Include="demo.fsx" />
     <Compile Include="main.fs" />
     <Content Include="packages.config" />

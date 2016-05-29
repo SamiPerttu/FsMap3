@@ -30,7 +30,7 @@ type RichMap3InfoBox =
     let headerColor = Wpf.brush(0.1, 0.35, 0.6)
 
     let makeHeader content =
-      Label(Margin = Thickness(0.0), FontSize = headerFontSize, Content = content, Foreground = headerColor) // FontWeight = FontWeights.Bold
+      Label(Margin = Thickness(0.0), FontSize = headerFontSize, Content = content, Foreground = headerColor)
     let makeText() =
       Label(Margin = textMargin, FontSize = textFontSize, VerticalAlignment = VerticalAlignment.Center)
     let makePanel() =
@@ -38,7 +38,9 @@ type RichMap3InfoBox =
 
     let panel = StackPanel(Width = width, Margin = Thickness(0.0), Orientation = Orientation.Vertical, HorizontalAlignment = HorizontalAlignment.Center)
     let detailPanel = makePanel()
-    detailPanel.add(makeHeader "Detail level")
+    let detailLabel = makeHeader "Detail Level"
+    detailLabel.ToolTip <- "Estimated resolution at which most of the detail is discernible."
+    detailPanel.add(detailLabel)
     let detailLevel = makeText()
     detailPanel.add(detailLevel)
     let xPanel = makePanel()

@@ -15,15 +15,15 @@ open Map3Dna
 open Map3Gui
 
 
-type ExplorerViewMode = FullView | HalfView | QuarterView
+type EditorViewMode = FullView | HalfView | QuarterView
 
 
 
-type ExplorerMutateMode = Everything | ColorsEffects | ScalesOffsets | Details | Random
+type EditorMutationMode = Everything | ColorsEffects | ScalesOffsets | Details | Random
 
 
 
-type ExplorerTool = PanTool | PanZoomTool | ZoomTool | MutateTool | JoltTool
+type EditorTool = PanTool | PanZoomTool | ZoomTool | MutateTool | JoltTool
 
 
 
@@ -40,14 +40,19 @@ type View =
 
 
 [<NoComparison; NoEquality>]
-type ExplorerView<'a> =
+type EditorView<'a> =
   {
-    mainMode : ExplorerViewMode
+    mainMode : EditorViewMode
     gridI : int
     gridX : int
     gridY : int
     image : Image
+    busyImage : Image
+    mutable busyCycle : int
+    busyTimer : Threading.DispatcherTimer
     view : PixmapView
+    mutable filename : string
+    mutable presetFilename : string
     controller : 'a PixmapController
     mutable focusShape : Rectangle option
     /// View center delta for rapid panning actions.
@@ -68,7 +73,7 @@ type ExplorerView<'a> =
   member this.wake() =
     this.post(ignore)
 
-  member this.wakeAndPost(f : unit -> unit) =
+  member this.wakeAndPost(f) =
     this.wake()
     this.post(f)
 
@@ -78,13 +83,42 @@ type ExplorerView<'a> =
   member this.pixmapSource =
     !this.controller.pixmapSource
 
-  static member create(mainMode, gridI, gridX, gridY, deepSeed : 'a, deepGenerator, pixmapGenerator, deepFilter, grid : Grid, visible : bool, previewLevels) : 'a ExplorerView =
-    let image = Image(SnapsToDevicePixels = true, Visibility = match visible with | true -> Visibility.Visible | false -> Visibility.Collapsed)
+  member this.idle() =
+    //Log.infof "Idle %d %d %d" this.gridI this.gridX this.gridY
+    Wpf.dispatch(this.busyImage, fun _ ->
+      this.busyImage.Visibility <- Visibility.Collapsed
+      this.busyTimer.Stop()
+      )
+
+  member this.cycleBusy() =
+    Wpf.dispatch(this.busyImage, fun _ ->
+      this.busyCycle <- (this.busyCycle + 1) % BusyImage.busyBitmaps.size
+      this.busyImage.Source <- BusyImage.busyBitmaps.[this.busyCycle]
+      )
+
+  member this.busy() =
+    //Log.infof "Busy %d %d %d" this.gridI this.gridX this.gridY
+    Wpf.dispatch(this.busyImage, fun _ ->
+      this.busyImage.Visibility <- Visibility.Visible
+      this.busyTimer.Start()
+      )
+
+  member this.layoutBusy() =
+    let busyBorder = 4.0
+    this.busyImage.Margin <- Thickness(Left = this.image.Margin.Left + this.image.Width - this.busyImage.Width - busyBorder,
+                                       Top = this.image.Margin.Top + busyBorder)
+
+  member this.setVisibility(visibility) =
+    this.image.Visibility <- visibility
+    if visibility = Visibility.Collapsed then this.idle()
+
+  static member create(mainMode, gridI, gridX, gridY, deepSeed : 'a, deepGenerator, pixmapGenerator, deepFilter, grid : Grid, visible : bool, previewLevels) : 'a EditorView =
+    let image = Image(SnapsToDevicePixels = true, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Visibility = match visible with | true -> Visibility.Visible | false -> Visibility.Collapsed)
     let view = PixmapView(image, previewLevels = previewLevels)
     grid.add(image, 0, 0)
-    image.Margin <- Thickness(0.0)
-    image.HorizontalAlignment <- HorizontalAlignment.Left
-    image.VerticalAlignment <- VerticalAlignment.Top
+    let busySource = BusyImage.busyBitmaps.[0]
+    let busyImage = Image(SnapsToDevicePixels = true, Opacity = 0.5, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Visibility = Visibility.Collapsed, Width = float busySource.PixelWidth, Height = float busySource.PixelHeight, Source = busySource)
+    grid.add(busyImage, 0, 0)
     let this = 
       {
         mainMode = mainMode
@@ -92,7 +126,12 @@ type ExplorerView<'a> =
         gridX = gridX
         gridY = gridY
         image = image
+        busyImage = busyImage
+        busyCycle = 0
+        busyTimer = Threading.DispatcherTimer(Interval = TimeSpan.FromMilliseconds(200.0))
         view = view
+        filename = ""
+        presetFilename = ""
         controller = PixmapController.create(view, deepSeed, deepGenerator, pixmapGenerator, deepFilter)
         focusShape = None
         panDelta = Atom.Shared(Vec3f.zero)
@@ -100,6 +139,9 @@ type ExplorerView<'a> =
         agent = nullRef
       }
     this.agent <- Agent.Start(this.agentFunction)
+    this.busyTimer.Tick.Add(fun _ -> this.cycleBusy())
+    this.controller.workCallback <- this.busy
+    view.idleCallback <- this.idle
     this
 
   member this.createFocusShape(grid : Grid) =
@@ -138,7 +180,7 @@ type View with
     name = "Layout" || name.StartsWith("View")
 
 
-  static member mutationPredicate(rnd : Rnd, view : ExplorerView<_>, mutateMode : ExplorerMutateMode) =
+  static member mutationPredicate(rnd : Rnd, view : EditorView<_>, mutateMode : EditorMutationMode) =
 
     let mutateMode = match mutateMode with | Random -> rnd.choose(1.0, ColorsEffects, 1.0, ScalesOffsets, 1.0, Details, 1.0, Everything) | x -> x
 
@@ -159,9 +201,7 @@ type View with
           rnd.choose(2.0, Retain, 1.0 * mR, Randomize)
         elif name.StartsWith("Color") || name.StartsWith("Hue") || name.StartsWith("Saturation") || name = "Value skew" then
           Jolt01(rnd.exp(0.01, 1.0))
-        elif name = "Shape" || parentName = "Shape" then
-          rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
-        elif name = "Unary op" || parentName = "Unary op" then
+        elif name = "Shape" || parentName = "Shape" || parentName = "Unary op" then
           rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
         elif name = "Shading" || name = "Cell color" || parentName = "Cell color" then
           rnd.choose(2.0, Retain, 1.0 * mR, Jolt01(rnd.exp(0.01, 1.0)))
@@ -210,7 +250,7 @@ type View with
           Retain
 
 
-  static member mosaicPredicate(rnd : Rnd, dna : Dna, view : ExplorerView<_>, mutateMode : ExplorerMutateMode) =
+  static member mosaicPredicate(rnd : Rnd, dna : Dna, view : EditorView<_>, mutateMode : EditorMutationMode) =
 
     let mutation = View.mutationPredicate(rnd, view, mutateMode)
 

@@ -44,20 +44,23 @@ let visualize windowSize material =
     Array.Parallel.iter (refineLine buffer scene background) yArray
     buffer.pixmap
 
-  let alive = Atom.Int(1)
+  let alive = ref true
 
-  let window = new Window(ResizeMode = ResizeMode.CanMinimize, SizeToContent = SizeToContent.WidthAndHeight, Topmost = true, WindowStartupLocation = WindowStartupLocation.CenterScreen)
+  let window = new Window(ResizeMode = ResizeMode.CanMinimize,
+                          SizeToContent = SizeToContent.WidthAndHeight,
+                          WindowStartupLocation = WindowStartupLocation.CenterScreen
+                          )
   let canvas = new Canvas(Width = float windowSize, Height = float windowSize, Background = Brushes.Black)
   let image = new Image(Width = float windowSize, Height = float windowSize)
   canvas.add(image)
-  window.setPixelContent(canvas)
+  window.Content <- canvas
   window.KeyDown.Add(fun args -> if args.Key = System.Windows.Input.Key.Escape then window.Close())
-  window.Closed.Add(fun _ -> alive.set(0))
+  window.Closed.Add(fun _ -> alive := false)
   window.Show()
 
   let threadFunction() =
     let mutable t = 0.0
-    while !alive <> 0 do
+    while !alive do
       let pixmap = computeImage t
       Wpf.dispatch(image, fun _ -> image.Source <- pixmap.bitmapSource())
       t <- fract(t + 1.0 / float frames)

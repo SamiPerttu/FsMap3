@@ -13,7 +13,7 @@ open System.Windows.Controls.Primitives
 type LogWindow() =
 
   let grid = Grid()
-  let window = Window(Width = 512.0, Height = 300.0, SizeToContent = SizeToContent.Manual, Title = "FsMap3 Explorer Log", Content = grid)
+  let window = Window(Width = 512.0, Height = 300.0, SizeToContent = SizeToContent.Manual, Title = "FsMap3 Editor Log", Content = grid)
   let text = TextBlock(Padding = Thickness(1.0), Foreground = Wpf.brush(0.8, 0.85, 1.0), Background = Wpf.brush(0.2, 0.4, 0.45))
   let viewer = ScrollViewer(Content = text, VerticalScrollBarVisibility = ScrollBarVisibility.Visible, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto)
   let bottomPanel = DockPanel(Margin = Thickness(2.0), LastChildFill = false)

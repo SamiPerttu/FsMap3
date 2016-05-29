@@ -100,6 +100,8 @@ type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeig
 
   member val renderWidth = Atom.Int(renderWidth >? 16) with get
   member val renderHeight = Atom.Int(renderHeight >? 16) with get
+
+  /// For single shot views: quit after rendering any pixmap.
   member val quitWhenReady = false with get, set
 
   member this.setRenderSize(width, height) =
@@ -108,6 +110,9 @@ type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeig
 
   /// How many preview levels to render. Each preview level halves resolution.
   member val previewLevels = 3 with get, set
+
+  /// This callback is invoked whenever we are about to start waiting for new messages.
+  member val idleCallback = fun () -> () with get, set
 
   member this.setSource(source) =
     agent.apply(fun agent -> agent.Post(SetSource source))
@@ -181,6 +186,8 @@ type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeig
     let mutable alive = true
     while alive do
 
+      if inbox.CurrentQueueLength = 0 then this.idleCallback()
+
       let! msg = inbox.Receive()
       match msg with
 
@@ -245,6 +252,8 @@ type PixmapController<'a> =
     deepGenerator : Dna -> 'a
     pixmapGenerator : 'a -> IPixmapSource
     deepFilter : 'a -> 'a option -> bool
+    /// This callback is invoked whenever we are starting something that will end up updating the PixmapView.
+    mutable workCallback : unit -> unit
   }
 
   static member create(pixmapView, deepSeed : 'a, deepGenerator, pixmapGenerator, ?deepFilter) =
@@ -261,9 +270,12 @@ type PixmapController<'a> =
       deepGenerator = deepGenerator
       pixmapGenerator = pixmapGenerator
       deepFilter = deepFilter >? fun _ _ -> true
+      workCallback = ignore
     }
 
   member this.generate(bypassFilter : bool, ?previous, ?dnaSource) =
+    this.workCallback()
+
     let dnaSource = dnaSource >? (this.editSource :> DnaSource)
 
     let dna = Dna.create()
@@ -320,6 +332,7 @@ type PixmapController<'a> =
     let pixmapSource = this.pixmapGenerator deep
     this.pixmapSource.set(pixmapSource)
     this.pixmapView.setSource(pixmapSource)
+    this.workCallback()
     this.editSource.reset()
     this.editSource.observe(dna, this.fitnessCounter.tick)
 

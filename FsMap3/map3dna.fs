@@ -680,11 +680,11 @@ let rec genNode (E : float) (dna : Dna) =
 
 
 
-let ExplorerVersion = "0.3.0"
+let EditorVersion = "0.3.0"
 
-/// Map generator for Explorer. This is placed here to enable Explorer created textures to be read on any platform.
-let generateExplorerMap = RichMap3.generate(fun dna ->
-  dna.addLabel("FsMap3 Explorer Version " + ExplorerVersion)
+/// Map generator for FsMap3 Editor. This is placed here to enable Editor created textures to be read on any platform.
+let generateEditorMap = RichMap3.generate(fun dna ->
+  dna.addLabel("FsMap3 Editor Version " + EditorVersion)
   let layout = genLayout dna
   dna.addInjector(DnaInjector.create(fun _ _ choices -> Someval(choices.numberOf((=) layout))))
   genNode 5.0 dna

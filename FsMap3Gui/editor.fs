@@ -1,5 +1,5 @@
-﻿/// Explorer GUI.
-module FsMap3.Explorer
+﻿// FsMap3 Editor.
+namespace FsMap3
 
 open System
 open System.Windows
@@ -17,40 +17,16 @@ open Map3Gui
 
 
 [<NoComparison; NoEquality>]
-type UserAction =
-  | Zooming of view : ExplorerView<RichMap3> * source : Vec2f
-  | Panning of view : ExplorerView<RichMap3> * source : Vec2f
+type EditorUserAction =
+  | Zooming of view : EditorView<RichMap3> * source : Vec2f
+  | Panning of view : EditorView<RichMap3> * source : Vec2f
   | Idle
 
 
+/// Interactive Map3 editor.
+type Editor =
 
-let getDirectoryContents (path : string) =
-  let directories = Darray.create()
-  let files = Darray.create()
-  let rec addContents (relativePath : string) (absolutePath : string) =
-    for directory in System.IO.Directory.GetDirectories(absolutePath) do
-      let relative = (if relativePath.size > 0 then relativePath + "/" else "") + System.IO.Path.GetFileName(directory)
-      directories.add(relative, directory)
-      addContents relative directory
-    for file in System.IO.Directory.GetFiles(absolutePath) do
-      let relative = (if relativePath.size > 0 then relativePath + "/" else "") + System.IO.Path.GetFileName(file)
-      files.add(relative, file)
-  try
-    addContents "" path
-  with
-    | _ -> ()
-  directories, files
-
-
-let isTextureFile (file : string) =
-  System.IO.Path.GetExtension(file) = ".yaml"
-
-
-
-/// Interactive Map3 explorer.
-type Explorer =
-
-  static member start(?initialDnaSource) =
+  static member start(?sourceView) =
 
     let presetDirectory = "Presets"
 
@@ -69,8 +45,9 @@ type Explorer =
     let previewSize = 160.0
 
     let viewBg = Wpf.brush(0.0)
-    let dnaBg = Wpf.brush(0.9)
+    let dnaBg = Wpf.brush(0.91)
     let menuBg = Wpf.verticalBrush(Wpf.color(0.8, 0.88, 0.9), Wpf.color(0.7, 0.78, 0.8))
+    let topMenuBg = Wpf.brush(1.0, 1.0, 1.0, 0.1)
     let menuItemBg = Wpf.brush(1.0, 1.0, 1.0, 0.2)
     let toolBg = Wpf.brush(0.8, 0.8, 0.8, 0.3)
     let splitterBg = Wpf.brush(0.93)
@@ -82,14 +59,15 @@ type Explorer =
 
     let rnd = Rnd(timeSeed())
 
+    // Most recent view canvas (which is actually a Grid) dimensions used for laying out views.
     let currentCanvasWidth = ref 0
     let currentCanvasHeight = ref 0
 
     /// Which PixmapViews are visible depends on the mode.
-    let viewMode = ref ExplorerViewMode.FullView
+    let viewMode = ref EditorViewMode.FullView
 
     /// Current tool.
-    let toolMode = ref ExplorerTool.MutateTool
+    let toolMode = ref EditorTool.MutateTool
 
     /// Current default layout.
     let layoutMode = ref Layout.Hifi
@@ -97,23 +75,39 @@ type Explorer =
     /// Current mutation mode.
     let mutateMode = ref Everything
 
+    /// Current log window. Must be checked when accessing, as it could be closed already.
     let logWindow = ref none<LogWindow>
 
     /// Current user action.
     let userAction = ref Idle
 
-    let window = Window(Title = "FsMap3 Explorer", ResizeMode = ResizeMode.CanResize, Width = 1024.0, Height = 480.0, SizeToContent = SizeToContent.Manual, Topmost = false, WindowStartupLocation = WindowStartupLocation.CenterScreen)
+    let window = Window(Title = "FsMap3 Editor",
+                        ResizeMode = ResizeMode.CanResize,
+                        Width = 1024.0, Height = 480.0,
+                        SizeToContent = SizeToContent.Manual,
+                        Topmost = false,
+                        WindowStartupLocation = WindowStartupLocation.CenterScreen)
 
-    let canvas = Grid(Background = viewBg, ClipToBounds = true, Margin = Thickness(0.0, 0.0, 0.0, 0.0))
+    let canvas = Grid(Background = viewBg, ClipToBounds = true, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch)
     canvas.ColumnDefinitions.Add(ColumnDefinition())
     canvas.RowDefinitions.Add(RowDefinition())
-    canvas.HorizontalAlignment <- HorizontalAlignment.Stretch
-    canvas.VerticalAlignment <- VerticalAlignment.Stretch
 
     let mapInfoBox = RichMap3InfoBox.create(toolPanelWidth)
     mapInfoBox.panel.HorizontalAlignment <- HorizontalAlignment.Center
     mapInfoBox.panel.VerticalAlignment <- VerticalAlignment.Bottom
     mapInfoBox.reset()
+
+    let isTextureFile (file : string) =
+      System.IO.Path.GetExtension(file) = ".yaml"
+
+    let mapSeed = Map3.zero
+    let richSeed = { RichMap3.map = mapSeed; palette = Map3.identity; center = Vec3f(0.5f); zoom = 1.0f; aspectRatio = 1.0f; info = Map3Info.create(mapSeed) }
+
+    let deepGenerator = Map3Dna.generateEditorMap
+    let pixmapGenerator extraTransform =
+      match extraTransform with
+      | Some(transform) -> RichMap3.pixmapSourceWith(transform)
+      | None -> RichMap3.pixmapSource
 
     let mapFilter =
       { 
@@ -123,27 +117,19 @@ type Explorer =
         minDifference = 0.01f
         maxDifference = infinityf
       }
-
-    let mapSeed = Map3.zero
-    let richSeed = { RichMap3.map = mapSeed; palette = Map3.identity; center = Vec3f(0.5f); zoom = 1.0f; aspectRatio = 1.0f; info = Map3Info.create(mapSeed) }
-    let deepGenerator = Map3Dna.generateExplorerMap
-    let pixmapGenerator extraTransform =
-      match extraTransform with
-      | Some(transform) -> RichMap3.pixmapSourceWith(transform)
-      | None -> RichMap3.pixmapSource
     let deepFilter = fun map previous -> mapFilter.filter(map, previous)
 
-    let fullView = ExplorerView.create(FullView, 0, 0, 0, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, true, 4)
+    let fullView = EditorView.create(FullView, 0, 0, 0, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, true, 4)
 
     let halfView = Array.init hN (fun i ->
       let x, y = i % 2, i / 2
-      ExplorerView.create(HalfView, i, x, y, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, false, 4)
+      EditorView.create(HalfView, i, x, y, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, false, 4)
       )
 
     let quarterView = Array.init qN (fun i ->
       let x, y = i % 4, i / 4
       let mosaicTransform (v : Vec3f) = Vec3f((v.x + float32 x) / 4.0f, (v.y + float32 y) / 4.0f, v.z)
-      ExplorerView.create(QuarterView, i, x, y, richSeed, deepGenerator, pixmapGenerator (Some mosaicTransform), deepFilter, canvas, false, 3)
+      EditorView.create(QuarterView, i, x, y, richSeed, deepGenerator, pixmapGenerator (Some mosaicTransform), deepFilter, canvas, false, 3)
       )
 
     let halfQuarterView = Array.append halfView quarterView
@@ -179,6 +165,7 @@ type Explorer =
         fullView.image.Width <- float (R * 4)
         fullView.image.Height <- float (R * 4)
         fullView.image.Margin <- Thickness(Left = float (x0 + viewBorder), Top = float (y0 + viewBorder))
+        fullView.layoutBusy()
         fullView.view.setRenderSize(R * 4, R * 4)
 
         halfView |> Array.iteri (fun i view ->
@@ -191,6 +178,7 @@ type Explorer =
           shape.Width <- float ((R + viewBorder) * 2)
           shape.Height <- float ((R + viewBorder) * 2)
           shape.Margin <- Thickness(Left = float (x0 + x * R * 2), Top = float (y0 + y * R * 2))
+          view.layoutBusy()
           view.view.setRenderSize(R * 2, R * 2)
          )
 
@@ -204,6 +192,7 @@ type Explorer =
           shape.Width <- float (R + viewBorder * 2)
           shape.Height <- float (R + viewBorder * 2)
           shape.Margin <- Thickness(Left = float (x0 + x * R), Top = float (y0 + y * R))
+          view.layoutBusy()
           view.view.setRenderSize(R, R)
           )
      
@@ -212,13 +201,13 @@ type Explorer =
     let createIconButton imageFile tip = ToggleButton(Content = Wpf.loadImage(imageFile), withToolTip = tip, Width = iconSize, Height = iconSize, Margin = iconMargin, Background = Wpf.brush(0.0, 0.0, 0.0, 0.1))
 
     let toolBar = StackPanel(Orientation = Orientation.Horizontal, Margin = Thickness(1.0))
-    let panButton = createIconButton "appbar.cursor.move.png" "Pan Tool: drag view to pan, mouse wheel controls Z."
+    let panButton = createIconButton "appbar.cursor.move.png" "Pan Tool: drag view to pan; mouse wheel controls Z."
     toolBar.add(panButton)
-    let panZoomButton = createIconButton "pan-zoom-3.png" "Pan-Zoom Tool: drag view to pan, mouse wheel controls zoom."
+    let panZoomButton = createIconButton "pan-zoom-3.png" "Pan-Zoom Tool: drag view to pan; mouse wheel controls zoom."
     toolBar.add(panZoomButton)
     let zoomButton = createIconButton "appbar.magnify.png" "Zoom Tool: select an area to zoom into."
     toolBar.add(zoomButton)
-    let mutateButton = createIconButton "appbar.diagram.png" "Mutate Tool: make other views mutations of clicked view."
+    let mutateButton = createIconButton "appbar.diagram.png" "Mutate Tool: click view to make mutated copies of it."
     toolBar.add(mutateButton)
     let joltButton = createIconButton "appbar.camera.flash.png" "Jolt Tool: mutate the view."
     toolBar.add(joltButton)
@@ -240,7 +229,7 @@ type Explorer =
     let viewBar = StackPanel(Orientation = Orientation.Horizontal, Margin = Thickness(1.0))
     let fullViewButton = createIconButton "fullview.png" "Big View"
     viewBar.add(fullViewButton)
-    let halfViewButton = createIconButton "halfview.png" "2×2 Small Views"
+    let halfViewButton = createIconButton "halfview.png" "Quad View"
     viewBar.add(halfViewButton)
     let quarterViewButton = createIconButton "quarterview.png" "Mosaic View"
     viewBar.add(quarterViewButton)
@@ -253,7 +242,7 @@ type Explorer =
     let focusView = ref (Some(fullView))
 
     /// Iterates over all views. The second argument tells whether the view is visible.
-    let iterateViews (f : ExplorerView<_> -> bool -> unit) =
+    let iterateViews (f : EditorView<_> -> bool -> unit) =
       match !viewMode with
       | FullView ->
         f fullView true
@@ -312,6 +301,17 @@ type Explorer =
           mapInfoBox.reset()
         )
 
+    /// Updates window title. This can be called from any thread.
+    let updateTitle() =
+      Wpf.dispatch(window, fun _ ->
+        window.Title <- "FsMap3 Editor" + (match !focusView with | Some(view) when view.filename <> "" -> ": " + System.IO.Path.GetFileNameWithoutExtension(view.filename) | _ -> "")
+        )
+
+    let updateAll() =
+      updateDna()
+      updateInfo()
+      updateTitle()
+
     /// Sets focus to the view and displays its Dna and info.
     let setFocus view' =
       if (!focusView).isNoneOr((<>=) view') then
@@ -320,14 +320,12 @@ type Explorer =
           for view in halfQuarterView do
             (!view.focusShape).Visibility <- if view' === view then Visibility.Visible else Visibility.Hidden
           )
-      updateDna()
-      updateInfo()
+      updateAll()
 
     /// Clears focus and resets the Dna view and the info box.
     let clearFocus() =
       focusView := None
-      updateDna()
-      updateInfo()
+      updateAll()
       Wpf.dispatch(window, fun _ ->
         for view in halfQuarterView do
           (!view.focusShape).Visibility <- Visibility.Hidden
@@ -344,7 +342,10 @@ type Explorer =
     let randomizeAll() =
       scheduleTask(fun _ ->
         iterateViews(fun view visible ->
-          if visible then view.controller.restart(randomizePredicate)
+          if visible then
+            view.controller.restart(randomizePredicate)
+            view.filename <- ""
+            view.presetFilename <- ""
         )
         match !viewMode with
         | FullView -> setFocus fullView
@@ -353,7 +354,7 @@ type Explorer =
 
     let setViewMode mode =
       viewMode := mode
-      iterateViews (fun view visible -> view.image.Visibility <- if visible then Visibility.Visible else Visibility.Collapsed)
+      iterateViews (fun view visible -> view.setVisibility(if visible then Visibility.Visible else Visibility.Collapsed))
       fullViewButton.IsChecked <- Nullable((mode = FullView))
       halfViewButton.IsChecked <- Nullable((mode = HalfView))
       quarterViewButton.IsChecked <- Nullable((mode = QuarterView))
@@ -388,32 +389,38 @@ type Explorer =
 
     /// Copies the view to full view mode.
     let maximizeView view =
+      fullView.filename <- view.filename
+      fullView.presetFilename <- view.presetFilename
       fullView.view.reset()
       fullView.controller.copyFrom(view.controller)
-      setFocus fullView
       setViewMode FullView
+      setFocus fullView
       match view.mainMode with
       | HalfView -> minimizeHalfView := view
       | QuarterView -> minimizeQuarterView := view
       | _ -> ()
 
-    /// Copies the view to 2x2 view mode.
+    /// Copies the view to quad view mode.
     let minimizeView view =
       let targetView = !minimizeHalfView
+      targetView.filename <- view.filename
+      targetView.presetFilename <- view.presetFilename
       targetView.view.reset()
       targetView.controller.copyFrom(view.controller)
-      setFocus targetView
       setViewMode HalfView
+      setFocus targetView
 
     /// Copies the view to mosaic view mode.
     let mosaicifyView view =
       let targetView = !minimizeQuarterView
       for qview in quarterView do
         if qview === targetView || qview.isEmpty then
+          qview.filename <- view.filename
+          qview.presetFilename <- view.presetFilename
           qview.view.reset()
           qview.controller.copyFrom(view.controller)
-      setFocus targetView
       setViewMode QuarterView
+      setFocus targetView
 
     fullViewButton.Click.Add(fun _ ->
       match !viewMode with
@@ -444,7 +451,7 @@ type Explorer =
       | _ -> ()
       )
 
-    let loadYaml (file : string) =
+    let loadYaml setViewFilename setViewPresetFilename (file : string) =
       let view = !focusView >? match !viewMode with | FullView -> fullView | HalfView -> halfView.[0] | QuarterView -> quarterView.[0]
       setFocus view
       try
@@ -452,9 +459,10 @@ type Explorer =
         let readLine() = match stream.EndOfStream with | false -> Some(stream.ReadLine()) | true -> None
         let source = DeserializerSource(readLine)
         view.controller.generate(true, dnaSource = (source :> DnaSource))
+        view.filename <- if setViewFilename then file else ""
+        view.presetFilename <- if setViewPresetFilename then file else ""
         stream.Close()
-        updateDna()
-        updateInfo()
+        updateAll()
       with
         | ex -> MessageBox.Show(ex.ToString()) |> ignore
 
@@ -467,9 +475,9 @@ type Explorer =
         stream.Close()
         Some(map)
       with
-        | ex -> None
+        | _ -> None
 
-    let saveYaml (file : string) =
+    let saveYaml setViewFilename setViewPresetFilename (file : string) =
       match !focusView with
       | Some(view) ->
         try
@@ -480,6 +488,11 @@ type Explorer =
           use stream = new System.IO.StreamWriter(file)
           stream.Write(source.yamlString)
           stream.Close()
+          if setViewFilename then
+            view.filename <- file
+            updateTitle()
+          if setViewPresetFilename then
+            view.presetFilename <- file
         with
           | ex -> MessageBox.Show(ex.ToString()) |> ignore
       | _ -> ()
@@ -490,28 +503,42 @@ type Explorer =
     let menu = Menu(Background = menuItemBg, IsMainMenu = true, Margin = Thickness(0.0))
 
     let makeTopMenuItem label =
-      MenuItem(Header = label, Margin = Thickness(4.0, 0.0, 4.0, 0.0), Background = Wpf.brush(1.0, 1.0, 1.0, 0.1), Foreground = Wpf.brush(0.0))
+      MenuItem(Header = label, Margin = Thickness(4.0, 0.0, 4.0, 0.0), Background = topMenuBg, Foreground = Wpf.brush(0.0))
 
     let fileMenu = makeTopMenuItem "_File"
+
+    let newWindowItem = MenuItem(Header = "New Window")
+    newWindowItem.Click.Add(fun _ ->
+      Editor.start()
+      )
+    fileMenu.add(newWindowItem)
 
     let openItem = MenuItem(Header = "_Open..")
     openItem.Click.Add(fun _ ->
       let dialog = new Microsoft.Win32.OpenFileDialog(Title = "Load Map File..", Filter = "YAML files (.yaml)|*.yaml")
       let result = dialog.ShowDialog()
-      if result.HasValue && result.Value then loadYaml dialog.FileName
+      if result.HasValue && result.Value then loadYaml true false dialog.FileName
       )
     fileMenu.add(openItem)
 
-    let saveItem = MenuItem(Header = "_Save As..")
+    let saveItem = MenuItem(Header = "Save")
     saveItem.Click.Add(fun _ ->
+      match !focusView with
+      | Some(view) when view.filename <> "" -> saveYaml true false view.filename
+      | _ -> ()
+      )
+    fileMenu.add(saveItem)
+
+    let saveAsItem = MenuItem(Header = "Save As..")
+    saveAsItem.Click.Add(fun _ ->
       match !focusView with
       | Some(view) ->
         let dialog = new Microsoft.Win32.SaveFileDialog(Title = "Save Map File As..", DefaultExt = ".yaml", Filter = "YAML files (.yaml)|*.yaml")
         let result = dialog.ShowDialog()
-        if result.HasValue && result.Value then saveYaml dialog.FileName
+        if result.HasValue && result.Value then saveYaml true false dialog.FileName
       | None -> ()
       )
-    fileMenu.add(saveItem)
+    fileMenu.add(saveAsItem)
 
     let exportItem = MenuItem(Header = "Export PNG Image")
 
@@ -540,18 +567,19 @@ type Explorer =
     fileMenu.add(quitItem)
     quitItem.Click.Add(fun _ -> window.Close())
 
-    // Disable save & export if there is no focus or if the focused view is empty.
+    // Enable file menu items selectively.
     fileMenu.SubmenuOpened.Add(fun (args : RoutedEventArgs) ->
-      if (!focusView).isNoneOr(fun view -> view.isEmpty) then
-        for item in fileMenu.Items do
-          match item with
-          | :? MenuItem as item -> item.IsEnabled <- item <>= exportItem && item <>= saveItem
-          | _ -> ()
-      else
-        for item in fileMenu.Items do
-          match item with
-          | :? MenuItem as item -> item.IsEnabled <- true
-          | _ -> ()
+      for item in fileMenu.Items do
+        match item with
+        | :? MenuItem as item -> item.IsEnabled <- true
+        | _ -> ()
+      match !focusView with
+      | Some(view) when view.isEmpty = false ->
+        if view.filename = "" then saveItem.IsEnabled <- false
+      | _ ->
+        exportItem.IsEnabled <- false
+        saveItem.IsEnabled <- false
+        saveAsItem.IsEnabled <- false
       )
 
     menu.add(fileMenu)
@@ -628,17 +656,37 @@ type Explorer =
     menu.add(filterMenu)
 
     let presetMenu = makeTopMenuItem "_Presets"
+    let refreshPresetItem = MenuItem(Header = "Refresh")
 
     let rec addPresets (menuItem : MenuItem) directory =
       try
         for directory in System.IO.Directory.GetDirectories(directory) |> Array.sort do
           let directoryItem = MenuItem(Header = System.IO.Path.GetFileName(directory))
           addPresets directoryItem directory
-          menuItem.add(directoryItem)
+          if directoryItem.Items.IsEmpty = false then
+            menuItem.add(directoryItem)
         for file in System.IO.Directory.GetFiles(directory) |> Array.sort do
           if System.IO.Path.GetExtension(file) = ".yaml" then
             let presetItem = MenuItem(Header = System.IO.Path.GetFileNameWithoutExtension(file))
-            let openPopup = ref None
+            let openPopup = ref none<Popup>
+            let closePopup() =
+              match !openPopup with
+              | Some(popup) ->
+                popup.IsOpen <- false
+                openPopup := None
+              | _ -> ()
+            let contextMenu = ContextMenu()
+            presetItem.ContextMenu <- contextMenu
+            contextMenu.add(MenuItem(Header = "Delete", Margin = Thickness(0.0), withClick = fun _ ->
+              closePopup()
+              match MessageBox.Show("Are you sure you want to delete '" + System.IO.Path.GetFileNameWithoutExtension(file) + "'?", "Please confirm", MessageBoxButton.YesNo, MessageBoxImage.Question) with
+              | MessageBoxResult.Yes ->
+                try
+                  System.IO.File.Delete(file)
+                  recreatePresets()
+                with | _ -> ()
+              | _ -> ()
+              ))
             presetItem.GotFocus.Add(fun _ ->
               let w = previewSize
               let h = previewSize
@@ -653,26 +701,16 @@ type Explorer =
               | None ->
                 popup.Child <- Label(Width = w * 0.5, Height = h * 0.5, Content = "?", FontSize = 40.0)
               )
-            // TODO. This does not work well if the popup overlaps with the menu item: if the mouse moves over
+            // NOTE. This does not work well if the popup overlaps with the menu item: if the mouse moves over
             // the popup, the menu item loses focus, causing the popup to disappear. Then GotFocus fires once more
             // on the menu item, creating a new popup, and so on. A supposedly clean solution would be to
             // create a trigger for IsMouseOver, which involves templates and styles.
-            presetItem.LostFocus.Add(fun _ ->
-              if presetItem.IsMouseDirectlyOver = false then
-                match !openPopup with
-                | Some(popup) ->
-                  popup.IsOpen <- false
-                  openPopup := None
-                | _ -> ()
-              )
-            presetItem.Click.Add(fun _ -> loadYaml file)
+            presetItem.LostFocus.Add(fun _ -> closePopup())
+            presetItem.Click.Add(fun _ -> loadYaml false true file)
             menuItem.add(presetItem)
-      with
-        | _ -> ()
+      with | _ -> ()
 
-    let refreshPresetItem = MenuItem(Header = "Refresh")
-
-    let recreatePresets() =
+    and recreatePresets() =
       presetMenu.Items.Clear()
       presetMenu.add(refreshPresetItem)
       presetMenu.add(Separator())
@@ -698,37 +736,7 @@ type Explorer =
 
     let aboutItem = MenuItem(Header = "About..")
     aboutItem.Click.Add(fun _ ->
-      let bold = FontWeight.FromOpenTypeWeight(900)
-      let medium = FontWeight.FromOpenTypeWeight(500)
-      let effect = Effects.DropShadowEffect(BlurRadius = 3.0, Color = Wpf.color(1.0), Opacity = 1.0, ShadowDepth = 0.0)
-      let map =
-        let data = [|
-          DnaData("ZSjV4+ZJwJ10-1lcK0ZRQ10+03-ac3a0+-KSC0+nwml++VRah+-beny0-QY660-OMGC0001YFuyXvZGbHq+YUAoyv2ZHJuV0Zp0lt00ZvOAd0Y5KfMA0ZtGet010dZFMGb0-vMky008701ZK8nC0YENchw-Pvmq04+cFxm0ZaTNW+ZQlHo++k3lO0-nxay0ZOl+h0-InEZ+ZjlbV0008302-OXJ7m+mkAi0YKlGOw4YvVTOfYQOdavZV-l6++s3ae0-nxay0ZySyp0-gthW0ZjlbV001+ZMO20+haza0"B)
-          |]
-        data.[rnd.int(data.size)].generate(Map3Dna.generateExplorerMap)
-      let w = 600.0
-      let h = 300.0
-      let bgImage = Image(Width = w, Height = h, SnapsToDevicePixels = true)
-      let bgView = PixmapView(bgImage, int w, int h)
-      bgView.start(RichMap3.pixmapSource(map))
-      let aboutWindow = Window(Title = "About FsMap3 Explorer", SizeToContent = SizeToContent.WidthAndHeight, ResizeMode = ResizeMode.NoResize)
-      let aboutCanvas = Canvas(Width = w, Height = h)
-      aboutCanvas.add(bgImage, 0.0, 0.0)
-      let title = Label(Content = "FsMap3 Explorer", FontSize = 40.0, FontWeight = bold, Effect = effect)
-      let version = Label(Content = "Version " + Map3Dna.ExplorerVersion, FontSize = 16.0, FontWeight = bold, Effect = effect)
-      aboutCanvas.add(title, 10.0, 10.0)
-      aboutCanvas.add(version, 12.0, 60.0)
-      let copyright = Label(Content = "© Copyright 2016 Sami Perttu", FontSize = 20.0, FontWeight = medium, Effect = effect)
-      aboutCanvas.add(copyright, 30.0, 120.0)
-      let license = Label(Content = "This program is distributed under the MIT license.", FontSize = 16.0, FontWeight = medium, Effect = effect)
-      aboutCanvas.add(license, 30.0, 150.0)
-      let license2 = Label(Content = "See the file LICENSE.md for more details.", FontSize = 16.0, FontWeight = medium, Effect = effect)
-      aboutCanvas.add(license2, 30.0, 172.0)
-      let closeButton = Button(Content = "Close", Width = 100.0, Height = 25.0, Background = Wpf.brush(1.0, 1.0, 1.0, 0.3), withClick = fun _ -> aboutWindow.Close())
-      aboutCanvas.add(closeButton, 490.0, 265.0)
-      aboutWindow.Content <- aboutCanvas
-      aboutWindow.ShowDialog() |> ignore
-      bgView.stop()
+      EditorAbout.showAboutWindow()
       )
     helpMenu.add(aboutItem)
 
@@ -746,13 +754,15 @@ type Explorer =
         maximizeItem.Click.Add(fun _ -> maximizeView view)
         menu.add(maximizeItem)
       elif view.mainMode = FullView || view.mainMode = QuarterView then
-        let minimizeItem = MenuItem(Header = "View in 2x2")
+        let minimizeItem = MenuItem(Header = "Go to Quad View")
         minimizeItem.Click.Add(fun _ -> minimizeView view)
         menu.add(minimizeItem)
       if view.mainMode = FullView || view.mainMode = HalfView then
-        let mosaicifyItem = MenuItem(Header = "View in Mosaic")
+        let mosaicifyItem = MenuItem(Header = "Go to Mosaic View")
         mosaicifyItem.Click.Add(fun _ -> mosaicifyView view)
         menu.add(mosaicifyItem)
+
+      menu.add(Separator(Margin = Thickness(0.0, 0.0, 0.0, 0.0)))
 
       let zoomIn = MenuItem(Header = "Zoom In")
       zoomIn.Click.Add(fun _ ->
@@ -794,20 +804,21 @@ type Explorer =
         )
       menu.add(resetView)
 
+      menu.add(Separator(Margin = Thickness(0.0)))
+
       let randomizeItem = MenuItem(Header = "Randomize")
       randomizeItem.Click.Add(fun _ ->
         view.post(fun _ ->
+          view.filename <- ""
+          view.presetFilename <- ""
           view.controller.restart(randomizePredicate)
           setFocus view
-          updateInfo()
           )
         )
       menu.add(randomizeItem)
 
       let openNewWindow = MenuItem(Header = "Open in New Window")
-      openNewWindow.Click.Add(fun _ ->
-        Explorer.start(DnaData(!view.controller.dna))
-        )
+      openNewWindow.Click.Add(fun _ -> Editor.start(view))
       menu.add(openNewWindow)
 
       let createPreset = MenuItem(Header = "Create Preset..")
@@ -822,23 +833,25 @@ type Explorer =
         grid.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
         grid.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
         grid.ColumnDefinitions.Add(ColumnDefinition(Width = GridLength.Auto))
+
         let image = Image(Width = previewSize, Height = previewSize, Margin = Thickness(4.0), SnapsToDevicePixels = true)
         let preview = PixmapView(image, int previewSize, int previewSize, quitWhenReady = true)
         preview.start(view.pixmapSource)
-        let w = 200.0
-        let boxH = 24.0
+
+        let boxWidth = 200.0
+        let boxHeight = 24.0
         let boxMargin = Thickness(5.0, 2.0, 5.0, 2.0)
         let submenuLabel = Label(Content = "Submenu", HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center)
-        let submenuBox = TextBox(Width = w, Height = boxH, Margin = boxMargin)
-        let submenuCombo = ComboBox(Width = w, Height = boxH, Margin = boxMargin, VerticalAlignment = VerticalAlignment.Top)
+        let submenuBox = TextBox(Width = boxWidth, Height = boxHeight, Margin = boxMargin)
+        let submenuCombo = ComboBox(Width = boxWidth, Height = boxHeight, Margin = boxMargin, VerticalAlignment = VerticalAlignment.Top)
         submenuCombo.add(ComboBoxItem(Content = "", withPreviewMouseDown = fun _ -> submenuBox.Text <- ""))
-        let presetDirs, presetFiles = getDirectoryContents presetDirectory
 
-        for relX, absX in presetDirs do
-          submenuCombo.add(ComboBoxItem(Content = relX, withPreviewMouseDown = fun _ -> submenuBox.Text <- relX))
+        let presetDirectories, presetFiles = FileUtil.getDirectoryContents presetDirectory
+        for relativePath, absolutePath in presetDirectories do
+          submenuCombo.add(ComboBoxItem(Content = relativePath, withPreviewMouseDown = fun _ -> submenuBox.Text <- relativePath))
 
         let nameLabel = Label(Content = "Preset name", HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center)
-        let nameBox = TextBox(Width = w, Height = boxH, Margin = boxMargin)
+        let nameBox = TextBox(Width = boxWidth, Height = boxHeight, Margin = boxMargin)
 
         let saveIt() = 
           let file = nameBox.Text + ".yaml"
@@ -846,7 +859,8 @@ type Explorer =
             let directory = if submenuBox.Text.size > 0 then System.IO.Path.Combine(presetDirectory, submenuBox.Text) else presetDirectory
             if System.IO.Directory.Exists(directory) = false then
               System.IO.Directory.CreateDirectory(directory) |> ignore
-            saveYaml (System.IO.Path.Combine(directory, file))
+            let presetFilename = (System.IO.Path.Combine(directory, file))
+            saveYaml false true presetFilename
             recreatePresets()
             presetWindow.Close()
 
@@ -855,20 +869,19 @@ type Explorer =
             saveIt()
             args.Handled <- true
           )
-        let nameCombo = ComboBox(Width = w, Height = boxH, Margin = boxMargin, VerticalAlignment = VerticalAlignment.Top)
+        let nameCombo = ComboBox(Width = boxWidth, Height = boxHeight, Margin = boxMargin, VerticalAlignment = VerticalAlignment.Top)
         nameCombo.add(ComboBoxItem(Content = "", withPreviewMouseDown = fun _ -> nameBox.Text <- ""; submenuBox.Text <- ""))
         for relX, absX in presetFiles do
           if isTextureFile relX then
             nameCombo.add(ComboBoxItem(Content = System.IO.Path.ChangeExtension(relX, nullRef), withPreviewMouseDown = fun _ -> submenuBox.Text <- System.IO.Path.GetDirectoryName(relX); nameBox.Text <- System.IO.Path.GetFileNameWithoutExtension(relX)))
 
-        let buttonW = 90.0
-
+        let buttonWidth = 90.0
         let buttonBg = Wpf.brush(1.0, 1.0, 1.0, 0.3)
-
-        let saveButton = Button(Content = "Save", Background = buttonBg, HorizontalAlignment = HorizontalAlignment.Left, Width = buttonW, Margin = Thickness(4.0, 2.0, 4.0, 4.0), Padding = Thickness(2.0))
+        let saveButton = Button(Content = "Save", Background = buttonBg, HorizontalAlignment = HorizontalAlignment.Left, Width = buttonWidth, Margin = Thickness(4.0, 2.0, 4.0, 4.0), Padding = Thickness(2.0))
         saveButton.Click.Add(fun _ -> saveIt())
-        let cancelButton = Button(Content = "Cancel", Background = buttonBg, HorizontalAlignment = HorizontalAlignment.Right, Width = buttonW, Margin = Thickness(4.0, 2.0, 4.0, 4.0), Padding = Thickness(2.0))
+        let cancelButton = Button(Content = "Cancel", Background = buttonBg, HorizontalAlignment = HorizontalAlignment.Right, Width = buttonWidth, Margin = Thickness(4.0, 2.0, 4.0, 4.0), Padding = Thickness(2.0))
         cancelButton.Click.Add(fun _ -> presetWindow.Close())
+
         grid.add(Border(Background = Wpf.verticalBrush(Wpf.color(0.9), Wpf.color(0.8))), 0, 4, 3, 1)
         grid.add(submenuLabel, 0, 0)
         grid.add(submenuBox, 1, 0)
@@ -883,6 +896,16 @@ type Explorer =
         presetWindow.ShowDialog() |> ignore
         )
       menu.add(createPreset)
+
+      let overwritePreset = MenuItem(Header = "Update Preset")
+      overwritePreset.Click.Add(fun _ ->
+        match MessageBox.Show("Are you sure you want to overwrite '" + System.IO.Path.GetFileNameWithoutExtension(view.presetFilename) + "'?", "Please confirm", MessageBoxButton.YesNo, MessageBoxImage.Question) with
+        | MessageBoxResult.Yes ->
+          saveYaml false true view.presetFilename
+          recreatePresets()
+        | _ -> ()
+        )
+      menu.add(overwritePreset)
 
       let copySource = MenuItem(Header = "Copy F# Code to Clipboard")
       copySource.Click.Add(fun _ ->
@@ -931,6 +954,8 @@ type Explorer =
                   for targetView in halfView do
                     if targetView <>= view then
                       let predicate = View.mutationPredicate(rnd, view, !mutateMode)
+                      targetView.filename <- view.filename
+                      targetView.presetFilename <- view.presetFilename
                       targetView.controller.mutateFrom(view.controller, predicate)
                   )
               | QuarterView ->
@@ -940,6 +965,8 @@ type Explorer =
                   motherView.controller.mutateFrom(view.controller, predicate true (float motherView.gridI / float quarterView.last), false)
                   for targetView in quarterView do
                     if targetView <>= view && targetView <>= motherView then
+                      targetView.filename <- view.filename
+                      targetView.presetFilename <- view.presetFilename
                       targetView.controller.mutateFrom(motherView.controller, predicate false (float targetView.gridI / float quarterView.last), true)
                   )
             else
@@ -1060,12 +1087,16 @@ type Explorer =
               match item with
               | :? MenuItem as item -> item.IsEnabled <- true
               | _ -> ()
+            if view.presetFilename.size > 0 then
+              overwritePreset.Header <- "Update Preset '" + System.IO.Path.GetFileNameWithoutExtension(view.presetFilename) + "'"
+            else
+              overwritePreset.Header <- "Update Preset"
+              overwritePreset.IsEnabled <- false
         )
 
       )
-
     
-    let randomizeAllButton = Button(Content = "Randomize All", Background = toolBg, Margin = Thickness(1.0, 2.0, 1.0, 1.0))
+    let randomizeAllButton = Button(Content = "Randomize All", Background = toolBg, Margin = Thickness(1.0, 2.0, 1.0, 1.0), withToolTip = "Randomize all visible views.")
     randomizeAllButton.Click.Add(fun _ -> randomizeAll())
     toolPanel.add(randomizeAllButton, Dock.Top)
     toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 0.0)), Dock.Top)
@@ -1076,7 +1107,7 @@ type Explorer =
     mutationModeBox.add(ComboBoxItem(Content = "Colors and Effects", withSelected = fun _ -> mutateMode := ColorsEffects))
     mutationModeBox.add(ComboBoxItem(Content = "Scales and Offsets", withSelected = fun _ -> mutateMode := ScalesOffsets))
     mutationModeBox.add(ComboBoxItem(Content = "Details", withSelected = fun _ -> mutateMode := Details))
-    mutationModeBox.add(ComboBoxItem(Content = "Choose at Random", withSelected = fun _ -> mutateMode := ExplorerMutateMode.Random))
+    mutationModeBox.add(ComboBoxItem(Content = "Choose at Random", withSelected = fun _ -> mutateMode := EditorMutationMode.Random))
     toolPanel.add(mutationModeBox, Dock.Top)
 
     let layoutModeBox = ComboBox(Background = toolBg, Margin = Thickness(1.0))
@@ -1084,7 +1115,7 @@ type Explorer =
       layoutModeBox.add(ComboBoxItem(Content = layoutChoices.name(i), IsSelected = (layoutChoices.weight(i) > 1.0), withSelected = fun _ -> layoutMode := layoutChoices.value(i)))
 
     toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 0.0)), Dock.Top)
-    toolPanel.add(Label(Content = "Default layout mode"), Dock.Top)
+    toolPanel.add(Label(Content = "Default layout mode", withToolTip = "Initial layout mode for random textures."), Dock.Top)
     toolPanel.add(layoutModeBox, Dock.Top)
     toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 6.0)), Dock.Top)
     toolPanel.add(viewBar, Dock.Top)
@@ -1130,43 +1161,49 @@ type Explorer =
       view.view.start()
       )
 
-    initialDnaSource.apply(fun source ->
-      fullView.controller.generate(true, dnaSource = source)
-      updateDna()
-      updateInfo()
-      )
-
     setToolMode PanTool
     setViewMode FullView
     setMinDetailLevel 50.0f
     setMaxDetailLevel 1000.0f
 
+    sourceView.apply(fun sourceView ->
+      fullView.controller.generate(true, dnaSource = DnaData(!sourceView.controller.dna))
+      fullView.filename <- sourceView.filename
+      updateAll()
+      )
+
    
 (*
 TODO
 
--Modify InteractiveSource & stuff so that editing of node tree becomes easier. E.g., delete parent, insert node...
+-Modify InteractiveSource & stuff so that editing & mutation of node tree becomes easier.
+ E.g., delete parent, insert node...
 -Never tile pattern atlases, there is no need. Possibility: temporary Dna injector.
 -Figure out whether atlases are even a good idea. 
--Add crossover tool.
+-Crossover tool.
 -Figure out a nice way of setting Map3Info sampling diameter based on layout.
 -Add .dds export for 2-D and 3-D textures.
--Add Map3 display modes: rectangle, depth slices, depth strip, sphere, spiral?
--Supporting Undo? Or maybe History? I guess we just store past Dnas in a global list?
+-Add Map3 display modes: rectangle, sphere, ?
+-Undo/redo.
+-History.
 -Add either hover options or extra buttons to parameters in Dna view:
  -display range of parameter values in a gradient, pick new value by clicking.
- -lock parameter.
- -increase chance of mutation of parameter?
--Is animation support possible?
--Add screen space filters to PixmapView. These would be run when the first mosaic level is computed, to decide
- whether to display and continue or reject and stop.
--Add file name info to views to make a "Save" menu item possible. Display file name in window title.
+ -reset value (if parameter has neutral, numerical value).
+ -lock parameter / subtree.
+ -mutate only subtree.
+-Add screen space filter to PixmapView to reject mutations that do not influence the displayed
+ 2-slice. The filter would be run when the first mosaic level is computed to decide whether to
+ display or reject it.
+-Recent files menu item.
 
 *)
 
 
 (*
+
 0.3.0 Binary Release TODO
 
 -Prepare a nice set of presets.
+-Complete first version of user manual.
+
 *)

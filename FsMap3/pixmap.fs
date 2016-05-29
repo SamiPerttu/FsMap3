@@ -27,10 +27,10 @@ type Pixmap =
   member inline this.aspectRatio = float this.width / float this.height
   
   member inline this.at(x, y) = this.a.[this.offset(x, y)]
-  member inline this.set(x, y, v : Vec3f) = this.a.[this.offset(x, y)] <- v
-  member inline this.add(x, y, v : Vec3f) = let i = this.offset(x, y) in this.a.[i] <- this.a.[i] + v
-  member inline this.mul(x, y, v : Vec3f) = let i = this.offset(x, y) in this.a.[i] <- this.a.[i] * v
-  member inline this.map(x, y, f : Vec3f -> Vec3f) = let i = this.offset(x, y) in this.a.[i] <- (f this.a.[i])
+  member inline this.set(x, y, v) = this.a.[this.offset(x, y)] <- v
+  member inline this.add(x, y, v) = let i = this.offset(x, y) in this.a.[i] <- this.a.[i] + v
+  member inline this.mul(x, y, v) = let i = this.offset(x, y) in this.a.[i] <- this.a.[i] * v
+  member inline this.map(x, y, f) = let i = this.offset(x, y) in this.a.[i] <- (f this.a.[i])
     
   member inline this.Item
     with get (x, y) = this.at(x, y)
@@ -39,14 +39,11 @@ type Pixmap =
   member inline this.size = this.a.size
   member inline this.last = this.a.last
   member inline this.at(i) = this.a.[i]
-  member inline this.set(i, v : Vec3f) = this.a.[i] <- v
-  member inline this.add(i, v : Vec3f) = this.a.[i] <- this.a.[i] + v
-  member inline this.mul(i, v : Vec3f) = this.a.[i] <- this.a.[i] * v
 
 
   /// Retrieves a pixel value with bicubic filtering. Pixmap height and width must be greater than 1.
   /// Clamps coordinates outside pixmap boundaries.
-  member this.atCubic(x : float32, y : float32) =
+  member this.atCubic(x, y) =
     assert (this.width > 1 && this.height > 1)
     let ix = clampi 0 (this.sizeX - 2) (int x)
     let iy = clampi 0 (this.sizeY - 2) (int y)
@@ -97,11 +94,12 @@ type Pixmap =
 
 
   /// Creates a pixmap.
-  static member create(width, height, ?color : Vec3f) = {
-    Pixmap.width = width
-    height = height
-    a = Array.create (width * height) (color >? Vec3f.zero)
-  }
+  static member create(width, height, ?color : Vec3f) =
+    {
+      Pixmap.width = width
+      height = height
+      a = Array.create (width * height) (color >? Vec3f.zero)
+    }
 
 
   /// Creates a copy of a pixmap.
@@ -109,11 +107,12 @@ type Pixmap =
 
 
   /// Creates a pixmap, retrieving pixel values from the supplied function.
-  static member create(width, height, f : int -> int -> Vec3f) = {
-    Pixmap.width = width
-    height = height
-    a = Array.init (width * height) (fun i -> f (i % width) (i / width))
-  }
+  static member create(width, height, f : int -> int -> Vec3f) =
+    {
+      Pixmap.width = width
+      height = height
+      a = Array.init (width * height) (fun i -> f (i % width) (i / width))
+    }
 
 
   /// Copies the contents of another Pixmap here.
@@ -123,10 +122,11 @@ type Pixmap =
 
 
   /// Filters the pixmap with a horizontal kernel, which should have an odd number of entries.
+  /// Returns the filtered pixmap.
   member this.filterHorizontal(kernel : float32 array) =
     enforce (kernel.size &&& 1 = 1) "Pixmap.filterHorizontal: Kernel must have an odd number of entries."
     let order = kernel.size >>> 1
-    let pixmap = Pixmap.create(this.width, this.height)
+    let filtered = Pixmap.create(this.width, this.height)
     for y = 0 to this.lastY do
       for cx = 0 to this.lastX do
         let x0 = max 0 (cx - order)
@@ -137,15 +137,16 @@ type Pixmap =
           let w = kernel.[order + x - cx]
           v <- v + w * this.[x, y]
           W <- W + w
-        pixmap.[cx, y] <- if W > 0.0f then v / W else Vec3f.zero
-    pixmap
+        filtered.[cx, y] <- if W > 0.0f then v / W else Vec3f.zero
+    filtered
 
     
   /// Filters the pixmap with a vertical kernel, which should have an odd number of entries.
+  /// Returns the filtered pixmap.
   member this.filterVertical(kernel : float32 array) =
     enforce (kernel.size &&& 1 = 1) "Pixmap.filterVertical: Kernel must have an odd number of entries."
     let order = kernel.size >>> 1
-    let pixmap = Pixmap.create(this.width, this.height)
+    let filtered = Pixmap.create(this.width, this.height)
     for cy = 0 to this.lastY do
       let y0 = max 0 (cy - order)
       let y1 = min this.lastY (cy + order)
@@ -156,22 +157,23 @@ type Pixmap =
           let w = kernel.[order + y - cy]
           v <- v + w * this.[x, y]
           W <- W + w
-        pixmap.[x, cy] <- if W > 0.0f then v / W else Vec3f.zero
-    pixmap
+        filtered.[x, cy] <- if W > 0.0f then v / W else Vec3f.zero
+    filtered
 
 
-  /// Filters the pixmap with Gaussian blur. The radius argument is the radius, in pixels, of one standard deviation.
+  /// Filters the pixmap with Gaussian blur where the radius is standard deviation in pixels.
+  /// Returns the filtered pixmap.
   member this.gaussianBlur(radius : float) =
     let order = int <| ceil (radius * 3.0)
     let kernel = Array.init (order * 2 + 1) (fun i ->
       let x = float (i - order) / radius
-      float32 <| Mat.gaussianCdf (x + 0.5 / radius) - Mat.gaussianCdf (x - 0.5 / radius)
+      Mat.gaussianCdf (x + 0.5 / radius) - Mat.gaussianCdf (x - 0.5 / radius) |> float32
       )
     this.filterHorizontal(kernel).filterVertical(kernel)
 
 
-  /// Filters the pixmap with a super-fast exponential blur. 0 < amount < 1, which is the weighting factor
-  /// of successive pixels in a moving average.
+  /// Filters the pixmap, in-place, with a super-fast exponential blur.
+  /// 0 < amount < 1 is the weighting factor of successive pixels in a moving average.
   member this.exponentialBlur(amount : float32) =
     let weight = Array.create (max this.width this.height) 0.0f
 
