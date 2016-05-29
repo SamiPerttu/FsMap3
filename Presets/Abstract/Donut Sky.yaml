@@ -1,0 +1,109 @@
+View Center X: 0.5
+View Center Y: 0.5
+View Center Z: 0.409992218017578
+View Zoom: 1
+Palette:
+  Color space: HSL
+  Hue origin: 0.102941177785396
+  Hue range: 0.519603848457336
+  Hue skew: -0.232286870479583
+  Saturation range: 0.386355578899383
+  Saturation minimum: 0.208095148205757
+  Saturation skew: -0.579461574554443
+  Value skew: -0.687112271785736
+FsMap3 Editor Version 0.3.0:
+Layout: Tile All
+Node: Unary
+  Unary op: vector overdrive
+    Overdrive amount: 2.52774143218994
+    Node: Binary
+      X offset: -0.302134752273559
+      Y offset: -0.916069984436035
+      Z offset: -2.91228342056274
+      Operator: component softmix
+        Mix bias: 4.64119815826416
+      Map 1:
+        Node: Unary
+          Unary op: shift
+            X shift: 0.361193358898162
+            Y shift: -0.041446208953857
+            Z shift: 0.413627207279205
+            Shift wave: sine
+            Node: Fractalizer
+              X offset: -0.208823680877685
+              Y offset: 4.79361820220947
+              Z offset: -1.87428462505341
+              Octaves: 9
+              Frequency: 2.08493161201477
+              Roughness: 0.66363787651062
+              Fractalizer: mix and displace
+                Lacunarity: 0.392027080059051
+                Highpass filter: 0.32742965221405
+                Mix operator: sum
+                Displace amount: 0.300262689590454
+                Displace response: reverse power-2
+                Walk operator: lurch
+                Basis: displace and rotate
+                  Frequency factor: 0.277142524719238
+                  Rotate amount: 2.42649364471436
+                  Displace response: shaped
+                    Displace response: power-4
+                    Displace amount: 0.265424609184265
+                  Modifier:
+                    Basis: leopard
+                      Leopard radius: 0.667523682117462
+                      Features per cell: geometric
+                        Mean: 0.2846801902
+                      Potential fade: smooth-2
+                      Mix operator: sum
+                      Shading: 0.922455847263336
+                      Cell color: big
+                    Shape: none
+                  Base:
+                    Basis: radial value noise
+                      Cell color: any
+                      Radial fade: power-2
+              Shape: none
+      Map 2:
+        Node: Basis
+          X offset: 2.36829090118408
+          Y offset: 3.81466317176819
+          Z offset: 0.55176305770874
+          Frequency: 25.5715980529785
+          Basis: potential flow
+            Potential: supertorus
+              Ring power: 8
+              Major axis: 0.651526570320129
+            Potential radius: 0.909460067749023
+            Potential fade: downward arc
+            Shading: 1
+            Cell color: any
+            Mix operator: sum
+            Features per cell: rounded average
+              Average: 0.733579895
+            Flow frequency: 0.089254811406135
+            Flow:
+              Basis: displace
+                Frequency factor: 0.938462138175964
+                Displace response: shaped
+                  Displace response: smooth-2
+                  Displace amount: 1.17704486846924
+                Displacer:
+                  Basis: weave
+                    Weave period: 3
+                    Weave: wired
+                  Shape: none
+                Base:
+                  Basis: Worley
+                    Features per cell: rounded average
+                      Average: 0.7220506522
+                    Cell distance norm: 2-norm
+                    Worley pattern: 8136
+                    Worley fade: reverse power-2
+              Shape: vector overdrive
+                Overdrive amount: 3.65172219276428
+          Shape: none
+      Shape: scatter
+        Scatter seed: 1753631851
+        Scatter amount: 0.132352948188781
+        Scatter tuning: 0.996322572231292

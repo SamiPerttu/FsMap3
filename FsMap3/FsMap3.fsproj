@@ -106,6 +106,7 @@
     <Compile Include="concurrent.fs" />
     <Compile Include="pixmap.fs" />
     <Compile Include="fadedna.fs" />
+    <Compile Include="shapedna.fs" />
     <Compile Include="richmap3.fs" />
     <Compile Include="map3dna.fs" />
     <Compile Include="ray.fs" />

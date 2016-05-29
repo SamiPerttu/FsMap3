@@ -1,0 +1,41 @@
+View Center X: 0.427265167236328
+View Center Y: 0.773971557617187
+View Center Z: 0.46274185180664
+View Zoom: 1.61051058769226
+Palette:
+  Color space: HSL
+  Hue origin: 0.715623438358306
+  Hue range: 0.371191084384918
+  Hue skew: -0.064554631710052
+  Saturation range: 0.800000011920929
+  Saturation minimum: 0.199999988079071
+  Saturation skew: 0
+  Value skew: -0.705882310867309
+  Shape: none
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Basis
+  X offset: -3.34227561950684
+  Y offset: 1.8974267244339
+  Z offset: -2.85415935516357
+  Frequency: 6.44365453720093
+  Basis: Julia
+    Iterations: 10
+    Formula: Makin
+    Features per cell: Poisson
+      Mean: 0.796222447
+    Feature radius: 1.16661763191223
+    Roughness: 0.933794140815734
+    Feature fade: smooth line
+    C-origin X: -0.727881073951721
+    C-origin Y: -0.51464033126831
+    C-origin Z: -0.511308193206787
+    Q-origin X: 0.606240272521972
+    Q-origin Y: 0.220588207244873
+    Q-origin Z: 0.217821598052978
+    C-range: 0.665946662425994
+    Q-range: 1.61015892028809
+    C-scale: 1.39129829406738
+    Q-scale: 1.66176474094391
+  Shape: wave packet
+    Packet seed: 656042111

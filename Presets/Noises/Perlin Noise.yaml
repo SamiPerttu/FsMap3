@@ -1,0 +1,33 @@
+View Center X: 0.5
+View Center Y: 0.5
+View Center Z: 0.5
+View Zoom: 1
+Palette:
+  Color space: CIELch
+  Hue origin: 0.5
+  Hue range: 0.299999982118606
+  Hue skew: 0
+  Saturation range: 0.800000011920929
+  Saturation minimum: 0
+  Saturation skew: -1
+  Value skew: 0
+  Shape: none
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Fractalizer
+  X offset: 0
+  Y offset: 0
+  Z offset: 0
+  Octaves: 10
+  Frequency: 2.47739434242248
+  Roughness: 0.5
+  Fractalizer: mix and displace
+    Lacunarity: 0.5
+    Highpass filter: 0
+    Mix operator: sum
+    Displace amount: 0
+    Displace response: line
+    Walk operator: march
+    Basis: Perlin noise
+      Perlin fade: smooth-2
+  Shape: none

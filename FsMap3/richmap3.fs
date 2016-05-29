@@ -74,7 +74,9 @@ type RichMap3 =
     let zoom = dna.float32("View Zoom", xerp 0.5e-2f 0.5e3f)
     let offset = Vec3f(centerX - 0.5f / zoom, centerY - 0.5f / zoom, centerZ)
     let aspectRatio = 1.0f
-    let palette = dna.descend("Palette", ColorDna.genPalette 32)
+    let palette = dna.descend("Palette", fun _ ->
+      ColorDna.genPalette 32 dna >> ShapeDna.genShape dna
+      )
     let viewTransform (v : Vec3f) = v / zoom + offset
     let info = Map3Info.create(mapGenerator, dna, retainSamples = true, computeDeviation = true, computeSlopes = true)
     {

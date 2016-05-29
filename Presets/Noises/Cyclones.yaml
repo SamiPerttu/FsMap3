@@ -1,0 +1,34 @@
+View Center X: -0.204021453857421
+View Center Y: -1.72949600219727
+View Center Z: 0.5
+View Zoom: 1.61051058769226
+Palette:
+  Color space: HSV
+  Hue origin: 0.519999980926513
+  Hue range: 0.1817447245121
+  Hue skew: 0
+  Saturation range: 0.800000011920929
+  Saturation minimum: 0
+  Saturation skew: 0.235294103622436
+  Value skew: 0.941176414489746
+  Shape: none
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Fractalizer
+  X offset: 0
+  Y offset: 0
+  Z offset: 0
+  Octaves: 10
+  Frequency: 2.19215989112854
+  Roughness: 0.704806387424469
+  Fractalizer: mix and displace
+    Lacunarity: 0.5
+    Highpass filter: 0.105882354080677
+    Mix operator: sum
+    Displace amount: 0.292387545108795
+    Displace response: reverse power-2
+    Walk operator: march
+    Basis: Perlin noise
+      Perlin fade: smooth-1
+  Shape: wave packet
+    Packet seed: 1260196345
