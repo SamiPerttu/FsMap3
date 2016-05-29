@@ -12,7 +12,7 @@ At the time of this writing **FsMap3** is considered to be in alpha, which means
 
 ### What Can You Do With It?
 
-* Create repeating backgrounds, wallpapers and abstract art.
+* Create wallpapers, abstract art and repeating backgrounds and patterns.
 * Create textures for games that can be stored in procedural form and unpacked during installation. Procedural descriptions typically fit within 1 kB, promising ridiculous compression ratios.
 * Create *ad hoc* graphics for your .NET program that are inserted directly as source code and unpacked when needed.
 
@@ -30,11 +30,11 @@ These boxes are typically called **nodes** in texture editors. A complete proced
 
 Here are some example images. Each image is a 2-dimensional cross section of a 3-texture created with **FsMap3**.
 
-<img src="../examples/fireplace.jpg" alt="Fireplace" style="width: 320px;"/> <img src="../examples/clouds.jpg" alt="Fireplace" style="width: 320px;"/>
-<img src="../examples/jupiter.jpg" alt="Fireplace" style="width: 320px;"/> <img src="../examples/haze.jpg" alt="Fireplace" style="width: 320px;"/>
+<img src="examples/fireplace.jpg" alt="Fireplace" style="width: 320px;"/> <img src="examples/clouds.jpg" alt="Clouds" style="width: 320px;"/>
+<img src="examples/jupiter.jpg" alt="Jupiter" style="width: 320px;"/> <img src="examples/haze.jpg" alt="Haze" style="width: 320px;"/>
 
 
-## A Quick Look at the User Interface
+## A Look at the User Interface
 
 Below is an example screenshot with the main sections delineated.
 
@@ -88,7 +88,7 @@ From top to bottom:
 
   * **Big View**: There is one big view. The mutate tool is not available in this mode.
 
-  * **2x2 Small Views**: There is a 2-by-2 grid of small views. Each view can be edited independently. The main attraction of this mode is *interactive evolution*: With the mutate tool, choose your favorite texture. The other 3 are then created as its variations. If one of them looks nicer than the original, choose it.
+  * **Quad View**: There is a 2-by-2 grid of small views. Each view can be edited independently. The main attraction of this mode is *interactive evolution*: With the mutate tool, choose your favorite texture. The other 3 are then created as its variations. If one of them looks nicer than the original, choose it.
 
   * **Mosaic View**: The mosaic view is experimental. Its goal is to convey information about a large number of parameter settings at once. There is a 4-by-4 grid of small views. The views are independently editable but they are also *offset* from each other so that if the textures are identical, they form one big picture. The mutate tool works differently in this mode: besides making a few categorical changes, it attempts to mutate continuous parameters in *gradients* running from the top left to the bottom right view.
 
@@ -100,7 +100,9 @@ From top to bottom:
 
   * **Zoom Tool**. Select the center of the area you want to zoom into and drag to choose the size of the area. Mouse wheel controls the **Z** coordinate.
 
-  * **Mutate Tool**. The mutate tool can be used in *2x2* and *mosaic* views. Clicking on a view, mutated copies of it appear in the other views. Keep clicking on your favorite and it will (hopefully) evolve into something super impressive.
+  * **Mutate Tool**. The mutate tool can be used in *quad* and *mosaic* views. Clicking on a view, mutated copies of it appear in the other views. Keep clicking on your favorite and it will (hopefully) evolve into something super impressive.
+
+  * **Jolt Tool**. Click on a view to mutate it according to the current mutation mode.
 
 * **View Coordinates**. At the bottom of the control panel is the view info box where the coordinates of the view in focus are displayed. A view always shows a square slice of the texture in the XY plane, with positive **X** pointing right, positive **Y** pointing down, and **Z** being constant. The **Z** axis is depth and increases toward the screen.
 
@@ -109,13 +111,35 @@ From top to bottom:
 The textures are displayed here. Any change to the parameters of a texture triggers an immediate re-render. Here, the left mouse button operates the current tool. The right mouse button accesses the **context menu**:
 
 * **Maximize**: Take the texture to the big view mode.
-* **Minimize**: Take the texture to the 2x2 small views mode.
-* **View Mosaic**: Take the texture to the mosaic view mode.
+* **Go to Quad View**: Take the texture to the quad view mode.
+* **Go to Mosaic View**: Take the texture to the mosaic view mode.
+* **Zoom In**: Increase zoom level by 100%.
 * **Zoom Out**: Reduce zoom level by 50%.
 * **Reset Zoom**: Reset zoom to default, which is a view area of 1x1 units.
 * **Reset View**: Reset zoom and view area to the 1x1 square between 0 and 1 on **X** and **Y** axes. Reset **Z** to *0.5*.
 * **Randomize**: Create a new random texture in this view.
 * **Open in New Window**: Open the texture in a new explorer window.
-* **Show Ray Trace**: Open a window displaying a simple scene with diffuse textured cube, sphere and cylinder. For reflectance models we have Oren-Nayar for diffuse and Phong for specular. The camera strafes around the scene.
+* **Create Preset**: Save the texture as a preset.
+* **Update Preset**: If the texture was loaded from a preset, overwrites the preset.
+* **Copy F# Code to Clipboard**: Copy to clipboard an expression containing the texture. Texture data will be packed in a Base64 encoded string.
+* **Show Ray Trace**: Open a window displaying a simple scene with a few diffuse textured objects: a cube, sphere and cylinder. For reflectance models we have Oren-Nayar for diffuse and Phong for specular. The camera strafes around the scene.
 
+## Bases
 
+**FsMap3** comes equipped with a wide assortment of 3-bases.
+
+|    |    |
+|---:|:---|
+|![Perlin noise](bases/perlin.png) | [Perlin noise](http://en.wikipedia.org/wiki/Perlin_noise), as many other noise bases, emulates band-limited noise. This version has unconstrainted gradients and a selectable interpolation fade.|
+|![cubex noise](bases/cubex.png) | *Cubex noise* is similar to Perlin noise. It is slower to calculate but has more options. |
+|![weave](bases/weave.png) | *Weave* is special in that, fow now, it is the only 3-basis designed to look 2-dimensional, specifically, a woven or threaded pattern. |
+|![radial value noise](bases/radial.png) | *Radial value noise* is yet another noise-like basis. Unlike the others, its features are points, not gradients. The points are distance weighted. |
+|![leopard](bases/leopard.png) | The *leopard* basis is a bunch of spots mixed together. |
+|![Worley](bases/worley.png) | The [Worley basis](http://en.wikipedia.org/wiki/Worley_noise) outputs processed distances to closest feature point. This version is specially adapted to produce 3-dimensional results. |
+|![colored Worley](bases/jigsaw.png) | A colored version of the Worley basis. The output is colored according to the nearest cell. |
+|![peacock](bases/peacock.png) | The *peacock* basis is like the leopard basis except the spots are now randomly oriented shapes called *potentials*. |
+|![Julia](bases/julia.png) | The *Julia* basis turns some well-known [fractal iteration formulas](http://en.wikipedia.org/wiki/Julia_set) into a tileable 3-texture form. |
+|![Julia orbit trap](bases/orbit.png) | *Julia orbit trap* basis. Like the Julia basis but the coloring is done with the orbit trap technique, utilizing a separate orbit texture that we call *atlas*. |
+|![capsule flow](bases/capsuleFlow.png) | *Capsule flow*. The flow bases distributes oriented potentials like the Peacock basis. However, in the flow bases the orientation is sampled from a separate *flow basis*. The capsule flow basis distributes oriented capsules. |
+|![potential flow](bases/potentialFlow.png) | The *potential flow* basis consists of shapes oriented according to the flow basis. |
+|![pattern flow](bases/patternFlow.png) | The *pattern flow* basis is **experimental**. It is like potential flow except the potential colors are retrieved from a separate *atlas*. |

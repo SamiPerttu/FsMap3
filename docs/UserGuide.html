@@ -44,7 +44,7 @@
 </ul>
 </li>
 <li><span class="title">
-<a href="#a-quick-look-at-the-user-interface" title="A Quick Look at the User Interface">A Quick Look at the User Interface</a>
+<a href="#a-look-at-the-user-interface" title="A Look at the User Interface">A Look at the User Interface</a>
 </span>
 <!--span class="number">
 4
@@ -73,12 +73,19 @@
 </li>
 </ul>
 </li>
+<li><span class="title">
+<a href="#bases" title="Bases">Bases</a>
+</span>
+<!--span class="number">
+8
+</span-->
+</li>
 </ul>
 </li>
 
 </ul>
 <p></p><h2 id="introduction"><a name="introduction" href="#introduction"></a>Introduction</h2><p><strong>FsMap3 Explorer</strong> is a Windows GUI for creating and exploring <em><a href="http://en.wikipedia.org/wiki/Procedural_texture">procedural textures</a></em>. Texture descriptions can be edited, loaded and saved, exported as images, randomized, mutated and evolved. This user guide helps you get started.</p><p>At the time of this writing <strong>FsMap3</strong> is considered to be in alpha, which means that things are still changing rapidly. Backward compatibility of saved textures is not guaranteed until we move to beta.</p><h3 id="what-can-you-do-with-it?"><a name="what-can-you-do-with-it?" href="#what-can-you-do-with-it?"></a>What Can You Do With It?</h3><ul>
-<li>Create repeating backgrounds, wallpapers and abstract art.</li><li>Create textures for games that can be stored in procedural form and unpacked during installation. Procedural descriptions typically fit within 1 kB, promising ridiculous compression ratios.</li><li>Create <em>ad hoc</em> graphics for your .NET program that are inserted directly as source code and unpacked when needed.</li></ul><h2 id="what-are-procedural-textures?"><a name="what-are-procedural-textures?" href="#what-are-procedural-textures?"></a>What Are Procedural Textures?</h2><p>Procedural textures are images created by an algorithm from a simple description. The textures in <strong>FsMap3</strong> are <em>3-dimensional</em>. 3-textures are also called <em>solid textures</em> because they can be likened to solid slabs of material.</p><p>Because solid textures have a color everywhere in <em>3-space</em>, they can texture any object, no matter how complicated its surface. For example, a statue sculpted from marble shows a marble texture in its surface. As the sculptor chips away at the stone, the texture always maintains its general marble-like form, as the visible part is just the surface of something that is solid.</p><p>Technically, a <strong>3-texture</strong> is a box that accepts 3 numbers (<strong>X</strong>, <strong>Y</strong> and <strong>Z</strong>), processes them somehow, and cranks out another 3 numbers. The numbers that come out of the box can be interpreted as a color (for instance, in RGB format) and displayed, or they can be interpreted as another set of coordinates and forwarded to some other box for further processing.</p><p>These boxes are typically called <strong>nodes</strong> in texture editors. A complete procedural texture is built by connecting several nodes in a tree or graph.</p><h3 id="examples"><a name="examples" href="#examples"></a>Examples</h3><p>Here are some example images. Each image is a 2-dimensional cross section of a 3-texture created with <strong>FsMap3</strong>.</p><p><img src="file:///D:/src/FsMap3/examples/fireplace.jpg" alt="Fireplace" style="width: 320px;"> <img src="file:///D:/src/FsMap3/examples/clouds.jpg" alt="Fireplace" style="width: 320px;"><br><img src="file:///D:/src/FsMap3/examples/jupiter.jpg" alt="Fireplace" style="width: 320px;"> <img src="file:///D:/src/FsMap3/examples/haze.jpg" alt="Fireplace" style="width: 320px;"></p><h2 id="a-quick-look-at-the-user-interface"><a name="a-quick-look-at-the-user-interface" href="#a-quick-look-at-the-user-interface"></a>A Quick Look at the User Interface</h2><p>Below is an example screenshot with the main sections delineated.</p><p><img src="quickLook.png" alt="Main sections of the user interface."></p><p>The user interface is divided horizontally into three parts: <em>parameters</em>, <em>control panel</em>, and <em>texture view</em>.</p><h3 id="parameter-panel"><a name="parameter-panel" href="#parameter-panel"></a>Parameter Panel</h3><p>The parameter panel contains all <strong>parameters</strong> of the texture under view. Together, the parameters completely define what the texture looks like. They are divided into three parts:</p><ul>
+<li>Create wallpapers, abstract art and repeating backgrounds and patterns.</li><li>Create textures for games that can be stored in procedural form and unpacked during installation. Procedural descriptions typically fit within 1 kB, promising ridiculous compression ratios.</li><li>Create <em>ad hoc</em> graphics for your .NET program that are inserted directly as source code and unpacked when needed.</li></ul><h2 id="what-are-procedural-textures?"><a name="what-are-procedural-textures?" href="#what-are-procedural-textures?"></a>What Are Procedural Textures?</h2><p>Procedural textures are images created by an algorithm from a simple description. The textures in <strong>FsMap3</strong> are <em>3-dimensional</em>. 3-textures are also called <em>solid textures</em> because they can be likened to solid slabs of material.</p><p>Because solid textures have a color everywhere in <em>3-space</em>, they can texture any object, no matter how complicated its surface. For example, a statue sculpted from marble shows a marble texture in its surface. As the sculptor chips away at the stone, the texture always maintains its general marble-like form, as the visible part is just the surface of something that is solid.</p><p>Technically, a <strong>3-texture</strong> is a box that accepts 3 numbers (<strong>X</strong>, <strong>Y</strong> and <strong>Z</strong>), processes them somehow, and cranks out another 3 numbers. The numbers that come out of the box can be interpreted as a color (for instance, in RGB format) and displayed, or they can be interpreted as another set of coordinates and forwarded to some other box for further processing.</p><p>These boxes are typically called <strong>nodes</strong> in texture editors. A complete procedural texture is built by connecting several nodes in a tree or graph.</p><h3 id="examples"><a name="examples" href="#examples"></a>Examples</h3><p>Here are some example images. Each image is a 2-dimensional cross section of a 3-texture created with <strong>FsMap3</strong>.</p><p><img src="examples/fireplace.jpg" alt="Fireplace" style="width: 320px;"> <img src="examples/clouds.jpg" alt="Clouds" style="width: 320px;"><br><img src="examples/jupiter.jpg" alt="Jupiter" style="width: 320px;"> <img src="examples/haze.jpg" alt="Haze" style="width: 320px;"></p><h2 id="a-look-at-the-user-interface"><a name="a-look-at-the-user-interface" href="#a-look-at-the-user-interface"></a>A Look at the User Interface</h2><p>Below is an example screenshot with the main sections delineated.</p><p><img src="quickLook.png" alt="Main sections of the user interface."></p><p>The user interface is divided horizontally into three parts: <em>parameters</em>, <em>control panel</em>, and <em>texture view</em>.</p><h3 id="parameter-panel"><a name="parameter-panel" href="#parameter-panel"></a>Parameter Panel</h3><p>The parameter panel contains all <strong>parameters</strong> of the texture under view. Together, the parameters completely define what the texture looks like. They are divided into three parts:</p><ul>
 <li><p><strong>Palette</strong> defines the color scheme of the texture. At each point in space, the final 3 values that emerge from the texture are colored according to the palette.</p>
 </li><li><p><strong>Global parameters</strong> consists of just the layout for now. In the future, other parameters may be added. The <em>layout</em> determines how the texture <em>tiles</em>: not at all, along all axes, or only along X or Y axis.</p>
 </li><li><p><strong>Node tree</strong> contains the meat of the texture definition. There are four types of nodes:</p>
@@ -101,7 +108,7 @@
 </li><li><p><strong>View Modes</strong>. This setting selects how the view panel is arranged. At the moment, there are three distinct view modes. When switching a mode, if there is a view in focus, it will be copied to the new mode.</p>
 <ul>
 <li><p><strong>Big View</strong>: There is one big view. The mutate tool is not available in this mode.</p>
-</li><li><p><strong>2x2 Small Views</strong>: There is a 2-by-2 grid of small views. Each view can be edited independently. The main attraction of this mode is <em>interactive evolution</em>: With the mutate tool, choose your favorite texture. The other 3 are then created as its variations. If one of them looks nicer than the original, choose it.</p>
+</li><li><p><strong>Quad View</strong>: There is a 2-by-2 grid of small views. Each view can be edited independently. The main attraction of this mode is <em>interactive evolution</em>: With the mutate tool, choose your favorite texture. The other 3 are then created as its variations. If one of them looks nicer than the original, choose it.</p>
 </li><li><p><strong>Mosaic View</strong>: The mosaic view is experimental. Its goal is to convey information about a large number of parameter settings at once. There is a 4-by-4 grid of small views. The views are independently editable but they are also <em>offset</em> from each other so that if the textures are identical, they form one big picture. The mutate tool works differently in this mode: besides making a few categorical changes, it attempts to mutate continuous parameters in <em>gradients</em> running from the top left to the bottom right view.</p>
 </li></ul>
 </li><li><p><strong>Tools</strong> are for working with texture views. Inside views the left mouse button operates tools, while the right mouse button opens a context menu.</p>
@@ -109,11 +116,73 @@
 <li><p><strong>Pan Tool</strong>. To pan around, drag the view. Use the mouse wheel to control the <strong>Z</strong> coordinate.</p>
 </li><li><p><strong>Pan-Zoom Tool</strong>. To pan around, drag the view. Mouse wheel controls zoom: roll up to zoom in, down to zoom out.</p>
 </li><li><p><strong>Zoom Tool</strong>. Select the center of the area you want to zoom into and drag to choose the size of the area. Mouse wheel controls the <strong>Z</strong> coordinate.</p>
-</li><li><p><strong>Mutate Tool</strong>. The mutate tool can be used in <em>2x2</em> and <em>mosaic</em> views. Clicking on a view, mutated copies of it appear in the other views. Keep clicking on your favorite and it will (hopefully) evolve into something super impressive.</p>
+</li><li><p><strong>Mutate Tool</strong>. The mutate tool can be used in <em>quad</em> and <em>mosaic</em> views. Clicking on a view, mutated copies of it appear in the other views. Keep clicking on your favorite and it will (hopefully) evolve into something super impressive.</p>
+</li><li><p><strong>Jolt Tool</strong>. Click on a view to mutate it according to the current mutation mode.</p>
 </li></ul>
 </li><li><p><strong>View Coordinates</strong>. At the bottom of the control panel is the view info box where the coordinates of the view in focus are displayed. A view always shows a square slice of the texture in the XY plane, with positive <strong>X</strong> pointing right, positive <strong>Y</strong> pointing down, and <strong>Z</strong> being constant. The <strong>Z</strong> axis is depth and increases toward the screen.</p>
 </li></ul><h3 id="texture-view"><a name="texture-view" href="#texture-view"></a>Texture View</h3><p>The textures are displayed here. Any change to the parameters of a texture triggers an immediate re-render. Here, the left mouse button operates the current tool. The right mouse button accesses the <strong>context menu</strong>:</p><ul>
-<li><strong>Maximize</strong>: Take the texture to the big view mode.</li><li><strong>Minimize</strong>: Take the texture to the 2x2 small views mode.</li><li><strong>View Mosaic</strong>: Take the texture to the mosaic view mode.</li><li><strong>Zoom Out</strong>: Reduce zoom level by 50%.</li><li><strong>Reset Zoom</strong>: Reset zoom to default, which is a view area of 1x1 units.</li><li><strong>Reset View</strong>: Reset zoom and view area to the 1x1 square between 0 and 1 on <strong>X</strong> and <strong>Y</strong> axes. Reset <strong>Z</strong> to <em>0.5</em>.</li><li><strong>Randomize</strong>: Create a new random texture in this view.</li><li><strong>Open in New Window</strong>: Open the texture in a new explorer window.</li><li><strong>Show Ray Trace</strong>: Open a window displaying a simple scene with diffuse textured cube, sphere and cylinder. For reflectance models we have Oren-Nayar for diffuse and Phong for specular. The camera strafes around the scene.</li></ul>
+<li><strong>Maximize</strong>: Take the texture to the big view mode.</li><li><strong>Go to Quad View</strong>: Take the texture to the quad view mode.</li><li><strong>Go to Mosaic View</strong>: Take the texture to the mosaic view mode.</li><li><strong>Zoom In</strong>: Increase zoom level by 100%.</li><li><strong>Zoom Out</strong>: Reduce zoom level by 50%.</li><li><strong>Reset Zoom</strong>: Reset zoom to default, which is a view area of 1x1 units.</li><li><strong>Reset View</strong>: Reset zoom and view area to the 1x1 square between 0 and 1 on <strong>X</strong> and <strong>Y</strong> axes. Reset <strong>Z</strong> to <em>0.5</em>.</li><li><strong>Randomize</strong>: Create a new random texture in this view.</li><li><strong>Open in New Window</strong>: Open the texture in a new explorer window.</li><li><strong>Create Preset</strong>: Save the texture as a preset.</li><li><strong>Update Preset</strong>: If the texture was loaded from a preset, overwrites the preset.</li><li><strong>Copy F# Code to Clipboard</strong>: Copy to clipboard an expression containing the texture. Texture data will be packed in a Base64 encoded string.</li><li><strong>Show Ray Trace</strong>: Open a window displaying a simple scene with a few diffuse textured objects: a cube, sphere and cylinder. For reflectance models we have Oren-Nayar for diffuse and Phong for specular. The camera strafes around the scene.</li></ul><h2 id="bases"><a name="bases" href="#bases"></a>Bases</h2><p><strong>FsMap3</strong> comes equipped with a wide assortment of 3-bases.</p><table>
+<thead>
+<tr>
+<th style="text-align:right"></th>
+<th style="text-align:left"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right"><img src="bases/perlin.png" alt="Perlin noise"></td>
+<td style="text-align:left"><a href="http://en.wikipedia.org/wiki/Perlin_noise">Perlin noise</a>, as many other noise bases, emulates band-limited noise. This version has unconstrainted gradients and a selectable interpolation fade.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/cubex.png" alt="cubex noise"></td>
+<td style="text-align:left"><em>Cubex noise</em> is similar to Perlin noise. It is slower to calculate but has more options.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/weave.png" alt="weave"></td>
+<td style="text-align:left"><em>Weave</em> is special in that, fow now, it is the only 3-basis designed to look 2-dimensional, specifically, a woven or threaded pattern.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/radial.png" alt="radial value noise"></td>
+<td style="text-align:left"><em>Radial value noise</em> is yet another noise-like basis. Unlike the others, its features are points, not gradients. The points are distance weighted.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/leopard.png" alt="leopard"></td>
+<td style="text-align:left">The <em>leopard</em> basis is a bunch of spots mixed together.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/worley.png" alt="Worley"></td>
+<td style="text-align:left">The <a href="http://en.wikipedia.org/wiki/Worley_noise">Worley basis</a> outputs processed distances to closest feature point. This version is specially adapted to produce 3-dimensional results.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/jigsaw.png" alt="colored Worley"></td>
+<td style="text-align:left">A colored version of the Worley basis. The output is colored according to the nearest cell.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/peacock.png" alt="peacock"></td>
+<td style="text-align:left">The <em>peacock</em> basis is like the leopard basis except the spots are now randomly oriented shapes called <em>potentials</em>.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/julia.png" alt="Julia"></td>
+<td style="text-align:left">The <em>Julia</em> basis turns some well-known <a href="http://en.wikipedia.org/wiki/Julia_set">fractal iteration formulas</a> into a tileable 3-texture form.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/orbit.png" alt="Julia orbit trap"></td>
+<td style="text-align:left"><em>Julia orbit trap</em> basis. Like the Julia basis but the coloring is done with the orbit trap technique, utilizing a separate orbit texture that we call <em>atlas</em>.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/capsuleFlow.png" alt="capsule flow"></td>
+<td style="text-align:left"><em>Capsule flow</em>. The flow bases distributes oriented potentials like the Peacock basis. However, in the flow bases the orientation is sampled from a separate <em>flow basis</em>. The capsule flow basis distributes oriented capsules.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/potentialFlow.png" alt="potential flow"></td>
+<td style="text-align:left">The <em>potential flow</em> basis consists of shapes oriented according to the flow basis.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/patternFlow.png" alt="pattern flow"></td>
+<td style="text-align:left">The <em>pattern flow</em> basis is <strong>experimental</strong>. It is like potential flow except the potential colors are retrieved from a separate <em>atlas</em>.</td>
+</tr>
+</tbody>
+</table>
 
 <footer style="position:fixed; font-size:.8em; text-align:right; bottom:0px; margin-left:-25px; height:20px; width:100%;">generated by <a href="http://pad.haroopress.com" target="_blank">haroopad</a></footer>
 </body>
