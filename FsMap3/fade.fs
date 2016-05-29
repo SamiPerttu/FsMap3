@@ -84,9 +84,9 @@ let inline downarc (x : 'a) : 'a = sqrt(max 0G (2G * x - squared x))
 /// Linear fade when bias = 0.
 let inline skew (bias : 'a) : 'a -> 'a =
   if bias >= 0G then
-    let p = exp2 -bias in fun x -> x ** p
-  else
     let p = exp2 bias in fun x -> 1G - max 0G (1G - x) ** p
+  else
+    let p = exp2 -bias in fun x -> x ** p
 
 /// Saturated linear fade that reaches 1 at 0 <= 1 - a <= 1.
 let inline saturate (a : 'a) (x : 'a) : 'a = let b = 1G - a in if x < b then x / b else 1G
