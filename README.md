@@ -10,6 +10,8 @@ FsMap3 and FsMap3Gui are licensed under the terms of the MIT license.
 
 FsMap3Gui includes some PNG format icons from the [Modern UI Icons](http://modernuiicons.com/) project. They are licensed separately - see the license file `ModernUiIconsLicense.txt`.
 
+To get an idea of what it can do, check out the [user manual](https://cdn.rawgit.com/SamiPerttu/FsMap3/master/docs/UserGuide.html) or some [examples](https://github.com/SamiPerttu/FsMap3/tree/master/docs/examples).
+
 ### State and Roadmap
 
 We are in alpha. The first binary release of FsMap3 Editor is 0.3.0.
