@@ -69,7 +69,7 @@ let inline iterBack i0 i1 f =
     if i > i0 then i <- i - 1G else loop <- false
 
 
-/// Reduces a projected range with a binary operator.
+/// Reduces, in ascending order, a projected range with a binary operator.
 let inline reduce i0 i1 f binop =
   enforce (i0 <= i1) "Fun.reduce: Empty range."
   let mutable v = f i0
@@ -100,6 +100,18 @@ let inline max i0 i1 f = reduce i0 i1 f max
 /// Returns the number of times the predicate is true in [i0, i1].
 let inline count i0 i1 predicate =
   if i0 <= i1 then reduce i0 i1 (fun i -> if predicate i then 1 else 0) (+) else 0
+
+
+/// Reduces, in decreasing order, a projected range with a binary operator.
+let inline reduceBack i0 i1 f binop =
+  enforce (i0 <= i1) "Fun.reduce: Empty range."
+  let mutable v = f i1
+  let mutable loop = i1 > i0
+  let mutable i = i1 - 1G
+  while loop do
+    v <- binop v (f i)
+    if i > i0 then i <- i - 1G else loop <- false
+  v
 
 
 /// Returns the function value with the minimum projection in [i0, i1]. Ties are broken by smallest argument.

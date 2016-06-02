@@ -10,17 +10,17 @@ open System.Windows.Controls.Primitives
 
 open Common
 open Basis3
-open Map3
 open Map3Info
 open Map3Dna
 open Map3Gui
 
 
 [<NoComparison; NoEquality>]
-type EditorUserAction =
+type EditorUserState =
   | Zooming of view : EditorView<RichMap3> * source : Vec2f
   | Panning of view : EditorView<RichMap3> * source : Vec2f
   | Idle
+
 
 
 /// Interactive Map3 editor.
@@ -30,20 +30,21 @@ type Editor =
 
     let presetDirectory = "Presets"
 
-    /// Minimum resolution of each quarter view.
+    /// Minimum resolution of a view.
     let minimumR = 16
     /// View border thickness.
     let viewBorder = 2
-    /// How far user has to move the mouse before it is recognized as zooming.
+    /// How far user has to move the mouse before it is recognized as dragging.
     let dragMinimum = 16.0f
     /// Width of tool bar panel.
     let toolPanelWidth = 152.0
     /// Size of tool and view icons.
     let iconSize = 29.0
     let iconMargin = Thickness(0.5)
-
+    /// Map preview size in preview menu and create preview dialog.
     let previewSize = 160.0
 
+    // Colors.
     let viewBg = Wpf.brush(0.0)
     let dnaBg = Wpf.brush(0.91)
     let menuBg = Wpf.verticalBrush(Wpf.color(0.8, 0.88, 0.9), Wpf.color(0.7, 0.78, 0.8))
@@ -51,11 +52,6 @@ type Editor =
     let menuItemBg = Wpf.brush(1.0, 1.0, 1.0, 0.2)
     let toolBg = Wpf.brush(0.8, 0.8, 0.8, 0.3)
     let splitterBg = Wpf.brush(0.93)
-
-    // We have 1 full view, 4 half views and 16 quarter views.
-    let fN = 1
-    let hN = 4
-    let qN = 16
 
     let rnd = Rnd(timeSeed())
 
@@ -88,7 +84,7 @@ type Editor =
                         Topmost = false,
                         WindowStartupLocation = WindowStartupLocation.CenterScreen)
 
-    let canvas = Grid(Background = viewBg, ClipToBounds = true, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch)
+    let canvas = Grid(Background = viewBg, ClipToBounds = false, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch)
     canvas.ColumnDefinitions.Add(ColumnDefinition())
     canvas.RowDefinitions.Add(RowDefinition())
 
@@ -101,6 +97,16 @@ type Editor =
       System.IO.Path.GetExtension(file) = ".yaml"
 
     let mapSeed = Map3.zero
+    let pixmapSeed = {
+      new IPixmapSource with
+        member this.start(_, _) = ()
+        member this.getPixel(w, h, x, y) =
+          let u = float32 x / float32 (w - 1) * 2.0f - 1.0f
+          let v = float32 y / float32 (h - 1) * 2.0f - 1.0f
+          Vec3f(0.5f - 0.1f * (squared u + squared v))
+        member this.finish() = ()
+        member this.postFx(_) = ()
+      }
     let richSeed = { RichMap3.map = mapSeed; palette = Map3.identity; center = Vec3f(0.5f); zoom = 1.0f; aspectRatio = 1.0f; info = Map3Info.create(mapSeed) }
 
     let deepGenerator = Map3Dna.generateEditorMap
@@ -119,22 +125,21 @@ type Editor =
       }
     let deepFilter = fun map previous -> mapFilter.filter(map, previous)
 
-    let fullView = EditorView.create(FullView, 0, 0, 0, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, true, 4)
+    let fullView = EditorView.create(FullView, 0, 0, 0, pixmapSeed, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, true, 4)
 
-    let halfView = Array.init hN (fun i ->
+    let halfView = Array.init 4 (fun i ->
       let x, y = i % 2, i / 2
-      EditorView.create(HalfView, i, x, y, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, false, 4)
+      EditorView.create(HalfView, i, x, y, pixmapSeed, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, false, 4)
       )
 
-    let quarterView = Array.init qN (fun i ->
-      let x, y = i % 4, i / 4
-      let mosaicTransform (v : Vec3f) = Vec3f((v.x + float32 x) / 4.0f, (v.y + float32 y) / 4.0f, v.z)
-      EditorView.create(QuarterView, i, x, y, richSeed, deepGenerator, pixmapGenerator (Some mosaicTransform), deepFilter, canvas, false, 3)
+    let thirdView = Array.init 9 (fun i ->
+      let x, y = i % 3, i / 3
+      EditorView.create(ThirdView, i, x, y, pixmapSeed, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, false, 3)
       )
 
-    let halfQuarterView = Array.append halfView quarterView
+    let notFullView = Array.append halfView thirdView
 
-    for view in halfQuarterView do
+    for view in notFullView do
       view.createFocusShape(canvas)
 
     let dragShape = Rectangle(Visibility = Visibility.Collapsed, Stroke = Wpf.brush(0.0), Opacity = 0.3, StrokeThickness = 1.0, Fill = Brushes.Blue, SnapsToDevicePixels = true)
@@ -146,54 +151,56 @@ type Editor =
     // This must be called from the UI thread.
     let layoutCanvas() =
 
-      let canvasWidth = int canvas.ActualWidth
-      let canvasHeight = int canvas.ActualHeight
+      let canvasWidth = int canvas.ActualWidth + 1
+      let canvasHeight = int canvas.ActualHeight + 1
 
       if canvasWidth <> !currentCanvasWidth || canvasHeight <> !currentCanvasHeight then
 
         currentCanvasWidth := canvasWidth
         currentCanvasHeight := canvasHeight
 
-        let R = max minimumR ((min canvasWidth canvasHeight - 2 * viewBorder) / 4)
+        let FR = max minimumR (min canvasWidth canvasHeight - 2 * viewBorder)
+        let HR = max minimumR (min canvasWidth canvasHeight - 2 * viewBorder) / 2
+        let TR = max minimumR (min canvasWidth canvasHeight - 2 * viewBorder) / 3
 
-        let totalSize = R * 4 + 2 * viewBorder
+        let totalSize = FR + 2 * viewBorder
         let x0 = max 0 (int canvas.ActualWidth - totalSize) / 2
         let y0 = max 0 (int canvas.ActualHeight - totalSize) / 2
 
-        Log.infof "Laying out view canvas. Quarter view resolution = %d pixels." R
+        Log.infof "Laying out view canvas. Full view resolution %d | half view resolution %d | third view resolution %d" FR HR TR
 
-        fullView.image.Width <- float (R * 4)
-        fullView.image.Height <- float (R * 4)
+        fullView.image.Width <- float FR
+        fullView.image.Height <- float FR
         fullView.image.Margin <- Thickness(Left = float (x0 + viewBorder), Top = float (y0 + viewBorder))
         fullView.layoutBusy()
-        fullView.view.setRenderSize(R * 4, R * 4)
+        fullView.pixmapView.setRenderSize(FR, FR)
 
         halfView |> Array.iteri (fun i view ->
           let image = view.image
-          image.Width <- float (R * 2)
-          image.Height <- float (R * 2)
+          image.Width <- float HR
+          image.Height <- float HR
           let x, y = view.gridX, view.gridY
-          image.Margin <- Thickness(Left = float (x0 + x * R * 2 + viewBorder), Top = float (y0 + y * R * 2 + viewBorder))
+          image.Margin <- Thickness(Left = float (x0 + x * HR + viewBorder), Top = float (y0 + y * HR + viewBorder))
           let shape = !view.focusShape
-          shape.Width <- float ((R + viewBorder) * 2)
-          shape.Height <- float ((R + viewBorder) * 2)
-          shape.Margin <- Thickness(Left = float (x0 + x * R * 2), Top = float (y0 + y * R * 2))
+          shape.Width <- float (HR + 2 * viewBorder)
+          shape.Height <- float (HR + 2 * viewBorder)
+          shape.Margin <- Thickness(Left = float (x0 + x * HR), Top = float (y0 + y * HR))
           view.layoutBusy()
-          view.view.setRenderSize(R * 2, R * 2)
+          view.pixmapView.setRenderSize(HR, HR)
          )
 
-        quarterView |> Array.iteri (fun i view ->
+        thirdView |> Array.iteri (fun i view ->
           let image = view.image
-          image.Width <- float R
-          image.Height <- float R
+          image.Width <- float TR
+          image.Height <- float TR
           let x, y = view.gridX, view.gridY
-          image.Margin <- Thickness(Left = float (x0 + x * R + viewBorder), Top = float (y0 + y * R + viewBorder))
+          image.Margin <- Thickness(Left = float (x0 + x * TR + viewBorder), Top = float (y0 + y * TR + viewBorder))
           let shape = !view.focusShape
-          shape.Width <- float (R + viewBorder * 2)
-          shape.Height <- float (R + viewBorder * 2)
-          shape.Margin <- Thickness(Left = float (x0 + x * R), Top = float (y0 + y * R))
+          shape.Width <- float (TR + viewBorder * 2)
+          shape.Height <- float (TR + viewBorder * 2)
+          shape.Margin <- Thickness(Left = float (x0 + x * TR), Top = float (y0 + y * TR))
           view.layoutBusy()
-          view.view.setRenderSize(R, R)
+          view.pixmapView.setRenderSize(TR, TR)
           )
      
     let toolPanel = DockPanel(Width = toolPanelWidth, Margin = Thickness(0.0), VerticalAlignment = VerticalAlignment.Stretch)
@@ -231,13 +238,13 @@ type Editor =
     viewBar.add(fullViewButton)
     let halfViewButton = createIconButton "halfview.png" "Quad View"
     viewBar.add(halfViewButton)
-    let quarterViewButton = createIconButton "quarterview.png" "Mosaic View"
-    viewBar.add(quarterViewButton)
+    let thirdViewButton = createIconButton "thirdview.png" "Nono View"
+    viewBar.add(thirdViewButton)
 
     /// Which half view did we maximize last?
     let minimizeHalfView = ref halfView.[0]
-    /// Which mosaic view tile did we maximize last?
-    let minimizeQuarterView = ref quarterView.[0]
+    /// Which third view did we maximize last?
+    let minimizeThirdView = ref thirdView.[0]
 
     let focusView = ref (Some(fullView))
 
@@ -247,15 +254,15 @@ type Editor =
       | FullView ->
         f fullView true
         for view in halfView do f view false
-        for view in quarterView do f view false
+        for view in thirdView do f view false
       | HalfView ->
         f fullView false
         for view in halfView do f view true
-        for view in quarterView do f view false
-      | QuarterView ->
+        for view in thirdView do f view false
+      | ThirdView ->
         f fullView false
         for view in halfView do f view false
-        for view in quarterView do f view true
+        for view in thirdView do f view true
 
     let dnaView = DnaView(viewFilter = fun parameter ->
       // The layout is generated once at the top level and then propagated as a constraint.
@@ -317,7 +324,7 @@ type Editor =
       if (!focusView).isNoneOr((<>=) view') then
         focusView := Some(view')
         Wpf.dispatch(window, fun _ ->
-          for view in halfQuarterView do
+          for view in notFullView do
             (!view.focusShape).Visibility <- if view' === view then Visibility.Visible else Visibility.Hidden
           )
       updateAll()
@@ -327,7 +334,7 @@ type Editor =
       focusView := None
       updateAll()
       Wpf.dispatch(window, fun _ ->
-        for view in halfQuarterView do
+        for view in notFullView do
           (!view.focusShape).Visibility <- Visibility.Hidden
         )
 
@@ -338,133 +345,101 @@ type Editor =
       elif dna.[i].name = "Layout" then Select (layoutChoices.numberOf((=) !layoutMode))
       else Randomize
 
-    /// Randomizes all visible views.
-    let randomizeAll() =
-      scheduleTask(fun _ ->
-        iterateViews(fun view visible ->
-          if visible then
-            view.controller.restart(randomizePredicate)
-            view.filename <- ""
-            view.presetFilename <- ""
-        )
-        match !viewMode with
-        | FullView -> setFocus fullView
-        | _ -> clearFocus()
-      )
-
     let setViewMode mode =
-      viewMode := mode
-      iterateViews (fun view visible -> view.setVisibility(if visible then Visibility.Visible else Visibility.Collapsed))
-      fullViewButton.IsChecked <- Nullable((mode = FullView))
-      halfViewButton.IsChecked <- Nullable((mode = HalfView))
-      quarterViewButton.IsChecked <- Nullable((mode = QuarterView))
+      Wpf.dispatch(window, fun _ ->
+        viewMode := mode
+        iterateViews (fun view visible -> view.setVisibility(if visible then Visibility.Visible else Visibility.Collapsed))
+        fullViewButton.IsChecked <- Nullable((mode = FullView))
+        halfViewButton.IsChecked <- Nullable((mode = HalfView))
+        thirdViewButton.IsChecked <- Nullable((mode = ThirdView))
+        )
 
-    dnaView.leftCallback <- fun i value ->
+    let controller = EditorController.create(setFocus, setViewMode, updateAll)
+
+    dnaView.leftCallback <- fun dna i value ->
       match !focusView with
       | Some(view) ->
-        view.post(fun _ ->
-          view.controller.setValue(i, Some(value))
-          updateDna()
-          updateInfo()
+        controller.postAction(view, dna.[i].name, fun rnd dna' i' ->
+          if i' = i && dna'.[i'].name = dna.[i].name then Select(value) else Retain
           )
       | None -> ()
-    dnaView.rightCallback <- fun i ->
+    dnaView.dragCallback <- dnaView.leftCallback
+    dnaView.releaseCallback <- fun _ _ -> controller.post(CloseAction)
+    dnaView.rightCallback <- fun dna i ->
       match !focusView with
       | Some(view) ->
-        view.post(fun _ ->
-          view.controller.setValue(i, None)
-          updateDna()
-          updateInfo()
+        controller.postAction(view, "Randomize " + dna.[i].name, fun rnd dna' i' ->
+          if i' = i && dna'.[i'].name = dna.[i].name then Randomize else Retain
           )
+        controller.post(CloseAction)
       | None -> ()
-    dnaView.wheelCallback <- fun i delta ->
+    dnaView.wheelCallback <- fun dna i delta ->
       match !focusView with
       | Some(view) ->
-        view.post(fun _ ->
-          view.controller.modifyValue(i, float (sign delta) * -0.02)
-          updateDna()
-          updateInfo()
+        controller.postAction(view, dna.[i].name, fun rnd dna' i' ->
+          if i' = i && dna'.[i'].name = dna.[i].name then Adjust01(float (sign delta) * -0.02) else Retain
           )
       | None -> ()
 
     /// Copies the view to full view mode.
-    let maximizeView view =
-      fullView.filename <- view.filename
-      fullView.presetFilename <- view.presetFilename
-      fullView.view.reset()
-      fullView.controller.copyFrom(view.controller)
+    let maximizeView (view : EditorView<RichMap3>) =
+      if view.isEmpty = false then
+        controller.post(ApplyMapCopy(fullView, view, "Maximize"))
       setViewMode FullView
       setFocus fullView
       match view.mainMode with
       | HalfView -> minimizeHalfView := view
-      | QuarterView -> minimizeQuarterView := view
+      | ThirdView -> minimizeThirdView := view
       | _ -> ()
 
     /// Copies the view to quad view mode.
-    let minimizeView view =
+    let minimizeView (view : EditorView<RichMap3>) =
       let targetView = !minimizeHalfView
-      targetView.filename <- view.filename
-      targetView.presetFilename <- view.presetFilename
-      targetView.view.reset()
-      targetView.controller.copyFrom(view.controller)
       setViewMode HalfView
-      setFocus targetView
+      if view.isEmpty = false then
+        controller.post(ApplyMapCopy(targetView, view, "Go to Quad View"))
+        setFocus targetView
+      else
+        clearFocus()
 
     /// Copies the view to mosaic view mode.
-    let mosaicifyView view =
-      let targetView = !minimizeQuarterView
-      for qview in quarterView do
-        if qview === targetView || qview.isEmpty then
-          qview.filename <- view.filename
-          qview.presetFilename <- view.presetFilename
-          qview.view.reset()
-          qview.controller.copyFrom(view.controller)
-      setViewMode QuarterView
-      setFocus targetView
+    let thirdifyView (view : EditorView<RichMap3>) =
+      let targetView = !minimizeThirdView
+      setViewMode ThirdView
+      if view.isEmpty = false then
+        controller.post(ApplyMapCopy(targetView, view, "Go to Nono View"))
+        setFocus targetView
+      else
+        clearFocus()
 
     fullViewButton.Click.Add(fun _ ->
       match !viewMode with
-      | HalfView | QuarterView ->
+      | HalfView | ThirdView ->
         match !focusView with
         | Some(view) -> maximizeView view
-        | None -> clearFocus(); setViewMode FullView
+        | _ -> setViewMode FullView; setFocus fullView
       | _ -> ()
       )
 
     halfViewButton.Click.Add(fun _ ->
       match !viewMode with
       | FullView -> minimizeView fullView
-      | QuarterView ->
+      | ThirdView ->
         match !focusView with
         | Some(view) -> minimizeView view
         | None -> clearFocus(); setViewMode HalfView
       | _ -> ()
       )
 
-    quarterViewButton.Click.Add(fun _ ->
+    thirdViewButton.Click.Add(fun _ ->
       match !viewMode with
-      | FullView -> mosaicifyView fullView
+      | FullView -> thirdifyView fullView
       | HalfView ->
         match !focusView with
-        | Some(view) -> mosaicifyView view
-        | None -> clearFocus(); setViewMode QuarterView
+        | Some(view) -> thirdifyView view
+        | None -> clearFocus(); setViewMode ThirdView
       | _ -> ()
       )
-
-    let loadYaml setViewFilename setViewPresetFilename (file : string) =
-      let view = !focusView >? match !viewMode with | FullView -> fullView | HalfView -> halfView.[0] | QuarterView -> quarterView.[0]
-      setFocus view
-      try
-        use stream = new System.IO.StreamReader(file)
-        let readLine() = match stream.EndOfStream with | false -> Some(stream.ReadLine()) | true -> None
-        let source = DeserializerSource(readLine)
-        view.controller.generate(true, dnaSource = (source :> DnaSource))
-        view.filename <- if setViewFilename then file else ""
-        view.presetFilename <- if setViewPresetFilename then file else ""
-        stream.Close()
-        updateAll()
-      with
-        | ex -> MessageBox.Show(ex.ToString()) |> ignore
 
     let loadYamlPreview (file : string) =
       try
@@ -517,7 +492,10 @@ type Editor =
     openItem.Click.Add(fun _ ->
       let dialog = new Microsoft.Win32.OpenFileDialog(Title = "Load Map File..", Filter = "YAML files (.yaml)|*.yaml")
       let result = dialog.ShowDialog()
-      if result.HasValue && result.Value then loadYaml true false dialog.FileName
+      if result.HasValue && result.Value then
+        let view = !focusView >? match !viewMode with | FullView -> fullView | HalfView -> halfView.[0] | ThirdView -> thirdView.[0]
+        setFocus view
+        controller.post(ApplyMapLoad(view, "Open", dialog.FileName, false))
       )
     fileMenu.add(openItem)
 
@@ -583,6 +561,35 @@ type Editor =
       )
 
     menu.add(fileMenu)
+
+    let editMenu = makeTopMenuItem "_Edit"
+    let undoItem = MenuItem(Header = "Undo")
+    undoItem.Click.Add(fun _ -> controller.postUndo())
+    editMenu.add(undoItem)
+    let redoItem = MenuItem(Header = "Redo")
+    redoItem.Click.Add(fun _ -> controller.postRedo())
+    editMenu.add(redoItem)
+    
+    // Set edit menu item states appropriately.
+    editMenu.SubmenuOpened.Add(fun (args : RoutedEventArgs) ->
+      let undo, redo = controller.undoStack.undoRedoTitles
+      match undo with
+      | Some(title) ->
+        undoItem.Header <- "Undo " + title
+        undoItem.IsEnabled <- true
+      | None ->
+        undoItem.Header <- "Undo"
+        undoItem.IsEnabled <- false
+      match redo with
+      | Some(title) ->
+        redoItem.Header <- "Redo " + title
+        redoItem.IsEnabled <- true
+      | None ->
+        redoItem.Header <- "Redo"
+        redoItem.IsEnabled <- false
+      )
+
+    menu.add(editMenu)
 
     let toolsMenu = makeTopMenuItem "_Tools"
     let logItem = MenuItem(Header = "Log")
@@ -706,7 +713,11 @@ type Editor =
             // on the menu item, creating a new popup, and so on. A supposedly clean solution would be to
             // create a trigger for IsMouseOver, which involves templates and styles.
             presetItem.LostFocus.Add(fun _ -> closePopup())
-            presetItem.Click.Add(fun _ -> loadYaml false true file)
+            presetItem.Click.Add(fun _ ->
+              let view = !focusView >? match !viewMode with | FullView -> fullView | HalfView -> halfView.[0] | ThirdView -> thirdView.[0]
+              setFocus view
+              controller.post(ApplyMapLoad(view, "Load Preset", file, true))
+              )
             menuItem.add(presetItem)
       with | _ -> ()
 
@@ -749,58 +760,50 @@ type Editor =
 
       let menu = ContextMenu(Placement = Primitives.PlacementMode.Mouse)
 
-      if view.mainMode = HalfView || view.mainMode = QuarterView then
+      if view.mainMode = HalfView || view.mainMode = ThirdView then
         let maximizeItem = MenuItem(Header = "Maximize")
         maximizeItem.Click.Add(fun _ -> maximizeView view)
         menu.add(maximizeItem)
-      elif view.mainMode = FullView || view.mainMode = QuarterView then
+      elif view.mainMode = FullView || view.mainMode = ThirdView then
         let minimizeItem = MenuItem(Header = "Go to Quad View")
         minimizeItem.Click.Add(fun _ -> minimizeView view)
         menu.add(minimizeItem)
       if view.mainMode = FullView || view.mainMode = HalfView then
-        let mosaicifyItem = MenuItem(Header = "Go to Mosaic View")
-        mosaicifyItem.Click.Add(fun _ -> mosaicifyView view)
+        let mosaicifyItem = MenuItem(Header = "Go to Nono View")
+        mosaicifyItem.Click.Add(fun _ -> thirdifyView view)
         menu.add(mosaicifyItem)
 
       menu.add(Separator(Margin = Thickness(0.0, 0.0, 0.0, 0.0)))
 
       let zoomIn = MenuItem(Header = "Zoom In")
       zoomIn.Click.Add(fun _ ->
-        view.post(fun _ ->
-          setFocus view
-          view.controller.alter(View.transform(zoom = ModifyFloat((*) 2.0)))
-          updateInfo()
-          )
+        setFocus view
+        controller.postAction(view, "Zoom In", View.transform(zoom = ModifyFloat((*) 2.0)))
+        controller.post(CloseAction)
         )
       menu.add(zoomIn)
 
       let zoomOut = MenuItem(Header = "Zoom Out")
       zoomOut.Click.Add(fun _ ->
-        view.post(fun _ ->
-          setFocus view
-          view.controller.alter(View.transform(zoom = ModifyFloat((*) 0.5)))
-          updateInfo()
-          )
+        setFocus view
+        controller.postAction(view, "Zoom Out", View.transform(zoom = ModifyFloat((*) 0.5)))
+        controller.post(CloseAction)
         )
       menu.add(zoomOut)
 
       let resetZoom = MenuItem(Header = "Reset Zoom")
       resetZoom.Click.Add(fun _ ->
-        view.post(fun _ ->
-          setFocus view
-          view.controller.alter(View.transform(zoom = SelectFloat 1.0))
-          updateInfo()
-          )
+        setFocus view
+        controller.postAction(view, "Reset Zoom", View.transform(zoom = SelectFloat 1.0))
+        controller.post(CloseAction)
         )
       menu.add(resetZoom)
 
       let resetView = MenuItem(Header = "Reset View")
       resetView.Click.Add(fun _ ->
-        view.post(fun _ ->
-          setFocus view
-          view.controller.alter(View.transform(centerX = SelectFloat 0.5, centerY = SelectFloat 0.5, centerZ = SelectFloat 0.5, zoom = SelectFloat 1.0))
-          updateInfo()
-          )
+        setFocus view
+        controller.postAction(view, "Reset View", View.transform(centerX = SelectFloat 0.5, centerY = SelectFloat 0.5, centerZ = SelectFloat 0.5, zoom = SelectFloat 1.0))
+        controller.post(CloseAction)
         )
       menu.add(resetView)
 
@@ -808,12 +811,8 @@ type Editor =
 
       let randomizeItem = MenuItem(Header = "Randomize")
       randomizeItem.Click.Add(fun _ ->
-        view.post(fun _ ->
-          view.filename <- ""
-          view.presetFilename <- ""
-          view.controller.restart(randomizePredicate)
-          setFocus view
-          )
+        setFocus view
+        controller.post(ApplyMapRestart([| view |], "Randomize", randomizePredicate))
         )
       menu.add(randomizeItem)
 
@@ -946,62 +945,40 @@ type Editor =
 
           | MutateTool ->
             if (!focusView).isSomeAnd((===) view) then
-              // Mutate other half or mosaic views.
+              // Mutate other half or third views.
               match view.mainMode with
               | FullView -> ()
               | HalfView ->
-                view.post(fun _ ->
-                  for targetView in halfView do
-                    if targetView <>= view then
-                      let predicate = View.mutationPredicate(rnd, view, !mutateMode)
-                      targetView.filename <- view.filename
-                      targetView.presetFilename <- view.presetFilename
-                      targetView.controller.mutateFrom(view.controller, predicate)
-                  )
-              | QuarterView ->
-                view.post(fun _ ->
-                  let predicate = View.mosaicPredicate(rnd, !view.controller.dna, view, !mutateMode)
-                  let motherView = quarterView.[kronecker view.gridI 0]
-                  motherView.controller.mutateFrom(view.controller, predicate true (float motherView.gridI / float quarterView.last), false)
-                  for targetView in quarterView do
-                    if targetView <>= view && targetView <>= motherView then
-                      targetView.filename <- view.filename
-                      targetView.presetFilename <- view.presetFilename
-                      targetView.controller.mutateFrom(motherView.controller, predicate false (float targetView.gridI / float quarterView.last), true)
-                  )
+                controller.post(ApplyMapMutation([| for i in 1 .. halfView.last -> halfView.[(view.gridI + i) % halfView.size] |],
+                                                 view,
+                                                 "Mutate",
+                                                 Array.init halfView.last (fun _ -> View.mutationPredicate(rnd, view, !mutateMode))))
+              | ThirdView ->
+                controller.post(ApplyMapMutation([| for i in 1 .. thirdView.last -> thirdView.[(view.gridI + i) % thirdView.size] |],
+                                                 view,
+                                                 "Mutate",
+                                                 Array.init thirdView.last (fun _ -> View.mutationPredicate(rnd, view, !mutateMode))))
             else
               setFocus view
 
           | JoltTool ->
             if (!focusView).isSomeAnd((===) view) then
               // Mutate the view.
-              view.post(fun _ ->
-                let predicate = View.mutationPredicate(rnd, view, !mutateMode)
-                view.controller.mutateFrom(view.controller, predicate)
-                updateDna()
-                updateInfo()
-                )
+              controller.post(ApplyMapMutation([| view |], view, "Jolt", [| View.mutationPredicate(rnd, view, !mutateMode) |]))
+              controller.post(CloseAction)
             else
               setFocus view
 
         args.Handled <- true
         )
 
-      let iteratePanZoomViews(f) =
-        if view.isEmpty = false then
-          match view.mainMode with
-          | QuarterView -> for qview in quarterView do f qview
-          | _ -> f view
-
       image.MouseMove.Add(fun (args : Input.MouseEventArgs) ->
         match !userAction with
         | Panning(view, source) ->
           let target = args.GetPosition(canvas).vec2f
-          let delta = (source - target) / (float32 image.Width * (!view.controller.deep).zoom) * if view.mainMode = QuarterView then 0.25f else 1.0f
-          iteratePanZoomViews(fun panView ->
-            panView.panDelta.modify((+) <| Vec3f(delta.x, delta.y, 0.0f))
-            panView.wakeAndPost(updateInfo)
-            )
+          let delta = (source - target) / (float32 image.Width * (!view.controller.deep).zoom)
+          controller.postAction(view, "Pan", View.transform(centerX = ModifyFloat (fun x -> x + float delta.x),
+                                                            centerY = ModifyFloat (fun y -> y + float delta.y)))
           userAction := Panning(view, target)
           args.Handled <- true
 
@@ -1017,7 +994,7 @@ type Editor =
             dragShape.Visibility <- Visibility.Collapsed
           args.Handled <- true
 
-        | _ -> ()
+        | Idle -> ()
         )
 
       image.MouseWheel.Add(fun (args : Input.MouseWheelEventArgs) ->
@@ -1025,16 +1002,10 @@ type Editor =
           match !toolMode with
           | PanZoomTool ->
             let delta = if args.Delta > 0 then 1.1f else 1.0f / 1.1f
-            iteratePanZoomViews(fun zoomView ->
-              zoomView.zoomFactor.modify((*) delta)
-              zoomView.wakeAndPost(updateInfo)
-              )
+            controller.postAction(view, "Zoom", View.transform(zoom = ModifyFloat(fun zoom -> zoom * float delta)))
           | _ ->
             let delta = float32 (sign args.Delta) * 0.01f / (!view.controller.deep).zoom
-            iteratePanZoomViews(fun panView ->
-              panView.panDelta.modify((+) <| Vec3f(0.0f, 0.0f, delta))
-              panView.wakeAndPost(updateInfo)
-              )
+            controller.postAction(view, "Pan Z", View.transform(centerZ = ModifyFloat(fun z -> z + float delta)))
         args.Handled <- true
         setFocus view
         )
@@ -1057,14 +1028,13 @@ type Editor =
             let x1' = lerp x0 x1 (float32 <| delerp itop.x ibottom.x (source.x + size))
             let y0' = lerp y0 y1 (float32 <| delerp itop.y ibottom.y (source.y - size))
             let y1' = lerp y0 y1 (float32 <| delerp itop.y ibottom.y (source.y + size))
-            iteratePanZoomViews(fun zoomView ->
-              zoomView.controller.alter(View.transform(centerX = SelectFloat (average x0' x1' |> float),
-                                                       centerY = SelectFloat (average y0' y1' |> float),
-                                                       zoom = SelectFloat (1.0 / float (y1' - y0'))))
-              if zoomView === view then updateInfo()
-              )
+            controller.postAction(view, "Zoom", View.transform(centerX = SelectFloat (average x0' x1' |> float),
+                                                               centerY = SelectFloat (average y0' y1' |> float),
+                                                               zoom = SelectFloat (1.0 / float (y1' - y0'))))
+            controller.post(CloseAction)
           dragShape.Visibility <- Visibility.Collapsed
 
+        controller.post(CloseAction)
         userAction := Idle
         image.ReleaseMouseCapture()
         args.Handled <- true
@@ -1097,7 +1067,14 @@ type Editor =
       )
     
     let randomizeAllButton = Button(Content = "Randomize All", Background = toolBg, Margin = Thickness(1.0, 2.0, 1.0, 1.0), withToolTip = "Randomize all visible views.")
-    randomizeAllButton.Click.Add(fun _ -> randomizeAll())
+    randomizeAllButton.Click.Add(fun _ ->
+      let views = Darray.create()
+      iterateViews(fun view visible -> if visible then views.add(view))
+      controller.post(ApplyMapRestart(views.toArray, "Randomize All", randomizePredicate))
+      match !viewMode with
+      | FullView -> setFocus fullView
+      | _ -> clearFocus()
+      )
     toolPanel.add(randomizeAllButton, Dock.Top)
     toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 0.0)), Dock.Top)
 
@@ -1150,6 +1127,7 @@ type Editor =
 
     window.Content <- mainPanel
     window.Closed.Add(fun _ ->
+      controller.stop()
       iterateViews(fun view _ -> view.stop())
       (!logWindow).apply(fun logWindow -> logWindow.close())
       )
@@ -1158,7 +1136,7 @@ type Editor =
     window.Show()
 
     iterateViews(fun view _ ->
-      view.view.start()
+      view.pixmapView.start(pixmapSeed)
       )
 
     setToolMode PanTool
@@ -1182,9 +1160,9 @@ TODO
 -Figure out whether atlases are even a good idea. 
 -Crossover tool.
 -Figure out a nice way of setting Map3Info sampling diameter based on layout.
+-Aspect ratio support.
 -Add .dds export for 2-D and 3-D textures.
--Add Map3 display modes: rectangle, sphere, ?
--Undo/redo.
+-Add Map3 projection modes: rectangle, sphere, ?
 -History.
 -Add either hover options or extra buttons to parameters in Dna view:
  -display range of parameter values in a gradient, pick new value by clicking.
@@ -1195,15 +1173,7 @@ TODO
  2-slice. The filter would be run when the first mosaic level is computed to decide whether to
  display or reject it.
 -Recent files menu item.
+-Keyboard shortcuts.
 
 *)
 
-
-(*
-
-0.3.0 Binary Release TODO
-
--Prepare a nice set of presets.
--Complete first version of user manual.
-
-*)

@@ -93,6 +93,7 @@ type PixmapViewMessage =
 
 
 
+/// Maintains a view into IPixmapSource content in an Image control.
 type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeight) =
   
   let mutable agent = none<Agent<PixmapViewMessage>>
@@ -196,7 +197,9 @@ type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeig
 
       | Reset ->
         currentSource <- PixmapSource.zero
-        Wpf.dispatch(image, fun _ -> image.Source <- Pixmap.create(16, 16, Vec3f(0.5f)).bitmapSource())
+        Wpf.dispatch(image, fun _ ->
+          image.Source <- Pixmap.create(16, 16, Vec3f(0.5f)).bitmapSource()
+          )
 
       | SetSource(source) ->
         currentSource <- source
@@ -242,7 +245,10 @@ type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeig
 type PixmapController<'a> =
   {
     pixmapView : PixmapView
+    /// The deep seed corresponds to an empty genotype.
     deepSeed : 'a
+    /// The pixmap seed corresponds to an empty genotype.
+    pixmapSeed : IPixmapSource
     rnd : Rnd
     dna : Atom.Shared<Dna>
     deep : Atom.Shared<'a>
@@ -256,15 +262,16 @@ type PixmapController<'a> =
     mutable workCallback : unit -> unit
   }
 
-  static member create(pixmapView, deepSeed : 'a, deepGenerator, pixmapGenerator, ?deepFilter) =
+  static member create(pixmapView, pixmapSeed, deepSeed : 'a, deepGenerator, pixmapGenerator, ?deepFilter) =
     let rnd = Rnd(hash pixmapView + Common.timeSeed())
     {
       pixmapView = pixmapView
       deepSeed = deepSeed
+      pixmapSeed = pixmapSeed
       rnd = rnd
       dna = Atom.Shared(Dna.create())
       deep = Atom.Shared(deepSeed)
-      pixmapSource = Atom.Shared(PixmapSource.zero)
+      pixmapSource = Atom.Shared(pixmapSeed)
       editSource = InteractiveSource(rnd.tick)
       fitnessCounter = createCounter 1.0
       deepGenerator = deepGenerator
@@ -272,6 +279,12 @@ type PixmapController<'a> =
       deepFilter = deepFilter >? fun _ _ -> true
       workCallback = ignore
     }
+
+  member this.reset() =
+    this.dna.set(Dna.create())
+    this.deep.set(this.deepSeed)
+    this.pixmapSource.set(this.pixmapSeed)
+    this.pixmapView.setSource(this.pixmapSeed)
 
   member this.generate(bypassFilter : bool, ?previous, ?dnaSource) =
     this.workCallback()
@@ -302,20 +315,6 @@ type PixmapController<'a> =
     this.editSource.reset()
     this.editSource.mutationPredicate <- predicate
     this.generate(false)
-
-  /// Sets a parameter in the Dna.
-  member this.setValue(index, value) =
-    this.editSource.mutationPredicate <-
-      match value with
-      | Some(v) -> fun _ _ i -> if i = index then Select(v) else Retain
-      | _ -> fun _ _ i -> if i = index then Jolt01(1.0) else Retain
-    this.generate(true)
-    
-  /// Modifies a parameter in the Dna.
-  member this.modifyValue(index, delta) =
-    this.editSource.mutationPredicate <-
-      fun _ _ i -> if i = index then Adjust01(delta) else Retain
-    this.generate(true)
 
   /// Alters Dna with the predicate.
   member this.alter(predicate) =

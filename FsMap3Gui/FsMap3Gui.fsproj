@@ -74,6 +74,8 @@
     <Compile Include="busyimage.fs" />
     <Compile Include="editorabout.fs" />
     <Compile Include="editorview.fs" />
+    <Compile Include="editorundo.fs" />
+    <Compile Include="editorcontrol.fs" />
     <Compile Include="editor.fs" />
     <None Include="demo.fsx" />
     <Compile Include="main.fs" />
@@ -96,7 +98,7 @@
     <None Include="halfview.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="quarterview.png">
+    <None Include="thirdview.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="pan-zoom-3.png">
@@ -128,7 +130,9 @@
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
-    <PostBuildEvent>xcopy "$(SolutionDir)Presets" "$(TargetDir)Presets" /S /Y /I /D</PostBuildEvent>
+    <PostBuildEvent>xcopy "$(SolutionDir)Presets" "$(TargetDir)Presets" /S /Y /I /D
+xcopy "$(TargetDir)Presets" "$(SolutionDir)Presets" /S /Y /I /D
+</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
