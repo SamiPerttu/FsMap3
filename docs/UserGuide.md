@@ -1,4 +1,4 @@
-# FsMap3 Explorer User Guide
+# FsMap3 Editor User Guide
 
 ** Table of Contents **
 
@@ -6,7 +6,7 @@
 
 ## Introduction
 
-**FsMap3 Explorer** is a Windows GUI for creating and exploring *[procedural textures](http://en.wikipedia.org/wiki/Procedural_texture)*. Texture descriptions can be edited, loaded and saved, exported as images, randomized, mutated and evolved. This user guide helps you get started.
+**FsMap3 Editor** is a Windows GUI for creating and exploring *[procedural textures](http://en.wikipedia.org/wiki/Procedural_texture)*. Texture descriptions can be edited, loaded and saved, exported as images, randomized, mutated and evolved. This user guide helps you get started.
 
 At the time of this writing **FsMap3** is considered to be in alpha, which means that things are still changing rapidly. Backward compatibility of saved textures is not guaranteed until we move to beta.
 
@@ -30,8 +30,11 @@ These boxes are typically called **nodes** in texture editors. A complete proced
 
 Here are some example images. Each image is a 2-dimensional cross section of a 3-texture created with **FsMap3**.
 
-<img src="examples/fireplace.jpg" alt="Fireplace" style="width: 320px;"/> <img src="examples/clouds.jpg" alt="Clouds" style="width: 320px;"/>
-<img src="examples/jupiter.jpg" alt="Jupiter" style="width: 320px;"/> <img src="examples/haze.jpg" alt="Haze" style="width: 320px;"/>
+|   |   |
+|---|---|
+|<img src="examples/fireplace.jpg" alt="Fireplace" style="width: 320px;"/> | <img src="examples/clouds.jpg" alt="Clouds" style="width: 320px;"/>|
+|<img src="examples/jupiter.jpg" alt="Jupiter" style="width: 320px;"/> | <img src="examples/haze.jpg" alt="Haze" style="width: 320px;"/>|
+|<img src="examples/Cyclones.jpg" alt="Noises/Cyclones" style="width: 320px;"/> | <img src="examples/Colony.jpg" alt="Noises/Colony" style="width: 320px;"/>|
 
 
 ## A Look at the User Interface
@@ -70,11 +73,11 @@ From top to bottom:
 * **Randomize All** creates random textures in all visible views. The view coordinates  and zoom are reset.
 
 * **Mutation mode** influences what kind of modifications are made when mutating a texture.
-  * *Everything*: All parameters are mutated with equal probability.
-  * *Colors and Effects*: Mostly, the palette, unary nodes, and basis shapes are mutated. (*Shapes* are extra modifiers available by default in basis nodes. They are very similar to unary nodes.)
-  * *Scales and Offsets*: Mutate position and scale parameters. This is intended to maintain the overall flavor of the texture while rearranging and repositioning individual parts of it.
-  * *Details*: Make small changes only, like what kind of interpolation is used, radii of basis features, and parameters of *mixing operators* like layering.
-  * *Choose at Random*: One of the above modes is chosen randomly for each mutation.
+  * **Everything**: All parameters are mutated with equal probability.
+  * **Colors and Effects**: Mostly, the palette, unary nodes, and basis shapes are mutated. (*Shapes* are extra modifiers available by default in basis nodes. They are very similar to unary nodes.)
+  * **Scales and Offsets**: Mutate position and scale parameters. This is intended to maintain the overall flavor of the texture while rearranging and repositioning individual parts of it.
+  * **Details**: Make small changes only, like what kind of interpolation is used, radii of basis features, and parameters of *mixing operators* like layering.
+  * **Choose at Random**: One of the above modes is chosen randomly for each mutation.
 
 * **Default layout mode** determines the layout mode chosen for random textures. Set this appropriately for the kind of textures you want to create. This setting has no influence on already created textures. (For those, you can simply change the layout parameter in the parameter panel.) 
 
@@ -90,7 +93,7 @@ From top to bottom:
 
   * **Quad View**: There is a 2-by-2 grid of small views. Each view can be edited independently. The main attraction of this mode is *interactive evolution*: With the mutate tool, choose your favorite texture. The other 3 are then created as its variations. If one of them looks nicer than the original, choose it.
 
-  * **Mosaic View**: The mosaic view is experimental. Its goal is to convey information about a large number of parameter settings at once. There is a 4-by-4 grid of small views. The views are independently editable but they are also *offset* from each other so that if the textures are identical, they form one big picture. The mutate tool works differently in this mode: besides making a few categorical changes, it attempts to mutate continuous parameters in *gradients* running from the top left to the bottom right view.
+  * **Mosaic View**: The mosaic view is **experimental**. Its goal is to convey information about a large number of parameter settings at once. There is a 4-by-4 grid of small views. The views are independently editable but they are also *offset* from each other so that if the textures are identical, they form one big picture. The mutate tool works differently in this mode: besides making a few categorical changes, it attempts to mutate continuous parameters in *gradients* running from the top left to the bottom right view.
 
 * **Tools** are for working with texture views. Inside views the left mouse button operates tools, while the right mouse button opens a context menu.
 
@@ -118,7 +121,7 @@ The textures are displayed here. Any change to the parameters of a texture trigg
 * **Reset Zoom**: Reset zoom to default, which is a view area of 1x1 units.
 * **Reset View**: Reset zoom and view area to the 1x1 square between 0 and 1 on **X** and **Y** axes. Reset **Z** to *0.5*.
 * **Randomize**: Create a new random texture in this view.
-* **Open in New Window**: Open the texture in a new explorer window.
+* **Open in New Window**: Open the texture in a new editor window.
 * **Create Preset**: Save the texture as a preset.
 * **Update Preset**: If the texture was loaded from a preset, overwrites the preset.
 * **Copy F# Code to Clipboard**: Copy to clipboard an expression containing the texture. Texture data will be packed in a Base64 encoded string.
@@ -128,18 +131,18 @@ The textures are displayed here. Any change to the parameters of a texture trigg
 
 **FsMap3** comes equipped with a wide assortment of 3-bases.
 
-|    |    |
-|---:|:---|
-|![Perlin noise](bases/perlin.png) | [Perlin noise](http://en.wikipedia.org/wiki/Perlin_noise), as many other noise bases, emulates band-limited noise. This version has unconstrainted gradients and a selectable interpolation fade.|
-|![cubex noise](bases/cubex.png) | *Cubex noise* is similar to Perlin noise. It is slower to calculate but has more options. |
-|![weave](bases/weave.png) | *Weave* is special in that, fow now, it is the only 3-basis designed to look 2-dimensional, specifically, a woven or threaded pattern. |
-|![radial value noise](bases/radial.png) | *Radial value noise* is yet another noise-like basis. Unlike the others, its features are points, not gradients. The points are distance weighted. |
-|![leopard](bases/leopard.png) | The *leopard* basis is a bunch of spots mixed together. |
-|![Worley](bases/worley.png) | The [Worley basis](http://en.wikipedia.org/wiki/Worley_noise) outputs processed distances to closest feature point. This version is specially adapted to produce 3-dimensional results. |
-|![colored Worley](bases/jigsaw.png) | A colored version of the Worley basis. The output is colored according to the nearest cell. |
-|![peacock](bases/peacock.png) | The *peacock* basis is like the leopard basis except the spots are now randomly oriented shapes called *potentials*. |
-|![Julia](bases/julia.png) | The *Julia* basis turns some well-known [fractal iteration formulas](http://en.wikipedia.org/wiki/Julia_set) into a tileable 3-texture form. |
-|![Julia orbit trap](bases/orbit.png) | *Julia orbit trap* basis. Like the Julia basis but the coloring is done with the orbit trap technique, utilizing a separate orbit texture that we call *atlas*. |
-|![capsule flow](bases/capsuleFlow.png) | *Capsule flow*. The flow bases distributes oriented potentials like the Peacock basis. However, in the flow bases the orientation is sampled from a separate *flow basis*. The capsule flow basis distributes oriented capsules. |
-|![potential flow](bases/potentialFlow.png) | The *potential flow* basis consists of shapes oriented according to the flow basis. |
-|![pattern flow](bases/patternFlow.png) | The *pattern flow* basis is **experimental**. It is like potential flow except the potential colors are retrieved from a separate *atlas*. |
+|    |    |    |
+|---:|:---|:---|
+|![Perlin noise](bases/perlin.png) | Perlin noise | [Perlin noise](http://en.wikipedia.org/wiki/Perlin_noise), as many other noise bases, emulates band-limited noise. This version has unconstrainted gradients and a selectable interpolation fade.|
+|![cubex noise](bases/cubex.png) | cubex noise | *Cubex noise* is similar to Perlin noise. It is slower to calculate but has more options. |
+|![weave](bases/weave.png) | weave | *Weave* is special in that, fow now, it is the only 3-basis designed to look 2-dimensional, specifically, a woven or threaded pattern. |
+|![radial value noise](bases/radial.png) | radial value noise | *Radial value noise* is yet another noise-like basis. Unlike the others, its features are points, not gradients. The points are distance weighted. |
+|![leopard](bases/leopard.png) | leopard | The *leopard* basis is a bunch of spots mixed together. |
+|![Worley](bases/worley.png) | Worley | The [Worley basis](http://en.wikipedia.org/wiki/Worley_noise) outputs processed distances to nearest feature points. This version is specially adapted to produce 3-dimensional results. The distance metric is selectable. |
+|![colored Worley](bases/jigsaw.png) | colored Worley | A colored version of the Worley basis. The output is colored according to the nearest cell. |
+|![peacock](bases/peacock.png) | peacock | The *peacock* basis is like the leopard basis except the spots are now randomly oriented shapes called *potentials*. |
+|![Julia](bases/julia.png) | Julia | The *Julia* basis turns some well-known [fractal iteration formulas](http://en.wikipedia.org/wiki/Julia_set) into a tileable 3-texture form. |
+|![Julia orbit trap](bases/orbit.png) | Julia orbit trap | *Julia orbit trap* basis. Like the Julia basis but the coloring is done with the orbit trap technique, utilizing a separate orbit texture that we call *atlas*. |
+|![capsule flow](bases/capsuleFlow.png) | capsule flow | *Capsule flow*. The flow bases distributes oriented potentials like the Peacock basis. However, in the flow bases the orientation is sampled from a separate *flow basis*. The capsule flow basis consists of oriented capsules. |
+|![potential flow](bases/potentialFlow.png) | potential flow | The *potential flow* basis consists of shapes oriented according to the flow basis. |
+|![pattern flow](bases/patternFlow.png) | pattern flow | The *pattern flow* basis is **experimental**. It is like potential flow except the potential colors are retrieved from a separate *atlas*. |
