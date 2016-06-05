@@ -11,7 +11,6 @@ open System.Windows.Markup
 type App() as app =
   inherit System.Windows.Application()  
   do app.Startup.Add(fun _ ->
-    //Log.createLogFile("fsmap3.log")
     Editor.start()
     )
 
