@@ -3,45 +3,38 @@ View Center Y: 0.5
 View Center Z: 0.379989624023437
 View Zoom: 1
 Palette:
-  Color space: HSL
-  Hue origin: 1
-  Hue range: 0.192602425813674
-  Hue skew: -0.232558190822601
-  Saturation range: 0.526470601558685
-  Saturation minimum: 0.009192238561809
-  Saturation skew: -0.6744185090065
-  Value skew: 0.279069662094116
+  Color space: CIELch
+  Hue origin: 0
+  Hue range: 0.065844714641571
+  Hue skew: -0.325581490993499
+  Saturation range: 0.800000011920929
+  Saturation minimum: 0.019944034516811
+  Saturation skew: -0.348837316036224
+  Value skew: 1.16279077529907
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
-Node: Unary
-  Unary op: bleed
-    Bleed 1: -0.398557543754577
-    Bleed 2: -0.250597268342971
-    Node: Unary
-      Unary op: bleed
-        Bleed 1: 0.178488135337829
-        Bleed 2: 0.905866503715515
-        Node: Fractalizer
-          X offset: -0.663654565811157
-          Y offset: 3.50866317749023
-          Z offset: 3.53378391265869
-          Octaves: 10
-          Frequency: 2.51512956619263
-          Roughness: 0.515975356101989
-          Fractalizer: mix and displace
-            Lacunarity: 0.622877538204193
-            Highpass filter: 0.763953447341919
-            Mix operator: layer
-              Layer width: 0.393023252487182
-              Layer hardness: 3
-              Layer persist: 0.264705896377563
-            Displace amount: 0.28125
-            Displace response: shelf
-            Walk operator: bounce
-            Basis: radial value noise
-              Cell color: high choice
-                Choices: 8
-                Seed: 1466519951
-              Radial fade: smooth-3
-          Shape: wave packet
-            Packet seed: 1995024194
+Node: Fractalizer
+  X offset: -4.81102752685547
+  Y offset: -1.78702783584595
+  Z offset: 0.019205093383789
+  Octaves: 8
+  Frequency: 2.51512956619263
+  Roughness: 0.487291425466537
+  Fractalizer: mix and displace
+    Lacunarity: 0.622877538204193
+    Highpass filter: 0.894282281398773
+    Mix operator: layer
+      Layer width: 0.339431583881378
+      Layer hardness: 5
+      Layer persist: 0.112674824893474
+    Displace amount: 0.527266979217529
+    Displace response: line
+    Walk operator: bounce
+    Basis: radial value noise
+      Cell color: any
+      Radial fade: smooth-2
+  Shape: shift
+    X shift: -0.203727707266807
+    Y shift: -0.319761455059051
+    Z shift: 0.074960768222808
+    Shift wave: smooth triangle
