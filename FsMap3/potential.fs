@@ -99,7 +99,7 @@ let teardrop (v : Vec3f) =
 /// Supercone potential function. Its cross sections are superellipses with power parameter p.
 /// The rounded base has a radius of 0 < radius <= 1.
 let supercone p radius (v : Vec3f) =
-  assert (p > 0G && 0G < radius && radius < 1G)
+  assert (p > 0G && 0G < radius && radius <= 1G)
   // Compute a rough bounding ball for the supercone.
   let scale = clamp 1.089f 1.33f (lerp 1.089f 1.127f (delerp 2.0f 2.5f p))
   let v = Vec3f(scale / radius * abs v.x, scale * v.y, scale / radius * abs v.z)
