@@ -286,7 +286,7 @@ type PixmapController<'a> =
     this.pixmapSource.set(this.pixmapSeed)
     this.pixmapView.setSource(this.pixmapSeed)
 
-  member this.generate(bypassFilter : bool, ?previous, ?dnaSource) =
+  member this.generate(bypassFilter : bool, ?previous, ?dnaSource, ?preAction) =
     this.workCallback()
 
     let dnaSource = dnaSource >? (this.editSource :> DnaSource)
@@ -298,6 +298,7 @@ type PixmapController<'a> =
     let mutable success = false
 
     while success = false do
+      preAction.apply(fun action -> action())
       let deep' = dna.generate(dnaSource, this.deepGenerator)
       if attemptsLeft = 0 || bypassFilter || (this.deepFilter deep' previous && dna.fingerprint <> fingerprint) then
         success <- true
@@ -311,14 +312,15 @@ type PixmapController<'a> =
         attemptsLeft <- attemptsLeft - 1
 
   /// Creates the Dna from scratch.
-  member this.restart(predicate) =
+  member this.restart(?predicate, ?bypassFilter, ?dnaSource) =
     this.editSource.reset()
-    this.editSource.mutationPredicate <- predicate
-    this.generate(false)
+    predicate.apply(fun predicate -> this.editSource.parameterPredicate <- predicate)
+    let dnaSource = dnaSource >? (this.editSource :> DnaSource)
+    this.generate(bypassFilter >? false, dnaSource = dnaSource)
 
   /// Alters Dna with the predicate.
   member this.alter(predicate) =
-    this.editSource.mutationPredicate <- predicate
+    this.editSource.parameterPredicate <- predicate
     this.generate(true)
 
   /// Copies the contents of another controller here.
@@ -336,11 +338,11 @@ type PixmapController<'a> =
     this.editSource.observe(dna, this.fitnessCounter.tick)
 
   /// Makes us a mutation of the contents of the source, which can be this controller or another controller.
-  member this.mutateFrom(source : PixmapController<'a>, predicate, ?bypassFilter) =
+  member this.mutateFrom(source : PixmapController<'a>, ?predicate, ?bypassFilter, ?dnaSource, ?preAction) =
     let sourceDna, sourceDeep = !source.dna, !source.deep
-    // TODO. Do we always want to reset the edit memory?
     this.editSource.reset()
-    this.editSource.observe(sourceDna, this.fitnessCounter.tick)
-    this.editSource.mutationPredicate <- predicate
-    this.generate(bypassFilter >? false, sourceDeep)
+    predicate.apply(fun predicate -> this.editSource.parameterPredicate <- predicate)
+    let dnaSource = dnaSource >? (this.editSource :> DnaSource)
+    dnaSource.observe(sourceDna, this.fitnessCounter.tick)
+    this.generate(bypassFilter >? false, sourceDeep, dnaSource = dnaSource, preAction = (preAction >? ignore))
 

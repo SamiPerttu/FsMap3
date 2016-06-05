@@ -16,7 +16,7 @@ let valueBinner (bins : int) (dna : Dna) i =
 
 
 
-/// A parameter hash function divides parameters into equivalence classes that we call codes. It is given
+/// A parameter hash function partitions parameters into equivalence classes that we call codes. It is given
 /// a Hash128 object for hashing, Dna, and the parameter being hashed. It returns true if a code was obtained.
 type ParameterHash = Hash128 -> Dna -> int -> bool
 
@@ -34,6 +34,25 @@ let semanticHash (hash : Hash128) (dna : Dna) i =
 let structuralHash (hash : Hash128) (dna : Dna) i =
   hash.hash(dna.[i].structuralId)
   true
+
+
+/// A structural hash of parameter address and semantics. It is like structuralHash except it does not
+/// include node number.
+let addressHash (hash : Hash128) (dna : Dna) i =
+  hash.hash(dna.[i].semanticId)
+  hash.hash(dna.[i].address.value)
+  true
+
+
+/// A structural hash of a transformed address and parameter semantics. Intended for asymmetric hashing
+/// together with addressHash.
+let relativeAddressHash (f : DnaAddress -> DnaAddress) (hash : Hash128) (dna : Dna) i =
+  hash.hash(dna.[i].semanticId)
+  let relativeAddress = f dna.[i].address
+  if relativeAddress.isNull = false then
+    hash.hash(relativeAddress.value)
+    true
+  else false
 
 
 /// A structural hash of semantics and ancestor parameter address. More approximative than structuralHash.
@@ -323,5 +342,4 @@ let runHash (hash : Hash128) dna i (parameterHash : ParameterHash) =
     hash.hashEnd()
     true
   else false
-
 

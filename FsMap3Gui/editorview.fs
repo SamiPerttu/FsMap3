@@ -54,7 +54,7 @@ type [<NoComparison; NoEquality>] EditorView<'a> =
     mutable filename : string
     mutable presetFilename : string
     controller : 'a PixmapController
-    mutable focusShape : Rectangle option
+    mutable focusShape : Rectangle[] option
   }
 
   member this.stop() =
@@ -93,6 +93,9 @@ type [<NoComparison; NoEquality>] EditorView<'a> =
     this.image.Visibility <- visibility
     if visibility = Visibility.Collapsed then this.idle()
 
+  member this.focus(visibility) =
+    this.focusShape.apply(fun focusShape -> for shape in focusShape do shape.Visibility <- visibility)
+
   static member create(mainMode, gridI, gridX, gridY, pixmapSeed, deepSeed, deepGenerator, pixmapGenerator, deepFilter, grid : Grid, visible : bool, previewLevels) : 'a EditorView =
     let image = Image(SnapsToDevicePixels = true, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Visibility = match visible with | true -> Visibility.Visible | false -> Visibility.Collapsed)
     let view = PixmapView(image, previewLevels = previewLevels)
@@ -122,12 +125,11 @@ type [<NoComparison; NoEquality>] EditorView<'a> =
     this
 
   member this.createFocusShape(grid : Grid) =
-    let shape = Rectangle(Visibility = Visibility.Hidden, IsHitTestVisible = false, Stroke = Wpf.brush(0.75), Opacity = 1.0, StrokeThickness = 2.0, Fill = Brushes.Transparent, SnapsToDevicePixels = true)
-    this.focusShape <- Some(shape)
-    grid.add(shape, 0, 0)
-    shape.Margin <- Thickness(0.0)
-    shape.HorizontalAlignment <- HorizontalAlignment.Left
-    shape.VerticalAlignment <- VerticalAlignment.Top
+    let shape1 = Rectangle(Visibility = Visibility.Hidden, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false, Stroke = Wpf.brush(0.0), Opacity = 1.0, StrokeThickness = 1.0, Fill = Brushes.Transparent, SnapsToDevicePixels = true)
+    let shape2 = Rectangle(Visibility = Visibility.Hidden, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false, Stroke = Wpf.brush(0.8), Opacity = 1.0, StrokeThickness = 2.0, Fill = Brushes.Transparent, SnapsToDevicePixels = true)
+    this.focusShape <- Some([| shape1; shape2 |])
+    grid.add(shape1, 0, 0)
+    grid.add(shape2, 0, 0)
 
   member this.editState =
     {

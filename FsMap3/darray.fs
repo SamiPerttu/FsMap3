@@ -69,15 +69,15 @@ type [<NoEquality; NoComparison>] Darray<'a> =
       else this.a <- expansion
 
   /// Shrinks the number of items in the array to n'. The new size must not be larger than the current size.
-  /// Trims the array as well, if necessary. However, the array is never completely deallocated or shrunk below
-  /// a capacity of 4. Clients typically invoke Darray.resize, which then calls this method.
+  /// Trims the array as well, if necessary. However, the array is never completely deallocated.
+  /// Clients typically invoke Darray.resize, which then calls this method.
   member this.shrink(n') =
     enforce (n' <= this.size) "Darray.shrink: The new size cannot be larger than the current size."
     // Trimming comes before recycling, as trimmed items do not need to be recycled.
     let trimCapacity = this.capacity >>> 2
-    if (trimCapacity &&& this.autoTrimMask) > n' && trimCapacity >= 4 then
+    if (trimCapacity &&& this.autoTrimMask) > n' then
       let a = this.a
-      this.a <- a.[0 .. trimCapacity - 1]
+      this.a <- Array.init trimCapacity a.at
       Array.scrub a
       // Adjust logical size in the interim before recycling.
       this.n <- min this.n this.a.size
@@ -95,7 +95,7 @@ type [<NoEquality; NoComparison>] Darray<'a> =
   /// The order of the elements is thus not preserved.
   member inline this.discard(i) =
     assert (this.size > 0)
-    this.swap(i, this.last)
+    if i < this.last then this.swap(i, this.last)
     this.shrink(this.size - 1)
 
   /// Inserts an item before the ith item in the array. The order of the items is preserved.
@@ -346,7 +346,7 @@ type [<NoEquality; NoComparison>] Darray<'a> =
 
   /// Creates a (shallow) copy of a dynamic array.
   static member createCopy(a : 'a Darray) =
-    { a = Array.copy a.a; n = a.n; autoTrimMask = a.autoTrimMask }
+    { a = Array.init a.size a.at; n = a.size; autoTrimMask = a.autoTrimMask }
 
   /// Creates a dynamic array containing a single item.
   static member createSingle(v : 'a) =
@@ -355,16 +355,16 @@ type [<NoEquality; NoComparison>] Darray<'a> =
   /// Builds a dynamic array from a sequence.
   static member createFrom(a : #seq<'a>) =
     let a = Array.ofSeq a
-    { a = a; n = a.Length; autoTrimMask = ~~~0 }
+    { a = a; n = a.size; autoTrimMask = ~~~0 }
 
   /// Builds a dynamic array from a list.
   static member createFrom(a : list<'a>) =
     let a = Array.ofList a
-    { a = a; n = a.Length; autoTrimMask = ~~~0 }
+    { a = a; n = a.size; autoTrimMask = ~~~0 }
 
   /// Builds a dynamic array from a native array.
   static member createFrom(a : array<'a>) =
-    { a = a; n = a.Length; autoTrimMask = ~~~0 }
+    { a = Array.copy a; n = a.size; autoTrimMask = ~~~0 }
 
 
   interface System.Collections.IEnumerable with

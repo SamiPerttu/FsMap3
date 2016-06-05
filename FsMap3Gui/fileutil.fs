@@ -1,5 +1,12 @@
 ﻿module FsMap3.FileUtil
 
+open System
+open System.Windows
+open System.Windows.Media
+open System.Windows.Shapes
+open System.Windows.Controls
+open System.Windows.Controls.Primitives
+
 open Common
 
 
@@ -22,3 +29,17 @@ let getDirectoryContents (path : string) =
   directories, files
 
 
+/// Asks the user if deletion of file is really wanted. Returns true if the file is gone.
+let confirmDelete deleteVerb (file : string) =
+  if IO.File.Exists(file) then
+    match MessageBox.Show("Are you sure you want to " + deleteVerb + " '" + System.IO.Path.GetFileNameWithoutExtension(file) + "'?", "Please confirm", MessageBoxButton.YesNo, MessageBoxImage.Question) with
+    | MessageBoxResult.Yes ->
+      try
+        System.IO.File.Delete(file)
+        true
+      with
+        | _ -> false
+    | _ ->
+      false
+  else
+    true

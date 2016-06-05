@@ -43,45 +43,6 @@ open Convert
 open Mangle
 
 
-/// Tree address is encoded in a 64-bit integer. It contains a 1 "guard" bit followed by 4 bits per level of sibling number
-/// information. Levels 0 to 15 are supported. If the level is too large (this should be rare in practice), then the address
-/// is set to the special null address.
-type ParameterAddress = struct
-  val x : uint64
-
-  new(x) = { x = x }
-
-  /// Root address contains only the guard bit. There can only be one root node, so we do not have to
-  /// encode its sibling number.
-  static member Root = ParameterAddress(1UL)
-  /// The null address represents an address that does not exist or cannot be represented.
-  static member Null = ParameterAddress(0UL)
-  /// Address guard bit for the given level (level in [0, 15]).
-  static member guard(level) = 1UL <<< (level <<< 2)
-
-  member this.value = this.x
-  member this.isNull = this.x = 0UL
-  member this.isRoot = this.x = 1UL
-
-  /// Returns whether this address is at the maximum representable level. Any children below this level are set to the null address.
-  member this.isMaxLevel = this.x &&& ParameterAddress.guard 15 <> 0UL
-  /// Returns the address of a child node. Returns the null address if the child cannot be represented.
-  member this.child(childNumber) = if this.isMaxLevel then ParameterAddress.Null else ParameterAddress((this.x <<< 4) ||| uint64 (childNumber &&& 0xf))
-  /// Returns the sibling number of this address at the given relative level, where 0 is the current level, 1 is the parent level, and so on.
-  member this.siblingNumber(relativeLevel) = (this.x >>> (relativeLevel <<< 2)) &&& 0xfUL
-  /// Returns a local address identifier that includes at most the specified number of levels of context. Note that the return value is not an address!
-  member this.localId(maximumLevels) = if this.isNull then this.x elif maximumLevels >= 16 then this.x else this.x &&& ((1UL <<< maximumLevels) - 1UL)
-  /// Returns the address of the given ancestor (0 = this node, 1 = parent, and so on) or the null address if it does not exist or cannot be obtained.
-  member this.ancestor(relativeLevels) = if this.isNull then this else ParameterAddress(this.x >>> (relativeLevels <<< 2))
-  /// Returns the address of the parent or the null address if it does not exist or cannot be obtained.
-  member this.parent = this.ancestor(1)
-  /// Returns the level of this (non-null) address.
-  member this.level = Bits.highestBit64 this.x >>> 2
-  /// Returns whether we are an ancestor of address.
-  member this.isAncestorOf(address : ParameterAddress) = this.x < address.x && address.ancestor(address.level - this.level).x = this.x
-end
-
-
 
 /// Parameter format describes how different parameter values are related.
 type ParameterFormat = Categorical | Ordered
@@ -102,7 +63,7 @@ type Parameter =
     /// Parameter level - zero is root.
     level : int
     /// Local tree address.
-    address : ParameterAddress
+    address : DnaAddress
     /// Local, intra-node parameter number.
     number : int
     /// Parent parameter index, if any. Every parameter not in the root node has a parent on the previous level.
@@ -128,7 +89,7 @@ type Parameter =
   static member getSemanticId(format : ParameterFormat, name, maxValue : uint) =
     mangle64 (int64 (mangleString name) + mangle64 (match format with | Categorical -> int64 maxValue | _ -> -1L))
 
-  static member getStructuralId(semanticId, level, address : ParameterAddress, number) =
+  static member getStructuralId(semanticId, level, address : DnaAddress, number) =
     mangle64 (semanticId + mangle64 (int64 address.x + mangle64 ((int64 number <<< 32) + int64 level)))
 
   /// Returns whether the parameter has a parent. Every parameter except the root is supposed to have a parent.
@@ -152,10 +113,11 @@ type Parameter =
 
 
 
-/// Level state for a Dna. Internal type.
+/// Level state for a Dna object. Internal type.
+[<NoComparison; NoEquality>]
 type LevelState = struct
   /// Current node address on this level.
-  val address : ParameterAddress
+  val address : DnaAddress
   /// Index of latest parameter drawn on this level.
   val parameterIndex : int Optionval
   /// Current number of child nodes (equals the sibling number of next child).
@@ -368,7 +330,7 @@ type [<ReferenceEquality>] Dna =
     this.injectorArray.reset()
     source.start()
     this.state.reset()
-    this.state.push(LevelState(ParameterAddress.Root, Noneval, 0, 0))
+    this.state.push(LevelState(DnaAddress.Root, Noneval, 0, 0))
     this.fingerprint <- 0L
     let result = generator this
     this.source <- Noneval

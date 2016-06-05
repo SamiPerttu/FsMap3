@@ -1,0 +1,153 @@
+﻿namespace FsMap3
+
+open Common
+
+
+[<NoComparison; NoEquality>]
+type ParameterAction =
+  /// Retain the previous value, if it exists. Otherwise pick a random value.
+  | Retain
+  /// Select a random value. If a previous value exists, avoid selecting it.
+  | Randomize
+  /// Select a default value. If the parameter comes with a prior, select the value
+  /// with the largest weight. Otherwise, for ordered parameters, pick the middlemost value;
+  /// for categorical parameters, pick the first value.
+  | SelectDefault
+  /// Attempt to select a specific value. If not possible, pick a random value.
+  | Select of value : uint
+  /// If ordered, attempt to select a specific fractional value (in unit range). If categorical, randomize.
+  | Select01 of value : float
+  /// If ordered, alter value by a fraction no larger than the given amount (0 < amount <= 1).
+  /// If categorical, randomize.
+  | Jolt01 of amount : float
+  /// If ordered, adjust value fractionally by delta (-1 <= delta <= 1), always changing the value
+  /// if delta <> 0. If categorical, cycle value in the direction indicated by delta.
+  | Adjust01 of delta : float
+  /// Modify existing transformed float with the function. Pick the closest legal value.
+  /// In the absence of a previous value, transform a random value.
+  | ModifyFloat of f : (float -> float)
+  /// Attempt to select a transformed float. Pick the closest legal value.
+  | SelectFloat of x : float
+
+  member private this.applyCategorical(rnd : Rnd, dna : Dna, i, existing : uint Optionval, choices : Choices<_> Option) =
+    let maxValue = dna.parameter(i).maxValue
+    let existing = existing.filter(match choices with | Some(choices) -> choices.isLegal | None -> dna.[i].isLegal)
+    let pickAny() = match choices with | Some(choices) -> choices.pick(rnd.float()) | None -> rnd.uint(0u, maxValue)
+    match this with
+    | Retain ->
+      match existing with | Someval(v) -> v | _ -> pickAny()
+    | Randomize | Select01 _ | ModifyFloat _ | SelectFloat _ ->
+      pickAny()
+    | SelectDefault ->
+      match choices with
+      | Some(choices) -> Fun.argMax 0 choices.last choices.weight |> uint
+      | None -> 0u
+    | Select v ->
+      match choices with
+      | Some(choices) -> if choices.isLegal(v) then v else pickAny()
+      | None -> if v <= maxValue then v else pickAny()
+    | Jolt01 _ ->
+      match choices, existing with
+      | Some(choices), Someval(v) -> choices.pickExcluding(v, rnd.float())
+      | _ -> pickAny()
+    | Adjust01 delta ->
+      match existing with
+      | Someval(v) ->
+        match choices with
+        | Some(choices) ->
+          let wrap x = if x > maxValue then x - maxValue - 1u else x
+          match (if delta > 0.0 then Fun.find else Fun.findBack) 1u maxValue (fun offset -> wrap (v + offset)) (fun v -> choices.weight(v) > 0.0) with
+          | Someval(v') -> v'
+          | Noneval -> v
+        | None ->
+          match sign delta, v with
+          |  1, Eq(maxValue) -> 0u
+          | -1, 0u           -> maxValue
+          |  s, _            -> v + uint s
+      | Noneval -> pickAny()
+
+  member private this.applyOrdered(rnd : Rnd, dna : Dna, i, existing : uint Optionval, choices : Choices<_> Option, floatTransform : (uint -> float) option) =
+    let maxValue = dna.parameter(i).maxValue
+    let range = float maxValue + 1.0
+    let existing = existing.filter(match choices with | Some(choices) -> choices.isLegal | None -> dna.[i].isLegal)
+    let pickAny() = match choices with | Some(choices) -> choices.pick(rnd.float()) | None -> rnd.uint(0u, maxValue)
+    let tryPick(v : uint) =
+      match choices with
+      | Some(choices) -> if choices.isLegal(v) then v else pickAny()
+      | None -> if v <= maxValue then v else pickAny()
+    match this with
+    | Retain ->
+      match existing with | Someval(v) -> v | Noneval -> pickAny()
+    | Randomize ->
+      pickAny()
+    | SelectDefault ->
+      match choices with
+      | Some(choices) -> Fun.argMax 0 choices.last choices.weight |> uint
+      | None -> maxValue / 2u
+    | Select v ->
+      tryPick(v)
+    | Select01 v ->
+      tryPick(lerp 0.0 (float maxValue) v |> clamp 0.1 (float maxValue - 0.1) |> uint)
+    | Jolt01 amount ->
+      match existing with
+      | Someval(v) ->
+        let v' = uint <| lerp (max 0.01 (float v - range * amount)) (min (float maxValue - 0.01) (float v + range * amount)) (rnd.float())
+        tryPick(if v' <> v then v' else rnd.choose((if v > 0u then 1.0 else 0.0), v - 1u, (if v < maxValue then 1.0 else 0.0), v + 1u))
+      | _ -> pickAny()
+    | Adjust01 delta ->
+      match existing with
+      | Someval(v) ->
+        match choices with
+        | Some(choices) ->
+          if delta > 0.0 && v < maxValue then
+            match Fun.findArg (v + 1u) maxValue (fun v -> choices.weight(v) > 0.0) with
+            | Someval(v') -> v'
+            | Noneval -> v
+          elif delta < 0.0 && v > 0u then
+            match Fun.findArgBack 0u (v - 1u) (fun v -> choices.weight(v) > 0.0) with
+            | Someval(v') -> v'
+            | Noneval -> v
+          else v
+        | None ->
+          if delta < 0.0 && v > 0u then
+            tryPick(uint <| clamp 0.1 (float v - 0.1) (float v + 0.5 + range * delta))
+          elif delta > 0.0 && v < maxValue then
+            tryPick(uint <| clamp (float v + 1.1) (float maxValue - 0.1) (float v + 0.5 + range * delta))
+          else v
+      | _ -> pickAny()
+    | ModifyFloat f ->
+      match floatTransform with
+      | Some(transform) ->
+        let v = match existing with | Someval(v) -> v | Noneval -> pickAny()
+        Fun.binarySearchClosest 0u maxValue transform (f (transform v))
+      | _ -> pickAny()
+    | SelectFloat x ->
+      match floatTransform with
+      | Some(transform) ->
+        Fun.binarySearchClosest 0u maxValue transform x
+      | _ -> pickAny()
+
+  /// Applies this action with a set of choices.
+  member this.apply(rnd, dna : Dna, i, existing, choices : Choices<_>) =
+    match choices.singular with
+    | Someval(v) ->
+      uint v
+    | Noneval ->
+      match dna.[i].format with
+      | Categorical -> this.applyCategorical(rnd, dna, i, existing, Some(choices))
+      | Ordered -> this.applyOrdered(rnd, dna, i, existing, Some(choices), None)
+
+  /// Applies this action with a uniform prior. An optional float transform can be supplied.
+  member this.apply(rnd, dna : Dna, i, existing, transform) =
+    if dna.[i].maxValue = 0u then
+      0u
+    else
+      match dna.[i].format with
+      | Categorical -> this.applyCategorical(rnd, dna, i, existing, None)
+      | Ordered -> this.applyOrdered(rnd, dna, i, existing, None, transform)
+
+
+
+/// A parameter predicate decides what to do with each Dna parameter during generation.
+type ParameterPredicate = Rnd -> Dna -> int -> ParameterAction
+

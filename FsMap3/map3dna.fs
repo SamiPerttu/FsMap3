@@ -462,7 +462,7 @@ let genWalk minAmount maxAmount (dna : Dna) =
 /// Generates a fractalizer map.
 let genFractalizer (subGen : Dna -> Map3) (dna : Dna) =
   let offset          = genOffset dna
-  let octaves         = dna.int("Octaves", 2, 10)
+  let octaves         = dna.int("Octaves", 2, 12)
   let basef           = dna.float32("Frequency", xerp 2.0f 16.0f)
   let roughness       = dna.float32("Roughness", xerp 0.4f 0.9f)
   let minLacunarity   = 0.5f / G sqrt2
@@ -557,10 +557,14 @@ let genBinop (subGen1 : Dna -> Map3) (subGen2 : Dna -> Map3) (dna : Dna) =
 /// It limits tree complexity probabilistically in random generation but does not hinder user editing.
 let rec genNode (E : float) (dna : Dna) =
 
-  let nodeWeight complexity = exp2(E - complexity) |> clamp 1.0e-6 1.0
+  let nodeWeight complexity =
+    // Set a hard limit anyway to prevent ridiculously complex maps.
+    if E > 1.0e-2 then
+      exp2(E - complexity) |> clamp 1.0e-6 1.0
+    else 0.0
 
   dna.branch("Node",
-    C(2.0 * nodeWeight 1.0, "Basis", fun _ ->
+    C(2.0 * nodeWeight 1.0 |> max 1.0e-6, "Basis", fun _ ->
       genOffset dna >> genBasis 3 dna (dna.float32("Frequency", xerp 2.0f 64.0f)) >> genShape dna
       ),
     C(nodeWeight 5.0, "Fractalizer", fun _ ->

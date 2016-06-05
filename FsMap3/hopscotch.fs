@@ -341,6 +341,18 @@ type HashMap<'k, 'v when 'k : equality> =
       n <- n + 1
 
 
+  /// Standard fold. Threads a state variable through each item in the table with the supplied function.
+  /// The ordering of the items is arbitrary.
+  member inline this.fold(state0, f) =
+    let mutable state = state0
+    for i = 0 to this.capacity - 1 do
+      if this.table.[i].isOccupied then
+        state <- f state this.table.[i].key this.table.[i].value
+    for i = 0 to this.stash.last do
+      state <- f state this.stash.[i].key this.stash.[i].value
+    state
+
+
   /// Returns the keys in the table as an array. The ordering is arbitrary.
   member this.keys =
     let a = Array.zeroCreate this.size
@@ -428,24 +440,34 @@ type HashSet<'k when 'k : equality> =
   {
     map : HashMap<'k, EmptyStruct>
   }
+
   /// The number of keys in the set. Each instance of an identical key is counted separately.
   member inline this.size = this.map.size
+
   /// Returns whether the set contains the key.
   member inline this.exists(key) = this.map.find(key).isSome
+
   /// Adds a key to the set. Duplicates are not checked for; entering duplicates is legal but may reduce performance.
   member inline this.add(key) = this.map.insert(key, EmptyStruct())
+
   /// Removes (an instance of) the key from the set. Throws an exception if it is not found.
   member inline this.remove(key) = this.map.remove(key)
+
   /// Retains only keys that fulfill the predicate.
   member inline this.filter(predicate : 'k -> bool) = this.map.filter(fun key _ -> predicate key)
+
   /// Calls a function for each key in the set. The ordering is arbitrary.
   member inline this.iter(f : 'k -> unit) = this.map.iter(fun key _ -> f key)
-  /// Empties the set. The table is deallocated if 
+
+  /// Empties the set. if autotrim is set, the table is deallocated as well.
   member inline this.reset() = this.map.reset()
+
   /// Adds the key to the set, if it is not in it yet.
   member inline this.set(key) = if this.map.find(key).isNone then this.add(key)
+
   /// Removes (an instance of) the key from the set, if it is contained in it.
   member inline this.unset(key) = if this.map.find(key).isSome then this.remove(key)
+
   /// Creates an empty hash set.
   static member create(hashf, ?autoTrim : bool) : HashSet<'k> = { HashSet.map = HashMap.create(hashf, autoTrim = (autoTrim >? true)) }
 

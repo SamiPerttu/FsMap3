@@ -8,7 +8,7 @@ type EditorMapAction =
   {
     view : EditorView<RichMap3>
     title : string
-    predicate : MutationPredicate
+    predicate : ParameterPredicate
   }
 
   static member create(view, title, predicate) = { EditorMapAction.view = view; title = title; predicate = predicate }
@@ -18,8 +18,8 @@ type EditorMapAction =
 [<NoComparison; NoEquality>]
 type EditorMessage =
   | ApplyMapAction of action : EditorMapAction
-  | ApplyMapRestart of views : EditorView<RichMap3>[] * title : string * predicate : MutationPredicate
-  | ApplyMapMutation of views : EditorView<RichMap3>[] * source : EditorView<RichMap3> * title : string * predicates : MutationPredicate[]
+  | ApplyMapRestart of views : EditorView<RichMap3>[] * title : string * predicate : ParameterPredicate
+  | ApplyMapMutation of views : EditorView<RichMap3>[] * source : EditorView<RichMap3> * title : string * predicatef : (Rnd -> ParameterPredicate)
   | ApplyMapCopy of view : EditorView<RichMap3> * source : EditorView<RichMap3> * title : string
   | ApplyMapLoad of view : EditorView<RichMap3> * title : string * filename : string * isPreset : bool
   | Undo
@@ -39,6 +39,7 @@ type EditorController =
     setViewMode : EditorViewMode -> unit
     updateGui : unit -> unit
     mutable agent : EditorMessage Agent
+    rnd : Rnd
   }
 
   static member create(setFocus, setViewMode, updateGui) =
@@ -49,6 +50,7 @@ type EditorController =
         setViewMode = setViewMode
         updateGui = updateGui
         EditorController.agent = nullRef
+        rnd = Rnd(Common.timeSeed())
       }
     this.agent <- Agent.Start(this.agentFunction)
     this
@@ -140,7 +142,8 @@ type EditorController =
 
         | ApplyMapRestart(views, title, predicate) ->
           applyActions()
-          let edits = views |> Array.map(fun view ->
+          let edits = Array.Parallel.init views.size (fun i ->
+            let view = views.[i]
             let beforeState = view.editState
             view.filename <- ""
             view.presetFilename <- ""
@@ -157,14 +160,17 @@ type EditorController =
           this.undoStack.add(edit)
           this.updateGui()
 
-        | ApplyMapMutation(views, source, title, predicates) ->
+        | ApplyMapMutation(views, source, title, predicatef) ->
           applyActions()
-          let edits = Array.init views.size (fun i ->
+          let rnds = Array.init views.size (fun _ -> Rnd(this.rnd.tick))
+          let edits = Array.Parallel.init views.size (fun i ->
             let view = views.[i]
+            let rnd = rnds.[i]
             let beforeState = view.editState
             view.filename <- source.filename
             view.presetFilename <- source.presetFilename
-            view.controller.mutateFrom(source.controller, predicates.[i])
+            let dnaSource = RecombinationSource(rnd.tick)
+            view.controller.mutateFrom(source.controller, dnaSource = (dnaSource :> DnaSource), preAction = fun _ -> dnaSource.parameterPredicate <- predicatef rnd)
             SetMap(view, beforeState, view.editState)
             )
           let edit =
@@ -203,7 +209,7 @@ type EditorController =
             use stream = new System.IO.StreamReader(filename)
             let readLine() = match stream.EndOfStream with | false -> Some(stream.ReadLine()) | true -> None
             let source = DeserializerSource(readLine)
-            view.controller.generate(true, dnaSource = (source :> DnaSource))
+            view.controller.restart(bypassFilter = true, dnaSource = (source :> DnaSource))
             stream.Close()
             let edit =
               {

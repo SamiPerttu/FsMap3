@@ -103,11 +103,11 @@ type Editor =
         member this.getPixel(w, h, x, y) =
           let u = float32 x / float32 (w - 1) * 2.0f - 1.0f
           let v = float32 y / float32 (h - 1) * 2.0f - 1.0f
-          Vec3f(0.5f - 0.1f * (squared u + squared v))
+          Vec3f(0.5f - 0.0666f * (squared u + squared v))
         member this.finish() = ()
         member this.postFx(_) = ()
       }
-    let richSeed = { RichMap3.map = mapSeed; palette = Map3.identity; center = Vec3f(0.5f); zoom = 1.0f; aspectRatio = 1.0f; info = Map3Info.create(mapSeed) }
+    let richSeed = { RichMap3.map = mapSeed; palette = Map3.identity; center = Vec3f(0.5f); zoom = 1.0f; info = Map3Info.create(mapSeed) }
 
     let deepGenerator = Map3Dna.generateEditorMap
     let pixmapGenerator extraTransform =
@@ -181,10 +181,15 @@ type Editor =
           image.Height <- float HR
           let x, y = view.gridX, view.gridY
           image.Margin <- Thickness(Left = float (x0 + x * HR + viewBorder), Top = float (y0 + y * HR + viewBorder))
-          let shape = !view.focusShape
-          shape.Width <- float (HR + 2 * viewBorder)
-          shape.Height <- float (HR + 2 * viewBorder)
-          shape.Margin <- Thickness(Left = float (x0 + x * HR), Top = float (y0 + y * HR))
+          let focusShape = !view.focusShape
+          let innerShape = focusShape.[0]
+          innerShape.Width <- float (HR + 2)
+          innerShape.Height <- float (HR + 2)
+          innerShape.Margin <- Thickness(Left = float (x0 + x * HR + viewBorder - 1), Top = float (y0 + y * HR + viewBorder - 1))
+          let outerShape = focusShape.[1]
+          outerShape.Width <- float (HR + 6)
+          outerShape.Height <- float (HR + 6)
+          outerShape.Margin <- Thickness(Left = float (x0 + x * HR + viewBorder - 3), Top = float (y0 + y * HR + viewBorder - 3))
           view.layoutBusy()
           view.pixmapView.setRenderSize(HR, HR)
          )
@@ -195,10 +200,15 @@ type Editor =
           image.Height <- float TR
           let x, y = view.gridX, view.gridY
           image.Margin <- Thickness(Left = float (x0 + x * TR + viewBorder), Top = float (y0 + y * TR + viewBorder))
-          let shape = !view.focusShape
-          shape.Width <- float (TR + viewBorder * 2)
-          shape.Height <- float (TR + viewBorder * 2)
-          shape.Margin <- Thickness(Left = float (x0 + x * TR), Top = float (y0 + y * TR))
+          let focusShape = !view.focusShape
+          let innerShape = focusShape.[0]
+          innerShape.Width <- float (TR + 2)
+          innerShape.Height <- float (TR + 2)
+          innerShape.Margin <- Thickness(Left = float (x0 + x * TR + viewBorder - 1), Top = float (y0 + y * TR + viewBorder - 1))
+          let outerShape = focusShape.[1]
+          outerShape.Width <- float (TR + 6)
+          outerShape.Height <- float (TR + 6)
+          outerShape.Margin <- Thickness(Left = float (x0 + x * TR + viewBorder - 3), Top = float (y0 + y * TR + viewBorder - 3))
           view.layoutBusy()
           view.pixmapView.setRenderSize(TR, TR)
           )
@@ -325,7 +335,7 @@ type Editor =
         focusView := Some(view')
         Wpf.dispatch(window, fun _ ->
           for view in notFullView do
-            (!view.focusShape).Visibility <- if view' === view then Visibility.Visible else Visibility.Hidden
+            view.focus(if view' === view then Visibility.Visible else Visibility.Hidden)
           )
       updateAll()
 
@@ -335,7 +345,7 @@ type Editor =
       updateAll()
       Wpf.dispatch(window, fun _ ->
         for view in notFullView do
-          (!view.focusShape).Visibility <- Visibility.Hidden
+          view.focus(Visibility.Hidden)
         )
 
     /// This predicate creates a random map from scratch.
@@ -511,7 +521,12 @@ type Editor =
     saveAsItem.Click.Add(fun _ ->
       match !focusView with
       | Some(view) ->
-        let dialog = new Microsoft.Win32.SaveFileDialog(Title = "Save Map File As..", DefaultExt = ".yaml", Filter = "YAML files (.yaml)|*.yaml")
+        let dialog = new Microsoft.Win32.SaveFileDialog(Title = "Save Map File As..",
+                                                        AddExtension = true,
+                                                        OverwritePrompt = true,
+                                                        ValidateNames = true,
+                                                        DefaultExt = ".yaml",
+                                                        Filter = "YAML files (.yaml)|*.yaml")
         let result = dialog.ShowDialog()
         if result.HasValue && result.Value then saveYaml true false dialog.FileName
       | None -> ()
@@ -686,13 +701,8 @@ type Editor =
             presetItem.ContextMenu <- contextMenu
             contextMenu.add(MenuItem(Header = "Delete", Margin = Thickness(0.0), withClick = fun _ ->
               closePopup()
-              match MessageBox.Show("Are you sure you want to delete '" + System.IO.Path.GetFileNameWithoutExtension(file) + "'?", "Please confirm", MessageBoxButton.YesNo, MessageBoxImage.Question) with
-              | MessageBoxResult.Yes ->
-                try
-                  System.IO.File.Delete(file)
-                  recreatePresets()
-                with | _ -> ()
-              | _ -> ()
+              if FileUtil.confirmDelete "delete" file then
+                recreatePresets()
               ))
             presetItem.GotFocus.Add(fun _ ->
               let w = previewSize
@@ -853,14 +863,15 @@ type Editor =
         let nameBox = TextBox(Width = boxWidth, Height = boxHeight, Margin = boxMargin)
 
         let saveIt() = 
-          let file = nameBox.Text + ".yaml"
-          if file.size > 0 then
+          if nameBox.Text.size > 0 then
+            let file = nameBox.Text + ".yaml"
             let directory = if submenuBox.Text.size > 0 then System.IO.Path.Combine(presetDirectory, submenuBox.Text) else presetDirectory
             if System.IO.Directory.Exists(directory) = false then
               System.IO.Directory.CreateDirectory(directory) |> ignore
-            let presetFilename = (System.IO.Path.Combine(directory, file))
-            saveYaml false true presetFilename
-            recreatePresets()
+            let path = System.IO.Path.Combine(directory, file)
+            if FileUtil.confirmDelete "overwrite" path then
+              saveYaml false true path
+              recreatePresets()
             presetWindow.Close()
 
         nameBox.PreviewKeyDown.Add(fun (args : Input.KeyEventArgs) ->
@@ -898,11 +909,9 @@ type Editor =
 
       let overwritePreset = MenuItem(Header = "Update Preset")
       overwritePreset.Click.Add(fun _ ->
-        match MessageBox.Show("Are you sure you want to overwrite '" + System.IO.Path.GetFileNameWithoutExtension(view.presetFilename) + "'?", "Please confirm", MessageBoxButton.YesNo, MessageBoxImage.Question) with
-        | MessageBoxResult.Yes ->
+        if FileUtil.confirmDelete "overwrite" view.presetFilename then
           saveYaml false true view.presetFilename
           recreatePresets()
-        | _ -> ()
         )
       menu.add(overwritePreset)
 
@@ -952,19 +961,19 @@ type Editor =
                 controller.post(ApplyMapMutation([| for i in 1 .. halfView.last -> halfView.[(view.gridI + i) % halfView.size] |],
                                                  view,
                                                  "Mutate",
-                                                 Array.init halfView.last (fun _ -> View.mutationPredicate(rnd, view, !mutateMode))))
+                                                 fun rnd -> View.mutationPredicate(rnd, view, !mutateMode)))
               | ThirdView ->
                 controller.post(ApplyMapMutation([| for i in 1 .. thirdView.last -> thirdView.[(view.gridI + i) % thirdView.size] |],
                                                  view,
                                                  "Mutate",
-                                                 Array.init thirdView.last (fun _ -> View.mutationPredicate(rnd, view, !mutateMode))))
+                                                 fun rnd -> View.mutationPredicate(rnd, view, !mutateMode)))
             else
               setFocus view
 
           | JoltTool ->
             if (!focusView).isSomeAnd((===) view) then
               // Mutate the view.
-              controller.post(ApplyMapMutation([| view |], view, "Jolt", [| View.mutationPredicate(rnd, view, !mutateMode) |]))
+              controller.post(ApplyMapMutation([| view |], view, "Jolt", fun rnd -> View.mutationPredicate(rnd, view, !mutateMode)))
               controller.post(CloseAction)
             else
               setFocus view
@@ -1145,7 +1154,7 @@ type Editor =
     setMaxDetailLevel 1000.0f
 
     sourceView.apply(fun sourceView ->
-      fullView.controller.generate(true, dnaSource = DnaData(!sourceView.controller.dna))
+      fullView.controller.restart(bypassFilter = true, dnaSource = DnaData(!sourceView.controller.dna))
       fullView.filename <- sourceView.filename
       updateAll()
       )
@@ -1154,14 +1163,13 @@ type Editor =
 (*
 TODO
 
--Modify InteractiveSource & stuff so that editing & mutation of node tree becomes easier.
- E.g., delete parent, insert node...
 -Never tile pattern atlases, there is no need. Possibility: temporary Dna injector.
 -Figure out whether atlases are even a good idea. 
 -Crossover tool.
 -Figure out a nice way of setting Map3Info sampling diameter based on layout.
 -Aspect ratio support.
--Add .dds export for 2-D and 3-D textures.
+-Export dialog with options.
+-DDS export, 2-D and 3-D.
 -Add Map3 projection modes: rectangle, sphere, ?
 -History.
 -Add either hover options or extra buttons to parameters in Dna view:
@@ -1169,6 +1177,7 @@ TODO
  -reset value (if parameter has neutral, numerical value).
  -lock parameter / subtree.
  -mutate only subtree.
+ -randomize subtree.
 -Add screen space filter to PixmapView to reject mutations that do not influence the displayed
  2-slice. The filter would be run when the first mosaic level is computed to decide whether to
  display or reject it.

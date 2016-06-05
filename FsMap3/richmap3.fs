@@ -19,8 +19,6 @@ type RichMap3 =
     center : Vec3f
     /// Map view zoom.
     zoom : float32
-    /// View aspect ratio. TODO: This should be handled by the layout.
-    aspectRatio : float32
     /// Info that was gathered from uncolored map during normalization. Can be useful for filtering.
     info : Map3Info
   }
@@ -73,7 +71,6 @@ type RichMap3 =
     let center = Vec3f(centerX, centerY, centerZ)
     let zoom = dna.float32("View Zoom", xerp 0.5e-2f 0.5e3f)
     let offset = Vec3f(centerX - 0.5f / zoom, centerY - 0.5f / zoom, centerZ)
-    let aspectRatio = 1.0f
     let palette = dna.descend("Palette", ColorDna.genPalette 32)
     let viewTransform (v : Vec3f) = v / zoom + offset
     let info = Map3Info.create(mapGenerator, dna, retainSamples = true, computeDeviation = true, computeSlopes = true)
@@ -82,7 +79,6 @@ type RichMap3 =
       palette = palette
       center = center
       zoom = zoom
-      aspectRatio = aspectRatio
       info = info
     }
 

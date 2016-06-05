@@ -78,10 +78,14 @@
     <Compile Include="hopscotch.fs" />
     <Compile Include="wset.fs" />
     <Compile Include="choice.fs" />
+    <Compile Include="dnaaddress.fs" />
     <Compile Include="dna.fs" />
     <Compile Include="dnaparameter.fs" />
+    <Compile Include="dnacodepool.fs" />
     <Compile Include="yamlsource.fs" />
+    <Compile Include="parameteraction.fs" />
     <Compile Include="interactivesource.fs" />
+    <Compile Include="recombinationsource.fs" />
     <Compile Include="potential.fs" />
     <Compile Include="color.fs" />
     <Compile Include="walk.fs" />
@@ -111,6 +115,7 @@
     <Compile Include="map3dna.fs" />
     <Compile Include="ray.fs" />
     <Compile Include="profile.fs" />
+    <Compile Include="test.fs" />
     <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
