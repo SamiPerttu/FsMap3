@@ -31,6 +31,7 @@ Node: Fractalizer
     Displace response: line
     Walk operator: bounce
     Basis: radial value noise
+      Cell seed: 49941472
       Cell color: any
       Radial fade: smooth-2
   Shape: shift

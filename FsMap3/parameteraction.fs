@@ -1,4 +1,5 @@
-﻿namespace FsMap3
+﻿// Rough-and-ready actions for easy biasing of procedural generators.
+namespace FsMap3
 
 open Common
 
@@ -29,7 +30,7 @@ type ParameterAction =
   /// Attempt to select a transformed float. Pick the closest legal value.
   | SelectFloat of x : float
 
-  member private this.applyCategorical(rnd : Rnd, dna : Dna, i, existing : uint Optionval, choices : Choices<_> Option) =
+  member private this.applyCategorical(rnd : Rnd, dna : Dna, i, choices : Choices<_> option, existing : uint Optionval) =
     let maxValue = dna.parameter(i).maxValue
     let existing = existing.filter(match choices with | Some(choices) -> choices.isLegal | None -> dna.[i].isLegal)
     let pickAny() = match choices with | Some(choices) -> choices.pick(rnd.float()) | None -> rnd.uint(0u, maxValue)
@@ -66,11 +67,19 @@ type ParameterAction =
           |  s, _            -> v + uint s
       | Noneval -> pickAny()
 
-  member private this.applyOrdered(rnd : Rnd, dna : Dna, i, existing : uint Optionval, choices : Choices<_> Option, floatTransform : (uint -> float) option) =
+  member private this.applyOrdered(rnd : Rnd, dna : Dna, i, choices : Choices<_> Option, valueTransform : (uint -> float) option, priorTransform : (uint -> float) option, existing : uint Optionval) =
     let maxValue = dna.parameter(i).maxValue
     let range = float maxValue + 1.0
     let existing = existing.filter(match choices with | Some(choices) -> choices.isLegal | None -> dna.[i].isLegal)
-    let pickAny() = match choices with | Some(choices) -> choices.pick(rnd.float()) | None -> rnd.uint(0u, maxValue)
+    let pickAny() =
+      match choices, valueTransform, priorTransform with
+      | Some(choices), _, _ ->
+        choices.pick(rnd.float())
+      | _, Some(valueTransform), Some(priorTransform) ->
+        let v = rnd.uint(0u, maxValue)
+        Fun.binarySearchClosest 0u maxValue valueTransform (priorTransform v)
+      | _ ->
+        rnd.uint(0u, maxValue)
     let tryPick(v : uint) =
       match choices with
       | Some(choices) -> if choices.isLegal(v) then v else pickAny()
@@ -116,38 +125,47 @@ type ParameterAction =
           else v
       | _ -> pickAny()
     | ModifyFloat f ->
-      match floatTransform with
+      match valueTransform with
       | Some(transform) ->
         let v = match existing with | Someval(v) -> v | Noneval -> pickAny()
-        Fun.binarySearchClosest 0u maxValue transform (f (transform v))
+        Fun.binarySearchClosest 0u maxValue transform (v |> transform |> f)
       | _ -> pickAny()
     | SelectFloat x ->
-      match floatTransform with
+      match valueTransform with
       | Some(transform) ->
         Fun.binarySearchClosest 0u maxValue transform x
       | _ -> pickAny()
 
   /// Applies this action with a set of choices.
-  member this.apply(rnd, dna : Dna, i, existing, choices : Choices<_>) =
+  member this.apply(rnd, dna : Dna, i, choices : Choices<_>, existing) =
     match choices.singular with
     | Someval(v) ->
       uint v
     | Noneval ->
       match dna.[i].format with
-      | Categorical -> this.applyCategorical(rnd, dna, i, existing, Some(choices))
-      | Ordered -> this.applyOrdered(rnd, dna, i, existing, Some(choices), None)
+      | Categorical -> this.applyCategorical(rnd, dna, i, Some(choices), existing)
+      | Ordered -> this.applyOrdered(rnd, dna, i, Some(choices), None, None, existing)
 
-  /// Applies this action with a uniform prior. An optional float transform can be supplied.
-  member this.apply(rnd, dna : Dna, i, existing, transform) =
+  /// Applies this action with a uniform prior.
+  member this.apply(rnd, dna : Dna, i, existing) =
     if dna.[i].maxValue = 0u then
       0u
     else
       match dna.[i].format with
-      | Categorical -> this.applyCategorical(rnd, dna, i, existing, None)
-      | Ordered -> this.applyOrdered(rnd, dna, i, existing, None, transform)
+      | Categorical -> this.applyCategorical(rnd, dna, i, None, existing)
+      | Ordered -> this.applyOrdered(rnd, dna, i, None, None, None, existing)
+
+  /// Applies this action with the given float transformations.
+  member this.apply(rnd, dna : Dna, i, valueTransform, priorTransform, existing) =
+    if dna.[i].maxValue = 0u then
+      0u
+    else
+      match dna.[i].format with
+      | Categorical -> this.applyCategorical(rnd, dna, i, None, existing)
+      | Ordered -> this.applyOrdered(rnd, dna, i, None, Some(valueTransform), Some(priorTransform), existing)
 
 
 
-/// A parameter predicate decides what to do with each Dna parameter during generation.
+/// A parameter predicate decides what the overall plan is with each Dna parameter during generation.
 type ParameterPredicate = Rnd -> Dna -> int -> ParameterAction
 

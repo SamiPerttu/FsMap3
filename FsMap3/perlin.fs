@@ -8,8 +8,8 @@ open Basis3
 
 /// Improved Perlin gradient noise. This function is designed to emulate band-limited noise.
 /// A smooth, symmetric fade is recommended for best results.
-let perlin (layout : LayoutFunction) (fade : float32 -> float32) (frequency : float32) =
-  let layoutInstance = layout frequency
+let perlin (layout : LayoutFunction) (fade : float32 -> float32) (seed : int) (frequency : float32) =
+  let layoutInstance = layout seed frequency
 
   let inline grad h (d : Vec3f) =
     Vec3f(float32 ((h >>> 12) &&& 0x3f) - 31.5f, float32 ((h >>> 18) &&& 0x3f) - 31.5f, float32 ((h >>> 24) &&& 0x3f) - 31.5f) * (0.06349206349f * (mangle12UnitVec3 h *. d))
@@ -37,11 +37,12 @@ let perlin (layout : LayoutFunction) (fade : float32 -> float32) (frequency : fl
 
 
 /// Default Perlin noise with the standard cell layout and the smooth-2 fade.
-let perlind frequency = perlin hifiLayout Fade.smooth2 frequency
+/// The cell hash seed is derived from the frequency.
+let perlind frequency = perlin hifiLayout Fade.smooth2 (manglef32 frequency) frequency
 
 
 /// Perlin noise with the standard cell layout.
-let perlinf fade frequency = perlin hifiLayout fade frequency
-
+/// The cell hash seed is derived from the frequency.
+let perlinf fade frequency = perlin hifiLayout fade (manglef32 frequency) frequency
 
 

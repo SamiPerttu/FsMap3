@@ -1,7 +1,7 @@
-View Center X: 0.106788635253906
-View Center Y: 0.119678497314453
-View Center Z: 0.46274185180664
-View Zoom: 1.77156174182892
+View Center X: 0.355010986328125
+View Center Y: 0.119316101074218
+View Center Z: 0.5
+View Zoom: 1.46410048007965
 Palette:
   Color space: HSL
   Hue origin: 0.412941187620162
@@ -11,19 +11,19 @@ Palette:
   Saturation minimum: 0.212674736976623
   Saturation skew: 0.923971652984619
   Value skew: 0.050588130950927
-  Shape: none
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Basis
   X offset: -4.94268703460693
   Y offset: 1.50157403945923
   Z offset: -2.65551376342773
-  Frequency: 8.64439296722412
+  Frequency: 7.11762237548828
   Basis: Julia
+    Cell seed: 1779836788
     Iterations: 10
     Formula: White
     Features per cell: rounded average
-      Average: 1.5539196
+      Average: 1.55392
     Feature radius: 1.16661763191223
     Roughness: 0.811133086681366
     Feature fade: upward arc

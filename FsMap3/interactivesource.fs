@@ -43,15 +43,15 @@ type InteractiveSource(seed) =
   override this.choose(dna, i, choices) =
     let existing = this.value(dna, i)
     let action = this.parameterPredicate this.rnd dna i
-    action.apply(this.rnd, dna, i, existing, choices)
+    action.apply(this.rnd, dna, i, choices, existing)
 
   override this.choose(dna, i) =
     let existing = this.value(dna, i)
     let action = this.parameterPredicate this.rnd dna i
-    action.apply(this.rnd, dna, i, existing, None)
+    action.apply(this.rnd, dna, i, existing)
 
-  override this.chooseFloat(dna, i, transform) =
+  override this.chooseFloat(dna, i, valueTransform, priorTransform) =
     let existing = this.value(dna, i)
     let action = this.parameterPredicate this.rnd dna i
-    action.apply(this.rnd, dna, i, existing, Some transform)
+    action.apply(this.rnd, dna, i, valueTransform, priorTransform, existing)
 

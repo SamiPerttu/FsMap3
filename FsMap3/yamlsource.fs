@@ -2,8 +2,6 @@
 namespace FsMap3
 
 open Common
-open Convert
-open Mangle
 
 
 /// A Dna source that serializes genotypes in a YAML-like format.
@@ -33,17 +31,17 @@ type SerializerSource(genotype : Dna) =
       builder.AppendLine(sprintf "%*s%s: %d" (indent dna) "" dna.[i].name data.[i]) |> ignore
     data.[i]
 
-  override this.chooseInt(dna, i, transformation) =
+  override this.chooseInt(dna, i, transform, _) =
     enforce (i < data.size && data.[i] <= dna.[i].maxValue) "SerializerSource.chooseInt: Data mismatch."
-    builder.AppendLine(sprintf "%*s%s: %d" (indent dna) "" dna.[i].name (transformation data.[i])) |> ignore
+    builder.AppendLine(sprintf "%*s%s: %d" (indent dna) "" dna.[i].name (transform data.[i])) |> ignore
     data.[i]
     
-  override this.chooseFloat(dna, i, transformation) =
+  override this.chooseFloat(dna, i, transform, _) =
     let v = data.[i]
     enforce (i < data.size && v <= dna.[i].maxValue) "SerializerSource.chooseFloat: Data mismatch."
-    let x = transformation v
-    let x0 = if v = 0u then infinity else transformation (v - 1u)
-    let x1 = if v = dna.[i].maxValue then infinity else transformation (v + 1u)
+    let x = transform v
+    let x0 = if v = 0u then infinity else transform (v - 1u)
+    let x1 = if v = dna.[i].maxValue then infinity else transform (v + 1u)
     let retainDecimals d x = let p = pow 10.0 d in truncate (x * p) / p
     // We want to serialize floats with sufficient precision that the raw parameter value
     // can be recovered.
@@ -183,7 +181,7 @@ type DeserializerSource(readLine : unit -> string option) =
     selection.add(bestRecord)
     bestChoice
 
-  override this.chooseInt(dna, i, transformation) =
+  override this.chooseInt(dna, i, transform, _) =
     fillSelection i
 
     let mutable bestValue  = 0u
@@ -194,8 +192,8 @@ type DeserializerSource(readLine : unit -> string option) =
       match record.[j].intValue with
       | Some(v) ->
         let mutable score = heuristicScore dna i j
-        let v' = Fun.binarySearchClosest 0u dna.[i].maxValue transformation v
-        score <- score + 2.0 / (1.0 + float (abs (transformation v' - v)))
+        let v' = Fun.binarySearchClosest 0u dna.[i].maxValue transform v
+        score <- score + 2.0 / (1.0 + float (abs (transform v' - v)))
         if score > bestScore then
           bestValue <- v'
           bestRecord <- Someval(j)
@@ -205,7 +203,7 @@ type DeserializerSource(readLine : unit -> string option) =
     selection.add(bestRecord)
     bestValue
     
-  override this.chooseFloat(dna, i, transformation) =
+  override this.chooseFloat(dna, i, transform, _) =
     fillSelection i
 
     let mutable bestValue  = 0u
@@ -216,8 +214,8 @@ type DeserializerSource(readLine : unit -> string option) =
       match record.[j].floatValue with
       | Some(v) ->
         let mutable score = heuristicScore dna i j
-        let v' = Fun.binarySearchClosest 0u dna.[i].maxValue transformation v
-        score <- score + 2.0 / (1.0 + abs (transformation v' - v))
+        let v' = Fun.binarySearchClosest 0u dna.[i].maxValue transform v
+        score <- score + 2.0 / (1.0 + abs (transform v' - v))
         if score > bestScore then
           bestValue <- v'
           bestRecord <- Someval(j)

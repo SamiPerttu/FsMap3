@@ -248,7 +248,7 @@ let shapeBasis (f : Map3) (g : Basis3) frequency =
 
 /// Layers a ("application") on b ("base") in a manner similar to Mix.layer.
 let layer width (fade : float32 -> float32) (a : Vec3f) (b : Vec3f) =
-  let w = fade (max 0G (1G - (abs (b - a)).sum / width))
+  let w = fade (max 0G (1G - (b - a).norm1 * 0.2f / width))
   (b + a * w) / (1G + w)
 
 

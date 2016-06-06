@@ -1,6 +1,6 @@
 View Center X: 0.5
 View Center Y: 0.5
-View Center Z: 0.5
+View Center Z: 0.490005493164062
 View Zoom: 1
 Palette:
   Color space: Mugsell
@@ -9,14 +9,13 @@ Palette:
   Hue skew: 1.7716805934906
   Saturation range: 0.210952058434486
   Saturation minimum: 0.007636830676347
-  Saturation skew: 1.20686316490173
+  Saturation skew: 0.965036153793335
   Value skew: 0.79411768913269
-  Shape: none
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
   X offset: -4.36059474945068
-  Y offset: 3.6147825717926
+  Y offset: -0.034504890441894
   Z offset: -4.78103351593018
   Octaves: 6
   Frequency: 5.74401235580444
@@ -25,12 +24,13 @@ Node: Fractalizer
     Lacunarity: 0.518564522266387
     Lowpass filter: 0.25808823108673
     Mix operator: sum
-    Displace amount: 0.089564055204391
+    Displace amount: 0.074063293635845
     Displace response: reverse power-2
-    Walk operator: lurch
+    Walk operator: bounce
     Basis: colored Worley
+      Cell seed: 11132
       Features per cell: Poisson
-        Mean: 0.611425434
+        Mean: 1.858824
       Cell distance norm: 2-norm
       Worley pattern: 11132
       Worley fade: reverse power-2
@@ -39,4 +39,4 @@ Node: Fractalizer
   Shape: scatter
     Scatter seed: 2860338684
     Scatter amount: 0.845588207244873
-    Scatter tuning: 0.919117629528045
+    Scatter tuning: 0.866279065608978

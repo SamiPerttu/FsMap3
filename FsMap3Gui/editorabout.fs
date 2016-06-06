@@ -16,7 +16,7 @@ let showAboutWindow() =
   let effect = Effects.DropShadowEffect(BlurRadius = 3.0, Color = Wpf.color(1.0), Opacity = 1.0, ShadowDepth = 0.0)
   let map =
     let data = [|
-      DnaData("ZSjV4+ZJwJ10-1lcK0ZRQ10+03-ac3a0+-KSC0+nwml++VRah+-beny0-QY660-OMGC0001YFuyXvZGbHq+YUAoyv2ZHJuV0Zp0lt00ZvOAd0Y5KfMA0ZtGet010dZFMGb0-vMky008701ZK8nC0YENchw-Pvmq04+cFxm0ZaTNW+ZQlHo++k3lO0-nxay0ZOl+h0-InEZ+ZjlbV0008302-OXJ7m+mkAi0YKlGOw4YvVTOfYQOdavZV-l6++s3ae0-nxay0ZySyp0-gthW0ZjlbV001+ZMO20+haza0"B)
+      DnaData("-0GUy0-13D-0-1hWS0ZRQ0Z003-ac3a0+++++++nwml++VRah+-beny0-QY660+5Z1vg001YFuyXvZGbHq+YUAoyv2ZHJuV0Zp0lt00ZvOAd0Y6iTLc0Zz1gx010fZFMGb0-vMky008P701ZK8nC0YENchw-Pvmq04+cFxm0ZaTNW+ZQlHo++k3lO0ZZWMXCZOl+h0-InEZ+ZjlbV00085302-OXJ7m+mkAi0YKlGOw4YvVTOfYQOdavZV-l6++s3ae0-nxay0ZySyp0-gthW0ZjlbV001+++++++T4tN7"B)
       |]
     data.[Common.timeSeed() |> Mangle.mangle32 |> flip emod data.size].generate(Map3Dna.generateEditorMap)
   let w = 600.0
@@ -30,9 +30,9 @@ let showAboutWindow() =
   let title = Label(Content = "FsMap3 Editor", FontSize = 40.0, FontWeight = bold, Effect = effect)
   let alpha = Label(Content = "alpha", FontSize = 20.0, FontWeight = bold, Effect = effect, Foreground = Wpf.brush(0.8, 0.0, 0.0))
   let version = Label(Content = "Version " + Map3Dna.EditorVersion, FontSize = 16.0, FontWeight = bold, Effect = effect)
-  aboutCanvas.add(title, 10.0, 10.0)
-  aboutCanvas.add(alpha, 12.0, 55.0)
-  aboutCanvas.add(version, 12.0, 80.0)
+  aboutCanvas.add(title, 10.0, 5.0)
+  aboutCanvas.add(alpha, 12.0, 50.0)
+  aboutCanvas.add(version, 12.0, 75.0)
   let copyright = Label(Content = "© Copyright 2016 Sami Perttu", FontSize = 20.0, FontWeight = medium, Effect = effect)
   aboutCanvas.add(copyright, 30.0, 120.0)
   let license = Label(Content = "This program is distributed under the MIT license.", FontSize = 16.0, FontWeight = medium, Effect = effect)

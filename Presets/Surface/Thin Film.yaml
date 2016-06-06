@@ -35,9 +35,9 @@ Node: Unary
             Twist amount: 0.4443079829216
             Twist variability: 1.0661495923996
             Mix operator: layer
-              Layer width: 0.591860473155975
+              Layer width: 0.357490569353103
               Layer hardness: 1
-              Layer persist: 0.769519686698913
+              Layer persist: 0.279069781303405
             Variable map:
               Node: Unary
                 Unary op: wave packet
@@ -48,6 +48,7 @@ Node: Unary
                     Z offset: -0.357327222824096
                     Frequency: 5.15609645843506
                     Basis: cubex noise
+                      Cell seed: 819429502
                       Cell color: random choice
                         Choices: 1
                         Seed: 2697813182
@@ -55,6 +56,7 @@ Node: Unary
                       Mix operator: sum
                     Shape: none
             Basis: Julia
+              Cell seed: 0
               Iterations: 7
               Formula: Makin
               Features per cell: Poisson

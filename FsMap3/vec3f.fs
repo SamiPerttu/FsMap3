@@ -19,10 +19,10 @@ module Vector3Extensions =
     member inline v.y = v.Y
     member inline v.z = v.Z
 
-    /// Returns the length squared of the vector.
+    /// Length squared of the vector.
     member inline v.length2 = v.LengthSquared()
 
-    /// Returns the length of the vector.
+    /// Length of the vector.
     member inline v.length = v.Length()
 
     /// L1-norm aka Manhattan norm.
@@ -31,31 +31,31 @@ module Vector3Extensions =
     /// Maximum norm.
     member inline v.maxNorm = max3 (abs v.x) (abs v.y) (abs v.z)
 
-    /// Returns the sum of the components.
+    /// The sum of the components.
     member inline v.sum = v.x + v.y + v.z
 
-    /// Returns the average of the components.
+    /// The average of the components.
     member inline v.average = (v.x + v.y + v.z) * 0.333333333333333f
 
-    /// Returns the smallest of the components.
+    /// The smallest component.
     member inline v.minimum = min3 v.x v.y v.z
 
-    /// Returns the largest of the components.
+    /// The largest component.
     member inline v.maximum = max3 v.x v.y v.z
 
     /// Reflects the vector about the normal.
     member inline v.reflect(normal) = Vector3.Reflect(v, normal)
 
-    /// Returns the vector as an array.
+    /// The vector as an array.
     member v.toArray = [| v.x; v.y; v.z |]
 
-    /// Returns the vector as a list.
+    /// The vector as a list.
     member v.toList = [ v.x; v.y; v.z ]
 
     /// Transforms the components of the vector with the given function.
     member inline v.map(f : float32 -> float32) = Vector3(f v.x, f v.y, f v.z)
 
-    /// The L-norm of the vector.
+    /// L-norm of the vector.
     member inline v.norm(L : float32) = (abs v.x ** L + abs v.y ** L + abs v.z ** L) ** (1.0f / L)
 
     /// Raises components to the given power.
@@ -67,7 +67,7 @@ module Vector3Extensions =
     /// Reduces the projected components of a vector with a binary operator.
     member inline v.reduceWith(projection, op) = op (op (projection v.x) (projection v.y)) (projection v.z)
 
-    /// Returns the vector normalized.
+    /// The vector normalized.
     member inline v.normalize = Vector3.Normalize(v)
 
     /// Returns a vector with components replaced with their signs.
@@ -82,7 +82,7 @@ module Vector3Extensions =
     /// Indexed component access.
     member v.at(i) = match i with | 0 -> v.x | 1 -> v.y | _ -> v.z
 
-    /// Returns the vector with component i set to a.
+    /// The vector with component i set to a.
     member v.set(i, a : float32) = match i with | 0 -> Vector3(a, v.y, v.z) | 1 -> Vector3(v.x, a, v.z) | _ -> Vector3(v.x, v.y, a)
 
     /// Sine map with a period of unity. Uses a Taylor approximation.

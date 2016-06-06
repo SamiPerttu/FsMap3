@@ -11,7 +11,6 @@ Palette:
   Saturation minimum: 0.00730968825519
   Saturation skew: 0
   Value skew: 0.323529481887817
-  Shape: none
 FsMap3 Editor Version 0.3.0:
 Layout: Tile All
 Node: Basis
@@ -20,6 +19,7 @@ Node: Basis
   Z offset: -2.33462333679199
   Frequency: 12.8511304855347
   Basis: Worley
+    Cell seed: 3072753888
     Features per cell: Poisson
       Mean: 1.0208064
     Cell distance norm: max-norm

@@ -1,7 +1,7 @@
-View Center X: 0.427265167236328
-View Center Y: 0.773971557617187
-View Center Z: 0.46274185180664
-View Zoom: 1.61051058769226
+View Center X: 0.5
+View Center Y: 0.5
+View Center Z: 0.5
+View Zoom: 1
 Palette:
   Color space: HSL
   Hue origin: 0.715623438358306
@@ -11,7 +11,6 @@ Palette:
   Saturation minimum: 0.199999988079071
   Saturation skew: 0
   Value skew: -0.705882310867309
-  Shape: none
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Basis
@@ -20,6 +19,7 @@ Node: Basis
   Z offset: -2.85415935516357
   Frequency: 6.44365453720093
   Basis: Julia
+    Cell seed: 656042122
     Iterations: 10
     Formula: Makin
     Features per cell: Poisson

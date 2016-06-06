@@ -4,7 +4,6 @@ module FsMap3.Leopard
 open Common
 open Mangle
 open Basis3
-open Atlas3
 open FeatureCount
 open CellColor
 
@@ -12,21 +11,20 @@ open CellColor
 /// Basis function that produces a spotted pattern.
 /// The radius of individual spots is radius (0 < radius <= 1).
 /// The shape of the falloff is controlled by the fade function.
-/// The amount of cell gradient mixed with cell color is controlled by shading (shading in [0, 1]).
 let leopard (layout : LayoutFunction)
             (count : FeatureCount)
             (mix : MixOp)
             (color : CellColor)
             (fade : float32 -> float32)
-            (shading : float32)
             (radius : float32)
-            (frequency : float32) =
+            seed
+            frequency =
 
   assert (radius > 0.0f)
   let R2 = squared radius
   let Ri = 1.0f / radius
 
-  let layoutInstance = layout frequency
+  let layoutInstance = layout seed frequency
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
@@ -45,15 +43,17 @@ let leopard (layout : LayoutFunction)
             if d2 < R2 then
               let d = sqrt d2 * Ri
               let w = fade (1.0f - d)
-              value <- mix value 1.0f w (color h * (1G + shading * Ri * P))
+              value <- mix value 1.0f w (color h (P * Ri))
     data.release()
     Mix.result value
 
 
 /// Default leopard pattern with the standard cell layout and the smooth-2 fade function.
-let inline leopardd radius frequency = leopard hifiLayout unityCount Mix.sum anyColor Fade.smooth2 0.0f radius frequency
+/// The cell hash seed is derived from the frequency.
+let inline leopardd radius frequency = leopard hifiLayout unityCount Mix.sum anyColor Fade.smooth2 radius (manglef32 frequency) frequency
 
 
 /// Leopard pattern with the standard cell layout.
-let inline leopardf fade radius frequency = leopard hifiLayout unityCount Mix.sum anyColor fade 0.0f radius frequency
+/// The cell hash seed is derived from the frequency.
+let inline leopardf fade radius frequency = leopard hifiLayout unityCount Mix.sum anyColor fade radius (manglef32 frequency) frequency
 

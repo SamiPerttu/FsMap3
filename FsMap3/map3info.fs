@@ -30,7 +30,7 @@ type Map3Info =
     /// Sampled 99 percentile slope of the normalized map.
     slope99 : float32 Optionval
     /// Sampled average standard deviation of component values in the normalized map.
-    deviation : float32 Optionval
+    deviation : float32
     /// Sampling diameter. For tiling maps the optimal value is 1, as then the samples are stratified in the unit cube.
     sampleDiameter : float32
     /// Sample set of values from pseudo-random points in the normalized map. Can be used for fingerprinting.
@@ -58,10 +58,9 @@ let map3InfoTasks =
 
 type Map3Info with
 
-  static member create(map : Map3, ?fingerprint, ?retainSamples, ?computeDeviation, ?computeSlopes, ?sampleDiameter) =
+  static member create(map : Map3, ?fingerprint, ?sampleDiameter, ?retainSamples, ?computeSlopes) =
 
     let retainSamples = retainSamples >? false
-    let computeDeviation = computeDeviation >? false
     let computeSlopes = computeSlopes >? false
     let sampleDiameter = sampleDiameter >? 7.0f
 
@@ -74,11 +73,8 @@ type Map3Info with
       | Noneval -> Log.infof "Map3Info: no info found for fingerprint %d" fingerprint
       )
 
-    let matching = existing.filter(fun info ->
-      (not retainSamples || info.sampleArray.size > 0)
-      && (not computeDeviation || info.deviation.isSome)
-      && (not computeSlopes || info.slope90.isSome)
-      )
+    let matching =
+      existing.filter(fun info -> (not retainSamples || info.sampleArray.size > 0) && (not computeSlopes || info.slope90.isSome))
 
     if matching.isSome then
       // A matching Map3Info was found with all the information we need - use it.
@@ -135,10 +131,11 @@ type Map3Info with
       sampleArray.modify(fun v -> (v - meanV) * rangeZ)
       gradientArray.modify((*) rangeZ)
 
-      let sd =
-        if existing.isSomeAnd(fun existing -> existing.deviation.isSome) then
-          (!existing).deviation
-        elif computeDeviation then
+      let deviation =
+        match existing with
+        | Someval(existing) ->
+          existing.deviation
+        | Noneval ->
           let estimatorX = Mat.MomentEstimator()
           let estimatorY = Mat.MomentEstimator()
           let estimatorZ = Mat.MomentEstimator()
@@ -147,10 +144,7 @@ type Map3Info with
             estimatorY.add(float v.y)
             estimatorZ.add(float v.z)
             )
-          let sd = (estimatorX.deviation + estimatorY.deviation + estimatorZ.deviation) / 3.0
-          Someval(float32 sd)
-        else
-          Noneval
+          average3 estimatorX.deviation estimatorY.deviation estimatorZ.deviation |> float32
 
       let slope90, slope99 =
         if existing.isSomeAnd(fun existing -> existing.slope90.isSome) then
@@ -175,7 +169,7 @@ type Map3Info with
           map = fun (v : Vec3f) -> (map v - meanV) * rangeZ
           slope90 = slope90
           slope99 = slope99
-          deviation = sd
+          deviation = deviation
           sampleDiameter = sampleDiameter
           sampleArray = if retainSamples then sampleArray else Array.createEmpty
           gradientArray = if retainSamples then gradientArray else Array.createEmpty
@@ -187,22 +181,22 @@ type Map3Info with
 
 
   /// Generates a map and its info. Cache aware.
-  static member create(generator : Dna -> Map3, dna : Dna, ?extraId : int, ?retainSamples, ?computeDeviation, ?computeSlopes) =
+  static member create(generator : Dna -> Map3, dna : Dna, ?extraId : int, ?retainSamples, ?computeSlopes) =
     let i0 = dna.size
     let map = generator dna
     let i1 = dna.last
     let hash = Mangle.Hash128.create()
-    extraId.apply(fun print -> hash.hash(print))
+    extraId.apply(hash.hash)
     for i = i0 to i1 do
       hash.hash(dna.[i].semanticId)
       hash.hash(dna.[i].value)
     hash.hashEnd()
-    let info = Map3Info.create(map, hash.a64, retainSamples >? false, computeDeviation >? false, computeSlopes >? false)
-    info
+    Map3Info.create(map, hash.a64, retainSamples = (retainSamples >? false), computeSlopes = (computeSlopes >? false))
 
 
 
-/// Normalizes the map from the generator, including extraId in the hash. Cache aware.
+/// Normalizes the map from the generator, including in the hash extraId, which summarizes
+/// extra data already supplied to the generator. Cache aware.
 let normalizeWithId extraId (generator : Dna -> Map3) (dna : Dna) =
   let info = Map3Info.create(generator, dna)
   info.map

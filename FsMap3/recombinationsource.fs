@@ -67,7 +67,7 @@ type RecombinationSource(seed) =
       this.forget(dna, i, value)
       value
     | _ ->
-      action.apply(this.rnd, dna, i, value, choices)
+      action.apply(this.rnd, dna, i, choices, value)
 
   override this.choose(dna, i) =
     let action = this.parameterPredicate this.rnd dna i
@@ -77,9 +77,9 @@ type RecombinationSource(seed) =
       this.forget(dna, i, value)
       value
     | _ ->
-      action.apply(this.rnd, dna, i, value, None)
+      action.apply(this.rnd, dna, i, value)
 
-  override this.chooseFloat(dna, i, transform) =
+  override this.chooseFloat(dna, i, valueTransform, priorTransform) =
     let action = this.parameterPredicate this.rnd dna i
     let value = this.value(dna, i)
     match action, value with
@@ -87,5 +87,5 @@ type RecombinationSource(seed) =
       this.forget(dna, i, value)
       value
     | _ ->
-      action.apply(this.rnd, dna, i, value, Some transform)
+      action.apply(this.rnd, dna, i, valueTransform, priorTransform, value)
 

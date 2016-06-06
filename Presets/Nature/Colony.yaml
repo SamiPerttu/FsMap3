@@ -1,5 +1,5 @@
-View Center X: -0.301235198974609
-View Center Y: 0.053237915039062
+View Center X: -0.191642761230468
+View Center Y: -0.001174926757812
 View Center Z: 0.524795532226562
 View Zoom: 1.33100044727325
 Palette:
@@ -11,7 +11,6 @@ Palette:
   Saturation minimum: 0.0389273352921
   Saturation skew: 1.29411768913269
   Value skew: 0.647058725357055
-  Shape: none
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -32,12 +31,12 @@ Node: Fractalizer
     Displace response: sine
     Walk operator: lurch
     Basis: leopard
+      Cell seed: 3573493429
       Leopard radius: 0.868941128253936
       Features per cell: Poisson
         Mean: 0.7477183734
       Potential fade: smooth line
       Mix operator: over
-      Shading: 0.294117659330368
       Cell color: random choice
         Choices: 3
         Seed: 1090145654

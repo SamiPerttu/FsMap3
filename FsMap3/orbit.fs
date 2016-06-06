@@ -5,7 +5,7 @@ open Common
 open Mangle
 open Basis3
 open Julia
-open Atlas3
+open CellColor
 open FeatureCount
 
 
@@ -13,23 +13,19 @@ open FeatureCount
 /// The number of iterations is typically low, around 2 to 8, for smoother results.
 let orbit (layout : LayoutFunction)
           (count : FeatureCount) 
-          (formula : IterationFormula)
+          (formula : FractalFormula)
           iterations
-          (cOrigin : Vec3f)
-          (qOrigin : Vec3f)
-          cRange
-          qRange
-          (cScale : float32)
-          (qScale : float32)
+          (p : FractalParameters)
           (formulaFade : float32 -> float32)
           (trap : Vec3f)
           (trapRadius : float32)
           (trapFade : float32 -> float32)
-          (trapPattern : Atlas3)
+          (trapColor : CellColor)
           (mix : MixOp)
           radius
+          seed
           frequency =
-  let layoutInstance = layout frequency
+  let layoutInstance = layout seed frequency
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
@@ -39,8 +35,8 @@ let orbit (layout : LayoutFunction)
     let Ri = 1.0f / radius
 
     let mutable W = 1.0f
-    let mutable c = W * cOrigin
-    let mutable q0 = W * qOrigin
+    let mutable c = W * p.cOrigin
+    let mutable q0 = W * p.qOrigin
 
     for jx = data.x0 to data.x1 do
       let hx = data.hashX(jx)
@@ -54,12 +50,12 @@ let orbit (layout : LayoutFunction)
             let d2 = P.length2
             if d2 < R2 then
               let d = sqrt d2 * Ri
-              let pc = cOrigin + Vec3f.fromSeed(mangle32d h, -cRange, cRange)
-              let pq = qOrigin + Vec3f.fromSeed(mangle32fast h, -qRange, qRange)
+              let pc = p.cOrigin + Vec3f.fromSeed(mangle32d h, -p.cRange, p.cRange)
+              let pq = p.qOrigin + Vec3f.fromSeed(mangle32fast h, -p.qRange, p.qRange)
               let w = formulaFade (1.0f - d)
               W <- W + w
-              c <- c + w * (pc + P * cScale)
-              q0 <- q0 + w * (pq + P * qScale)
+              c <- c + w * (pc + P * p.cScale)
+              q0 <- q0 + w * (pq + P * p.qScale)
 
     q0 <- q0 / W
     c <- c / W
@@ -83,7 +79,7 @@ let orbit (layout : LayoutFunction)
         let d2 = (q - trap).length2
         if d2 < tR2 then
           let w = trapFade(1.0f - sqrt d2 * tRi)
-          value <- mix value 1.0f w (trapPattern iteration (Vec3f((q.x - trap.x) * tRi, (q.y - trap.y) * tRi, 1.0f)))
+          value <- mix value 1.0f w (trapColor iteration (Vec3f((q.x - trap.x) * tRi, (q.y - trap.y) * tRi, 1.0f)))
         iteration <- iteration + 1
       Mix.result value
 
@@ -96,7 +92,7 @@ let orbit (layout : LayoutFunction)
         let d2 = (q - trap).length2
         if d2 < tR2 then
           let w = trapFade (1.0f - sqrt d2 * tRi)
-          value <- mix value 1.0f w (trapPattern iteration ((q - trap) * tRi))
+          value <- mix value 1.0f w (trapColor iteration ((q - trap) * tRi))
         iteration <- iteration + 1
       Mix.result value
 
@@ -109,7 +105,7 @@ let orbit (layout : LayoutFunction)
         let d2 = (q - trap).length2
         if d2 < tR2 then
           let w = trapFade (1.0f - sqrt d2 * tRi)
-          value <- mix value 1.0f w (trapPattern iteration ((q - trap) * tRi))
+          value <- mix value 1.0f w (trapColor iteration ((q - trap) * tRi))
         iteration <- iteration + 1
       Mix.result value
 
@@ -127,7 +123,7 @@ let orbit (layout : LayoutFunction)
         let d2 = (q - trap).length2
         if d2 < tR2 then
           let w = trapFade (1.0f - sqrt d2 * tRi)
-          value <- mix value 1.0f w (trapPattern iteration ((q - trap) * tRi))
+          value <- mix value 1.0f w (trapColor iteration ((q - trap) * tRi))
         iteration <- iteration + 1
       Mix.result value
 
@@ -140,7 +136,7 @@ let orbit (layout : LayoutFunction)
         let d2 = (q - trap).length2
         if d2 < tR2 then
           let w = trapFade (1.0f - sqrt d2 * tRi)
-          value <- mix value 1.0f w (trapPattern iteration ((q - trap) * tRi))
+          value <- mix value 1.0f w (trapColor iteration ((q - trap) * tRi))
         iteration <- iteration + 1
       Mix.result value
 

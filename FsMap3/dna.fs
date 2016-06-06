@@ -206,8 +206,8 @@ type [<ReferenceEquality>] Dna =
     this.fingerprint <- mangle64 (this.fingerprint + int64 parameter.value)
       
 
-  /// Chooses a value for a new parameter.
-  member private this.choose(transform : uint -> 'a) =
+  /// Chooses a value for a new parameter using the given monotonic transforms.
+  member private this.choose(valueTransform : uint -> 'a, priorTransform : uint -> 'a) =
     let rec tryFilter i =
       if i < 0 then Noneval else
         match this.injectorArray.[i].choose(this, this.last) with
@@ -216,12 +216,27 @@ type [<ReferenceEquality>] Dna =
     let value =
       match tryFilter this.injectorArray.last with
       | Noneval ->
-        match box transform with
-        | :? (uint -> int) as f -> (!this.source).chooseInt(this, this.last, f)
-        | :? (uint -> float) as f -> (!this.source).chooseFloat(this, this.last, f)
+        match box valueTransform with
+        | :? (uint -> int) as valueTransform -> (!this.source).chooseInt(this, this.last, valueTransform, priorTransform |> box |> unbox)
+        | :? (uint -> float) as valueTransform -> (!this.source).chooseFloat(this, this.last, valueTransform, priorTransform |> box |> unbox)
         | _ -> (!this.source).choose(this, this.last)
       | Someval(x) ->
         x
+    enforce (value <= this.lastParameter.maxValue) "Dna.choose: DnaSource returned an out-of-bounds value."
+    value
+
+
+  /// Chooses a value for a new parameter.
+  member private this.choose() =
+    let rec tryFilter i =
+      if i < 0 then Noneval else
+        match this.injectorArray.[i].choose(this, this.last) with
+        | Noneval -> tryFilter (i - 1)
+        | x -> x
+    let value =
+      match tryFilter this.injectorArray.last with
+      | Noneval -> (!this.source).choose(this, this.last)
+      | Someval(x) -> x
     enforce (value <= this.lastParameter.maxValue) "Dna.choose: DnaSource returned an out-of-bounds value."
     value
 
@@ -245,8 +260,8 @@ type [<ReferenceEquality>] Dna =
     value
 
 
-  /// Creates a new parameter.
-  member private this.addParameter(format, name, maximumValue, valueTransform : uint -> 'a, stringConverter : 'a -> string) =
+  /// Creates a new parameter. If the prior transform is specified, then both transforms must be monotonic.
+  member private this.addParameter(format, name, maximumValue, valueTransform : uint -> 'a, stringConverter : 'a -> string, ?priorTransform : uint -> 'a) =
     let i = this.size
     let a = this.state.[this.level]
     let semanticId = Parameter.getSemanticId(format, name, maximumValue)
@@ -266,7 +281,10 @@ type [<ReferenceEquality>] Dna =
       generated = obj()
       }
     this.parameterArray.add(parameter)
-    parameter.value <- this.choose(valueTransform)
+    parameter.value <-
+      match priorTransform with
+      | Some(priorTransform) -> this.choose(valueTransform, priorTransform)
+      | None -> this.choose()
     let generated = valueTransform parameter.value
     parameter.valueString <- stringConverter generated
     parameter.generated <- box generated
@@ -303,11 +321,6 @@ type [<ReferenceEquality>] Dna =
     this.updateFingerprint(parameter)
     this.state.[this.level] <- LevelState(a.address, Someval(i), a.children, a.number + 1)
     generated
-
-
-  /// Creates a new full range parameter.
-  member private this.addParameter(format, name, valueTransform, stringConverter) =
-    this.addParameter(format, name, ~~~0u, valueTransform, stringConverter)
 
 
   /// Calls a subgenerator in a child node in the parameter tree.
@@ -389,7 +402,7 @@ type [<ReferenceEquality>] Dna =
       generated = obj()
       }
     this.parameterArray.add(parameter)
-    this.choose(ignore) |> ignore
+    this.choose(ignore, ignore) |> ignore
     this.updateFingerprint(parameter)
     this.state.[this.level] <- LevelState(a.address, Someval(i), a.children, a.number + 1)
 
@@ -411,24 +424,27 @@ type [<ReferenceEquality>] Dna =
     this.descend(generator)
 
 
-  /// Queries a float parameter. Transformation from the unit interval
-  /// as well as unit interval type (closed by default) can be specified.
-  member this.float(name, ?transformation : float -> float, ?interval, ?suffix) =
+  /// Queries a float parameter. Both transform and prior from the unit range with the given interval type
+  /// (closed by default) must be monotonic if specified.
+  member this.float(name, ?transform : float -> float, ?prior : float -> float, ?interval, ?suffix) =
     let interval = interval >? Closed
-    let transformation = transformation >? id
+    let transform = transform >? id
+    let prior = prior >? id
     let suffix = suffix >? ""
     this.addParameter(
       Ordered,
       name,
-      float01u interval >> transformation,
-      fun x -> Pretty.string x + suffix
+      maxValue uint,
+      float01u interval >> transform,
+      (fun x -> Pretty.string x + suffix),
+      float01u interval >> prior >> transform
       )
 
 
-  /// Queries a float32 parameter. Transformation from the unit interval
-  /// as well as unit interval type (closed by default) can be specified.
-  member this.float32(name, ?transformation, ?interval, ?suffix) =
-    this.float(name, float32 >> (transformation >? id) >> float, interval >? Closed, suffix >? "") |> float32
+  /// Queries a float32 parameter. Both transform and prior from the unit range with the given interval type
+  /// (closed by default) must be monotonic if specified.
+  member this.float32(name, ?transform, ?prior, ?interval, ?suffix) =
+    this.float(name, float32 >> (transform >? id) >> float, float32 >> (prior >? id) >> float, interval >? Closed, suffix >? "") |> float32
 
 
   /// Queries a categorical parameter.
@@ -463,16 +479,12 @@ type [<ReferenceEquality>] Dna =
     this.ordered(name, Choices(choices))
 
 
-  /// Queries an ordered full range parameter.
-  member this.ordered(name, transformation : int -> _) =
-    this.addParameter(Ordered, name, (+) 0x80000000u >> int >> transformation, box >> string)
-
-
-  /// Queries an int parameter in [minimum, maximum], with an optional transformation.
-  member this.int(name, minimum : int, maximum : int, ?transformation : int -> int, ?general) =
+  /// Queries an int parameter in [minimum, maximum], with an optional monotonic transformation.
+  member this.int(name, minimum : int, maximum : int, ?transform : int -> int) =
     enforce (minimum <= maximum) "Dna.int: Empty range."
     let maximumValue = uint maximum - uint minimum
-    this.addParameter(Ordered, name, maximumValue, (+) (uint minimum) >> int >> (transformation >? id), string)
+    let valueTransform = (+) (uint minimum) >> int >> (transform >? id)
+    this.addParameter(Ordered, name, maximumValue, valueTransform, string, valueTransform)
 
 
   /// Queries an int parameter in [0, range[.
@@ -480,9 +492,9 @@ type [<ReferenceEquality>] Dna =
     this.int(name, 0, range - 1)
 
 
-  /// Queries an int parameter in [0, range[, with a transformation.
-  member this.int(name, range, transformation : int -> int) =
-    this.int(name, 0, range - 1, transformation)
+  /// Queries an int parameter in [0, range[, with a monotonic transformation.
+  member this.int(name, range, transform : int -> int) =
+    this.int(name, 0, range - 1, transform)
 
 
   /// Queries a full range int parameter.
@@ -493,22 +505,23 @@ type [<ReferenceEquality>] Dna =
   /// Queries "raw" categorical data in [0, range[ (or, by default, the full 32-bit range).
   /// The result is returned as an int (due to popular demand).
   member this.data(name, ?range : int) =
-    enforce (range.isNone || range.value > 0) "Dna.data: Empty range."
+    enforce (range.isNone || !range > 0) "Dna.data: Empty range."
     let maximumValue = match range with | Some(r) -> uint r - 1u | None -> maxValue uint
     this.addParameter(
       Categorical,
       name,
       maximumValue,
-      id,
+      int,
       fun x ->
         let nybbles = match range with | Some(r) -> max 1 ((Bits.highestBit32 (uint r - 1u) + 3) / 4) | None -> 8
         sprintf "%0*x" nybbles x
-      ) |> int
+      )
 
 
   /// Queries a 32-bit word, which is converted into an object.
-  member this.data(name, transformation : int -> _) =
-    this.addParameter(Categorical, name, int >> transformation, box >> string)
+  member this.data(name, transform : int -> _) =
+    let valueTransform = int >> transform
+    this.addParameter(Categorical, name, maxValue uint, valueTransform, box >> string)
 
 
   /// Returns true or false.
@@ -617,21 +630,21 @@ and [<AbstractClass>] DnaSource() =
   /// The maximum value can be zero: this is called even for dummy label parameters.
   abstract choose : Dna * int -> uint
 
-  /// Chooses an ordered integer value for a parameter. The transformation is monotonic.
+  /// Chooses an ordered integer value for a parameter. The transformations are monotonic.
   /// This is routed to DnaSource.choose by default.
-  abstract chooseInt : Dna * int * (uint -> int) -> uint
+  abstract chooseInt : Dna * int * (uint -> int) * (uint -> int) -> uint
 
-  /// Chooses an ordered float value for a parameter. The transformation is monotonic.
+  /// Chooses an ordered float value for a parameter. The transformations are monotonic.
   /// This is routed to DnaSource.choose by default.
-  abstract chooseFloat : Dna * int * (uint -> float) -> uint
+  abstract chooseFloat : Dna * int * (uint -> float) * (uint -> float) -> uint
 
   default __.start() = ()
   default __.ready(_) = ()
   default __.feedback(_, _) = ()
   default __.observe(_, _) = ()
 
-  default this.chooseInt(dna, i, transformation : uint -> int) = this.choose(dna, i)
-  default this.chooseFloat(dna, i, transformation : uint -> float) = this.choose(dna, i)
+  default this.chooseInt(dna, i, valueTransform, priorTransform) = this.choose(dna, i)
+  default this.chooseFloat(dna, i, valueTransform, priorTransform) = this.choose(dna, i)
 
   /// Generates an object using this source.
   member this.generate(generator : Dna -> _) =
@@ -702,10 +715,16 @@ and RandomSource(sourceRnd : Rnd) =
 
   member this.mix(rnd : Rnd) = rnd0.mix(rnd)
 
-  override this.start() = rnd.copyFrom(rnd0)
-  override this.choose(_, _, choices) = choices.pick(rnd.float32() |> float)
-  override this.choose(dna, i) = rnd.uint(0u, dna.parameter(i).maxValue)
-
+  override this.start() =
+    rnd.copyFrom(rnd0)
+  override this.choose(_, _, choices) =
+    choices.pick(rnd.float32() |> float)
+  override this.choose(dna, i) =
+    rnd.uint(0u, dna.[i].maxValue)
+  override this.chooseInt(dna, i, valueTransform, priorTransform) =
+    rnd.uint(0u, dna.[i].maxValue) |> priorTransform |> Fun.binarySearchClosest 0u dna.[i].maxValue valueTransform
+  override this.chooseFloat(dna, i, valueTransform, priorTransform) =
+    rnd.uint(0u, dna.[i].maxValue) |> priorTransform |> Fun.binarySearchClosest 0u dna.[i].maxValue valueTransform
 
 
 /// Specimen is an individual generated from Dna, with an attached fitness value.

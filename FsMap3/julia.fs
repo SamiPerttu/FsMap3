@@ -8,10 +8,22 @@ open FeatureCount
 
 
 /// Fractal iteration formulas.
-type IterationFormula =
+type FractalFormula =
   Julia | AexionJulia | Makin | White | Mandelcorn
   override this.ToString() = unionLabel this
   member this.is2D = match this with | Julia -> true | _ -> false
+
+
+[<NoComparison; NoEquality>]
+type FractalParameters = struct
+  val cOrigin : Vec3f
+  val qOrigin : Vec3f
+  val cRange : float32
+  val qRange : float32
+  val cScale : float32
+  val qScale : float32
+  new(cOrigin, qOrigin, cRange, qRange, cScale, qScale) = { cOrigin = cOrigin; qOrigin = qOrigin; cRange = cRange; qRange = qRange; cScale = cScale; qScale = qScale }
+end
 
 
 /// Basis that accumulates a result by iterating a fractal formula. The fractal parameters
@@ -19,19 +31,15 @@ type IterationFormula =
 /// around 2 to 10.
 let julia (layout : LayoutFunction)
           (count : FeatureCount) 
-          (formula : IterationFormula)
+          (formula : FractalFormula)
           iterations
           roughness
           radius
           (fade : float32 -> float32)
-          (cOrigin : Vec3f)
-          (qOrigin : Vec3f)
-          cRange
-          qRange
-          (cScale : float32)
-          (qScale : float32)
+          (p : FractalParameters)
+          seed
           frequency =
-  let layoutInstance = layout frequency
+  let layoutInstance = layout seed frequency
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
@@ -39,8 +47,8 @@ let julia (layout : LayoutFunction)
     let Ri = 1.0f / radius
     data.scan(radius)
     let mutable W = 1.0f
-    let mutable c = W * cOrigin
-    let mutable q0 = W * qOrigin
+    let mutable c = W * p.cOrigin
+    let mutable q0 = W * p.qOrigin
     for jx = data.x0 to data.x1 do
       let hx = data.hashX(jx)
       for jy = data.y0 to data.y1 do
@@ -53,12 +61,12 @@ let julia (layout : LayoutFunction)
             let d2 = P.length2
             if d2 < R2 then
               let d = sqrt d2 * Ri
-              let pc = cOrigin + Vec3f.fromSeed(mangle32d h, -cRange, cRange)
-              let pq = qOrigin + Vec3f.fromSeed(mangle32fast h, -qRange, qRange)
+              let pc = p.cOrigin + Vec3f.fromSeed(mangle32d h, -p.cRange, p.cRange)
+              let pq = p.qOrigin + Vec3f.fromSeed(mangle32fast h, -p.qRange, p.qRange)
               let w = fade (1.0f - d)
               W <- W + w
-              c <- c + w * (pc + P * cScale)
-              q0 <- q0 + w * (pq + P * qScale)
+              c <- c + w * (pc + P * p.cScale)
+              q0 <- q0 + w * (pq + P * p.qScale)
     q0 <- q0 / W
     c <- c / W
 

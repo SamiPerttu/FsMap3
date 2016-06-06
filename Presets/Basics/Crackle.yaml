@@ -19,9 +19,10 @@ Node: Basis
   Z offset: -2.33462333679199
   Frequency: 8.33292865753174
   Basis: Worley
+    Cell seed: 7209
     Features per cell: one
     Cell distance norm: 2-norm
-    Worley pattern: 7207
+    Worley pattern: 7214
     Worley fade: line
   Shape: bleed
     Bleed 1: -0.389999985694885

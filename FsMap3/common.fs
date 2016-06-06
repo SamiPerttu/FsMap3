@@ -484,6 +484,9 @@ let inline trir (x : 'a) : 'a = tri(x * G tau)
 /// The average of the two arguments.
 let inline average (x : 'a) (y : 'a) : 'a = (x + y) * Q 1 2
 
+/// The average of the three arguments.
+let inline average3 (x : 'a) (y : 'a) (z : 'a) : 'a = (x + y + z) * Q 1 3
+
 /// Antisymmetric pow function. Raises the absolute of the value (x) to the given power (y) and then restores the sign.
 let inline apow x y = if x < 0G then -(-x ** y) else x ** y
 

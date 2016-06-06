@@ -145,4 +145,3 @@ The textures are displayed here. Any change to the parameters of a texture trigg
 |![Julia orbit trap](bases/orbit.png) | Julia orbit trap | *Julia orbit trap* basis. Like the Julia basis but the coloring is done with the orbit trap technique, utilizing a separate orbit texture that we call *atlas*. |
 |![capsule flow](bases/capsuleFlow.png) | capsule flow | *Capsule flow*. The flow bases distributes oriented potentials like the Peacock basis. However, in the flow bases the orientation is sampled from a separate *flow basis*. The capsule flow basis consists of oriented capsules. |
 |![potential flow](bases/potentialFlow.png) | potential flow | The *potential flow* basis consists of shapes oriented according to the flow basis. |
-|![pattern flow](bases/patternFlow.png) | pattern flow | The *pattern flow* basis is **experimental**. It is like potential flow except the potential colors are retrieved from a separate *atlas*. |

@@ -9,13 +9,23 @@ open CellColor
 open FeatureCount
 
 
-/// Capsule flow basis consists of oriented capsules.
+/// Capsule flow basis consists of oriented and stretched capsules.
 /// The length and orientation of the capsules at each point is sampled from the flow basis.
-let capflow (layout : LayoutFunction) (count : FeatureCount) (mix : MixOp) (color : CellColor) (fade : float32 -> float32) (shading : float32) (length : float32) (radius : float32) (flow : Basis3) (flowFrequencyFactor : float32) (frequency : float32) =
+let capflow (layout : LayoutFunction)
+            (count : FeatureCount)
+            (mix : MixOp)
+            (color : CellColor)
+            (fade : float32 -> float32)
+            (length : float32)
+            (radius : float32)
+            (flow : Basis3)
+            (flowFrequencyFactor : float32)
+            seed
+            frequency =
   let R2 = squared radius
   let Ri = 1G / radius
 
-  let layoutInstance = layout frequency
+  let layoutInstance = layout seed frequency
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
@@ -42,6 +52,7 @@ let capflow (layout : LayoutFunction) (count : FeatureCount) (mix : MixOp) (colo
             if distance2 < R2 then
               let distance = sqrt distance2
               let w = fade (1G - distance * Ri)
-              value <- mix value 1.0f w (color h * (1G + Ri * shading * S))
+              // TODO. Do we want to use S or P or both here to calculate color?
+              value <- mix value 1.0f w (color h (S * Ri))
     data.release()
     Mix.result value

@@ -223,8 +223,8 @@ let worleyBasis (cell : BasisData) (count : FeatureCount) maxDistance (distance 
 
 
 /// Worley basis. Components contain Worley patterns p0, p1 and p2.
-let worley (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance : CellDistance) (fade : float32 -> float32) (frequency : float32) =
-  let layoutInstance = layout frequency
+let worley (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance : CellDistance) (fade : float32 -> float32) seed (frequency : float32) =
+  let layoutInstance = layout seed frequency
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
     worleyBasis data count (2.0f / distance.normalizationFactor) distance v
@@ -234,7 +234,9 @@ let worley (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance :
 
 
 /// Default Worley basis with the default layout function and unity Poisson feature distribution.
-let inline worleyd p distance fade frequency v = worley hifiLayout unityPoisson p ((p + 1) % worleyPattern.size) ((p + 2) % worleyPattern.size) distance fade frequency v
+/// The cell hash seed is derived from the frequency.
+let inline worleyd p distance fade frequency =
+  worley hifiLayout unityPoisson p ((p + 1) % worleyPattern.size) ((p + 2) % worleyPattern.size) distance fade (manglef32 frequency) frequency
 
 
 
@@ -251,7 +253,7 @@ let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (dist
       let d = P |> distance.vector |> distance.normalize
       let w = colorWeight d
       if w > cell.worleyWeight - 10.0f then
-        let c = color h
+        let c = color h P
         let linearWeight = exp(min 20.0f (w - cell.worleyWeight))
         cell.worleyColor <- (cell.worleyColor + c * linearWeight) / (1.0f + linearWeight)
         if linearWeight > 1.0e5f then
@@ -343,13 +345,20 @@ let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (dist
 
 
 /// Worley colored basis. Components contain Worley patterns p0, p1 and p2
-/// adjusted by closest cell color. Color fading distance between closest cells
-/// is 0 < a < 1. It is typically a small value, somewhere around [0.02, 0.2].
-let camo (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance : CellDistance) (color : CellColor) (fade : float32 -> float32) a frequency =
-  let layoutInstance = layout frequency
+/// adjusted by closest cell color. Color fade distance between closest cells
+/// is typically a small value, somewhere around [0.02, 0.2].
+let camo (layout : LayoutFunction)
+         (count : FeatureCount)
+         p0 p1 p2
+         (distance : CellDistance)
+         (color : CellColor)
+         (fade : float32 -> float32)
+         colorFadeDistance
+         seed frequency =
+  let layoutInstance = layout seed frequency
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
-    worleyColorBasis data count 2.0f distance color (3.0f / a) v
+    worleyColorBasis data count 2.0f distance color (3.0f / colorFadeDistance) v
     // The colored basis stores normalized distances.
     let d = Vec3f(data.d0, data.d1, data.d2).map(fun d -> fade (min 1.0f (0.5f * d)))
     let worleyColor = data.worleyColor

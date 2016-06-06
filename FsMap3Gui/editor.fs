@@ -1163,8 +1163,6 @@ type Editor =
 (*
 TODO
 
--Never tile pattern atlases, there is no need. Possibility: temporary Dna injector.
--Figure out whether atlases are even a good idea. 
 -Crossover tool.
 -Figure out a nice way of setting Map3Info sampling diameter based on layout.
 -Aspect ratio support.

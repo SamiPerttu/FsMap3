@@ -1,5 +1,5 @@
-View Center X: 0.940628051757812
-View Center Y: 0.663978576660156
+View Center X: 0.5
+View Center Y: 0.5
 View Center Z: 0.5
 View Zoom: 1
 Palette:
@@ -28,6 +28,7 @@ Node: Binary
       Z offset: -3.27116775512695
       Frequency: 4.47780227661133
       Basis: cubex noise
+        Cell seed: 1008571516
         Cell color: random choice
           Choices: 2
           Seed: 416601509
@@ -53,12 +54,12 @@ Node: Binary
         Displace response: reverse power-2
         Walk operator: march
         Basis: leopard
+          Cell seed: 416601511
           Leopard radius: 0.817506611347198
           Features per cell: geometric
             Mean: 0.549223881
           Potential fade: smooth-2
           Mix operator: over
-          Shading: 0.80232560634613
           Cell color: random choice
             Choices: 1
             Seed: 1008571516

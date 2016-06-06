@@ -94,7 +94,6 @@
     <Compile Include="featurecount.fs" />
     <Compile Include="basis3.fs" />
     <Compile Include="map3.fs" />
-    <Compile Include="atlas3.fs" />
     <Compile Include="map3info.fs" />
     <Compile Include="perlin.fs" />
     <Compile Include="cubex.fs" />

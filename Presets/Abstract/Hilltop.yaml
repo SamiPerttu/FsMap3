@@ -1,0 +1,52 @@
+View Center X: 0.409877777099609
+View Center Y: 0.360328674316406
+View Center Z: 0.5
+View Zoom: 0.751314759254455
+Palette:
+  Color space: CIELch
+  Hue origin: 0.348837196826934
+  Hue range: 0.153839915990829
+  Hue skew: 0.163155078887939
+  Saturation range: 0.538448333740234
+  Saturation minimum: 0.44510805606842
+  Saturation skew: -1.57453370094299
+  Value skew: 0.73980164527893
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Fractalizer
+  X offset: 4.13852596282959
+  Y offset: -4.31220054626465
+  Z offset: 2.70749855041504
+  Octaves: 7
+  Frequency: 6.53807306289673
+  Roughness: 0.561550259590148
+  Fractalizer: inverted mix and displace
+    Lacunarity: 0.366078555583953
+    Lowpass filter: 0.808721244335174
+    Mix operator: soft
+      Bias: 0.076081037521362
+    Displace amount: 0.305876672267913
+    Displace response: reverse power-4
+    Walk operator: march
+    Basis: component softmix
+      Frequency factor: 0.384361058473587
+      Mix bias: -0.643747091293335
+      Basis 1:
+        Basis: colored Worley
+          Cell seed: 548879256
+          Features per cell: Poisson
+            Mean: 1.239452686
+          Cell distance norm: 2-norm
+          Worley pattern: 14046
+          Worley fade: reverse power-2
+          Cell fade distance: 0.028672257438302
+          Cell color: big
+      Basis 2:
+        Basis: Worley
+          Cell seed: 2322278840
+          Features per cell: rounded average
+            Average: 0.4873254906
+          Cell distance norm: 2-norm
+          Worley pattern: 14046
+          Worley fade: power-2
+  Shape: none

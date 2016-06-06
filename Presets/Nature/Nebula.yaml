@@ -1,7 +1,7 @@
-View Center X: 9.06977081298828
-View Center Y: 1.82747268676758
-View Center Z: 0.474079132080078
-View Zoom: 0.751314759254455
+View Center X: -0.257146835327148
+View Center Y: 0.479305267333984
+View Center Z: 0.5
+View Zoom: 0.826446413993835
 Palette:
   Color space: HSL
   Hue origin: 0.653720915317535
@@ -35,6 +35,7 @@ Node: Fractalizer
       Mix bias: 3.9069766998291
       Basis 1:
         Basis: colored Worley
+          Cell seed: 9113
           Features per cell: geometric
             Mean: 1.335118873
           Cell distance norm: 2-norm
@@ -46,12 +47,12 @@ Node: Fractalizer
             Seed: 3494112031
       Basis 2:
         Basis: leopard
+          Cell seed: 9100
           Leopard radius: 0.25
           Features per cell: geometric
             Mean: 4
           Potential fade: power-2
           Mix operator: over
-          Shading: 0.523255825042724
           Cell color: random choice
             Choices: 5
             Seed: 2367529070

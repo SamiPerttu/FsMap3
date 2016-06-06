@@ -7,9 +7,9 @@ Palette:
   Hue origin: 0.421176463365554
   Hue range: 0.657169818878173
   Hue skew: 1.21265053749084
-  Saturation range: 0.213864624500274
-  Saturation minimum: 0.007608640938997
-  Saturation skew: -1.62135720252991
+  Saturation range: 0.200000002980232
+  Saturation minimum: 0
+  Saturation skew: -2
   Value skew: 0.764705896377563
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
@@ -23,16 +23,19 @@ Node: Fractalizer
   Fractalizer: inverted mix and displace
     Lacunarity: 0.515568196773529
     Lowpass filter: 0.78215092420578
-    Mix operator: soft
-      Bias: -0.867647051811218
+    Mix operator: layer
+      Layer width: 0.617198288440704
+      Layer hardness: 4
+      Layer persist: 0.546871960163116
     Displace amount: 0.218966245651245
     Displace response: shelf
-    Walk operator: march
+    Walk operator: bounce
     Basis: colored Worley
+      Cell seed: 7285
       Features per cell: Poisson
-        Mean: 1.00165929
-      Cell distance norm: 1-norm
-      Worley pattern: 7282
+        Mean: 1.31206638
+      Cell distance norm: 2-norm
+      Worley pattern: 7287
       Worley fade: sine
       Cell fade distance: 0.25
       Cell color: unit choice
@@ -40,4 +43,4 @@ Node: Fractalizer
         Seed: 46705604
   Shape: vector posterize
     Posterize levels: 11.5310821533203
-    Posterize hardness: 3
+    Posterize hardness: 2

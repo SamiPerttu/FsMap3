@@ -1,5 +1,5 @@
-View Center X: 0.5
-View Center Y: 0.5
+View Center X: 0.461746215820312
+View Center Y: 0.443626403808593
 View Center Z: 0.409992218017578
 View Zoom: 1
 Palette:
@@ -51,16 +51,17 @@ Node: Unary
                     Displace amount: 0.265424609184265
                   Modifier:
                     Basis: leopard
+                      Cell seed: 1753631851
                       Leopard radius: 0.667523682117462
                       Features per cell: geometric
                         Mean: 0.2846801902
                       Potential fade: smooth-2
                       Mix operator: sum
-                      Shading: 0.922455847263336
                       Cell color: big
                     Shape: none
                   Base:
                     Basis: radial value noise
+                      Cell seed: 1753631851
                       Cell color: any
                       Radial fade: power-2
               Shape: none
@@ -71,12 +72,12 @@ Node: Unary
           Z offset: 0.55176305770874
           Frequency: 25.5715980529785
           Basis: potential flow
+            Cell seed: 0
             Potential: supertorus
               Ring power: 8
               Major axis: 0.651526570320129
             Potential radius: 0.909460067749023
             Potential fade: downward arc
-            Shading: 1
             Cell color: any
             Mix operator: sum
             Features per cell: rounded average
@@ -90,11 +91,13 @@ Node: Unary
                   Displace amount: 1.17704486846924
                 Displacer:
                   Basis: weave
+                    Cell seed: 3
                     Weave period: 3
                     Weave: wired
                   Shape: none
                 Base:
                   Basis: Worley
+                    Cell seed: 8136
                     Features per cell: rounded average
                       Average: 0.7220506522
                     Cell distance norm: 2-norm
