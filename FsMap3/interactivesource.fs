@@ -10,12 +10,12 @@ type InteractiveSource(seed) =
 
   let poolSet =
     [| CodePool.create(structuralHash, 1)
-       CodePool.create(approximateStructuralHash 1, 1)
-       CodePool.create(approximateStructuralHash 2, 1)
        CodePool.create(addressHash, relativeAddressHash (fun a -> a.parent), 1)
        CodePool.create(addressHash, relativeAddressHash (fun a -> a.ancestor(2)), 1)
        CodePool.create(relativeAddressHash (fun a -> a.parent), addressHash, 1)
        CodePool.create(relativeAddressHash (fun a -> a.ancestor(2)), addressHash, 1)
+       CodePool.create(approximateStructuralHash 1, 1)
+       CodePool.create(approximateStructuralHash 2, 1)
     |]
 
   member val rnd = Rnd(seed) with get, set
