@@ -42,11 +42,11 @@ type SerializerSource(genotype : Dna) =
     let x = transform v
     let x0 = if v = 0u then infinity else transform (v - 1u)
     let x1 = if v = dna.[i].maxValue then infinity else transform (v + 1u)
-    let retainDecimals d x = let p = pow 10.0 d in truncate (x * p) / p
+    let retainDecimals digits x = let p = pow 10.0 digits in truncate (x * p) / p
     // We want to serialize floats with sufficient precision that the raw parameter value
     // can be recovered.
-    let isAdmissiblePrecision d =
-      let a = retainDecimals d x
+    let isAdmissiblePrecision digits =
+      let a = retainDecimals digits x
       let error = abs(x - a)
       error < abs(x0 - a) && error < abs(x1 - a)
     let mutable precision = if x = 0.0 then 1 else max 1.0 (1.0 - log10 (abs x)) |> int
