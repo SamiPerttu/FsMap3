@@ -213,6 +213,22 @@ type Editor =
           view.pixmapView.setRenderSize(TR, TR)
           )
      
+    /// Iterates over all views. The second argument tells whether the view is visible.
+    let iterateViews (f : EditorView<_> -> bool -> unit) =
+      match !viewMode with
+      | FullView ->
+        f fullView true
+        for view in halfView do f view false
+        for view in thirdView do f view false
+      | HalfView ->
+        f fullView false
+        for view in halfView do f view true
+        for view in thirdView do f view false
+      | ThirdView ->
+        f fullView false
+        for view in halfView do f view false
+        for view in thirdView do f view true
+
     let toolPanel = DockPanel(Width = toolPanelWidth, Margin = Thickness(0.0), VerticalAlignment = VerticalAlignment.Stretch)
 
     let createIconButton imageFile tip = ToggleButton(Content = Wpf.loadImage(imageFile), withToolTip = tip, Width = iconSize, Height = iconSize, Margin = iconMargin, Background = Wpf.brush(0.0, 0.0, 0.0, 0.1))
@@ -235,6 +251,11 @@ type Editor =
       zoomButton.IsChecked <- Nullable((mode = ZoomTool))
       mutateButton.IsChecked <- Nullable((mode = MutateTool))
       joltButton.IsChecked <- Nullable((mode = JoltTool))
+      match mode with
+      | PanTool | PanZoomTool -> iterateViews (fun view _ -> view.setCursors(Input.Cursors.SizeAll, null))
+      | ZoomTool              -> iterateViews (fun view _ -> view.setCursors(Input.Cursors.Cross, null))
+      | MutateTool            -> iterateViews (fun view _ -> view.setCursors((match view.mainMode with | FullView -> Input.Cursors.No | _ -> Input.Cursors.Hand), null))
+      | JoltTool              -> iterateViews (fun view _ -> view.setCursors(Input.Cursors.Hand, null))
       toolMode := mode
 
     panButton.PreviewMouseDown.Add(fun args -> setToolMode PanTool; args.Handled <- true)
@@ -257,22 +278,6 @@ type Editor =
     let minimizeThirdView = ref thirdView.[0]
 
     let focusView = ref (Some(fullView))
-
-    /// Iterates over all views. The second argument tells whether the view is visible.
-    let iterateViews (f : EditorView<_> -> bool -> unit) =
-      match !viewMode with
-      | FullView ->
-        f fullView true
-        for view in halfView do f view false
-        for view in thirdView do f view false
-      | HalfView ->
-        f fullView false
-        for view in halfView do f view true
-        for view in thirdView do f view false
-      | ThirdView ->
-        f fullView false
-        for view in halfView do f view false
-        for view in thirdView do f view true
 
     let dnaView = DnaView(viewFilter = fun parameter ->
       // The layout is generated once at the top level and then propagated as a constraint.
@@ -1164,7 +1169,6 @@ type Editor =
 TODO
 
 -Crossover tool.
--Figure out a nice way of setting Map3Info sampling diameter based on layout.
 -Aspect ratio support.
 -Export dialog with options.
 -DDS export, 2-D and 3-D.

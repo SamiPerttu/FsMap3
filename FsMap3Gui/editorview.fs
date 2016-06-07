@@ -50,6 +50,8 @@ type [<NoComparison; NoEquality>] EditorView<'a> =
     busyImage : Image
     mutable busyCycle : int
     busyTimer : Threading.DispatcherTimer
+    mutable readyCursor : Input.Cursor
+    mutable emptyCursor : Input.Cursor
     pixmapView : PixmapView
     mutable filename : string
     mutable presetFilename : string
@@ -84,6 +86,17 @@ type [<NoComparison; NoEquality>] EditorView<'a> =
       this.busyTimer.Start()
       )
 
+  /// Updates the cursor now. This must be called from the UI thread.
+  member private this.updateCursor() =
+    this.image.Cursor <- if this.isEmpty then this.emptyCursor else this.readyCursor
+
+  member this.setCursors(readyCursor, emptyCursor) =
+    Wpf.dispatch(this.image, fun _ ->
+      this.readyCursor <- readyCursor
+      this.emptyCursor <- emptyCursor
+      this.updateCursor()
+      )
+
   member this.layoutBusy() =
     let busyBorder = 4.0
     this.busyImage.Margin <- Thickness(Left = this.image.Margin.Left + this.image.Width - this.busyImage.Width - busyBorder,
@@ -101,24 +114,27 @@ type [<NoComparison; NoEquality>] EditorView<'a> =
     let view = PixmapView(image, previewLevels = previewLevels)
     grid.add(image, 0, 0)
     let busySource = BusyImage.busyBitmaps.[0]
-    let busyImage = Image(SnapsToDevicePixels = true, Opacity = 0.5, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Visibility = Visibility.Collapsed, Width = float busySource.PixelWidth, Height = float busySource.PixelHeight, Source = busySource)
+    let busyImage = Image(SnapsToDevicePixels = true, Opacity = 0.5, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Visibility = Visibility.Collapsed, IsHitTestVisible = false, Width = float busySource.PixelWidth, Height = float busySource.PixelHeight, Source = busySource)
     grid.add(busyImage, 0, 0)
     let this = 
       {
-        mainMode = mainMode
-        gridI = gridI
-        gridX = gridX
-        gridY = gridY
-        image = image
-        busyImage = busyImage
-        busyCycle = 0
-        busyTimer = Threading.DispatcherTimer(Interval = TimeSpan.FromMilliseconds(200.0))
-        pixmapView = view
-        filename = ""
+        mainMode    = mainMode
+        gridI       = gridI
+        gridX       = gridX
+        gridY       = gridY
+        image       = image
+        busyImage   = busyImage
+        busyCycle   = 0
+        busyTimer   = Threading.DispatcherTimer(Interval = TimeSpan.FromMilliseconds(200.0))
+        readyCursor = null
+        emptyCursor = null
+        pixmapView  = view
+        filename    = ""
         presetFilename = ""
-        controller = PixmapController.create(view, pixmapSeed, deepSeed, deepGenerator, pixmapGenerator, deepFilter)
-        focusShape = None
+        controller  = PixmapController.create(view, pixmapSeed, deepSeed, deepGenerator, pixmapGenerator, deepFilter)
+        focusShape  = None
       }
+    image.MouseEnter.Add(fun _ -> this.updateCursor())
     this.busyTimer.Tick.Add(fun _ -> this.cycleBusy())
     this.controller.workCallback <- this.busy
     view.idleCallback <- this.idle
