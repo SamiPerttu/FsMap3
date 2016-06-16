@@ -469,6 +469,6 @@ type HashSet<'k when 'k : equality> =
   member inline this.unset(key) = if this.map.find(key).isSome then this.remove(key)
 
   /// Creates an empty hash set.
-  static member create(hashf, ?autoTrim : bool) : HashSet<'k> = { HashSet.map = HashMap.create(hashf, autoTrim = (autoTrim >? true)) }
+  static member create(hashf, ?autoTrim) : HashSet<'k> = { HashSet.map = HashMap.create(hashf, ?autoTrim = autoTrim) }
 
 

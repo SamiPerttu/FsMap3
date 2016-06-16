@@ -24,9 +24,10 @@ Node: Fractalizer
     Lacunarity: 0.5
     Highpass filter: 0
     Mix operator: sum
-    Displace amount: 0
-    Displace response: line
     Walk operator: march
+      Displace amount: 0
+      Displace response: line
+      Displace damping: 0
     Basis: Perlin noise
       Cell seed: 41
       Perlin fade: smooth-2

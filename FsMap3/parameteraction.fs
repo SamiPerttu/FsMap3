@@ -16,6 +16,8 @@ type ParameterAction =
   | SelectDefault
   /// Attempt to select a specific value. If not possible, pick a random value.
   | Select of value : uint
+  /// Attempt to select a specific choice. If not possible, pick a random value.
+  | SelectChoice of name : string
   /// If ordered, attempt to select a specific fractional value (in unit range). If categorical, randomize.
   | Select01 of value : float
   /// If ordered, alter value by a fraction no larger than the given amount (0 < amount <= 1).
@@ -47,6 +49,12 @@ type ParameterAction =
       match choices with
       | Some(choices) -> if choices.isLegal(v) then v else pickAny()
       | None -> if v <= maxValue then v else pickAny()
+    | SelectChoice name ->
+      match choices with
+      | Some(choices) -> match Fun.findArg 0 choices.last (fun i -> choices.weight(i) > 0G && choices.name(i) = name) with
+                         | Someval(i) -> uint i
+                         | Noneval -> pickAny()
+      | None -> pickAny()
     | Jolt01 _ ->
       match choices, existing with
       | Some(choices), Someval(v) -> choices.pickExcluding(v, rnd.float())
@@ -95,6 +103,12 @@ type ParameterAction =
       | None -> maxValue / 2u
     | Select v ->
       tryPick(v)
+    | SelectChoice name ->
+      match choices with
+      | Some(choices) -> match Fun.findArg 0 choices.last (fun i -> choices.weight(i) > 0G && choices.name(i) = name) with
+                         | Someval(i) -> uint i
+                         | Noneval -> pickAny()
+      | None -> pickAny()
     | Select01 v ->
       tryPick(lerp 0.0 (float maxValue) v |> clamp 0.1 (float maxValue - 0.1) |> uint)
     | Jolt01 amount ->

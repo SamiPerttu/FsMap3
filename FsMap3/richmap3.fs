@@ -6,12 +6,19 @@ open Map3
 open Map3Info
 
 
+type NormalizationMode =
+  AutoNormalization | ManualNormalization | NoNormalization
+
+  static member choices = Choices(C("auto", AutoNormalization), C("manual", ManualNormalization), C("none", NoNormalization))
+
+
+
 /// A "rich" Map3 stores a 2-window for displaying an image and sampled information
 /// for normalization and filtering.
 [<NoEquality; NoComparison>]
 type RichMap3 =
   {
-    /// The map, normalized and colored, with the view window transformed to the XY unit square at Z = 0.
+    /// The colored map with the view window transformed to the XY unit square at Z = 0.
     map : Map3
     /// Palette transform.
     palette : Map3
@@ -19,7 +26,7 @@ type RichMap3 =
     center : Vec3f
     /// Map view zoom.
     zoom : float32
-    /// Info that was gathered from uncolored map during normalization. Can be useful for filtering.
+    /// Info that was gathered from uncolored map.
     info : Map3Info
   }
 
@@ -63,7 +70,7 @@ type RichMap3 =
 
   /// Generates a RichMap3. The palette and 2-window are generated and applied separately here.
   /// The map generator is supplied as an argument.
-  static member generate(mapGenerator : Dna -> Map3) = fun (dna : Dna) ->
+  static member generate (prepareToFilter : bool) (mapGenerator : Dna -> Map3) = fun (dna : Dna) ->
     let clerp = lerp -50.0f 50.0f
     let centerX = dna.float32("View Center X", clerp)
     let centerY = dna.float32("View Center Y", clerp)
@@ -71,9 +78,12 @@ type RichMap3 =
     let center = Vec3f(centerX, centerY, centerZ)
     let zoom = dna.float32("View Zoom", xerp 0.5e-2f 0.5e3f)
     let offset = Vec3f(centerX - 0.5f / zoom, centerY - 0.5f / zoom, centerZ)
-    let palette = dna.descend("Palette", ColorDna.genPalette 32)
     let viewTransform (v : Vec3f) = v / zoom + offset
+
+    let palette = dna.descend("Palette", ColorDna.genPalette 32)
+
     let info = Map3Info.create(mapGenerator, dna, retainSamples = true, computeSlopes = true)
+
     {
       RichMap3.map = viewTransform >> info.map >> palette
       palette = palette
@@ -97,6 +107,7 @@ type RichMap3Filter =
 
   // Returns whether the map passes the filters.
   member this.filter(map : RichMap3, map0 : RichMap3 option) =
+    
     let viewSize = max map.viewWidth map.viewHeight
 
     let detailLevel0 = map0.map(fun map0 -> map0.detailLevel)

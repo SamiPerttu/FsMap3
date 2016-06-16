@@ -43,7 +43,7 @@ let worleyPattern =
 
 /// A cell distance computes distances between points.
 type CellDistance =
-  /// Calculates an unnormalized distance from a non-negative coordinate difference.
+  /// Calculates an unnormalized distance from a non-negative difference of coordinates.
   abstract scalar : float32 -> float32
   /// Calculates an unnormalized distance from a vector.
   abstract vector : Vec3f -> float32
@@ -131,6 +131,7 @@ let cellNorm L =
 
 
 /// Generic Worley cellular basis function.
+/// Evaluates three closest distances (unnormalized).
 let worleyBasis (cell : BasisData) (count : FeatureCount) maxDistance (distance : CellDistance) (v : Vec3f) =
 
   let scanCell jx jy jz =
@@ -140,14 +141,14 @@ let worleyBasis (cell : BasisData) (count : FeatureCount) maxDistance (distance 
       let P = cell.d - Vec3f.fromSeed(h) - Vec3f(float32 jx, float32 jy, float32 jz)
       let d = distance.vector(P)
       if d < cell.d0 then
-        cell.d2 <- cell.d1; cell.h2 <- cell.h1
-        cell.d1 <- cell.d0; cell.h1 <- cell.h0
-        cell.d0 <- d; cell.h0 <- h
+        cell.d2 <- cell.d1
+        cell.d1 <- cell.d0
+        cell.d0 <- d
       elif d < cell.d1 then
-        cell.d2 <- cell.d1; cell.h2 <- cell.h1
-        cell.d1 <- d; cell.h1 <- h
+        cell.d2 <- cell.d1
+        cell.d1 <- d
       elif d < cell.d2 then
-        cell.d2 <- d; cell.h2 <- h
+        cell.d2 <- d
         
   let xN, xd0 = if cell.d.x < 0.5f then 0, cell.d.x else 1, 1.0f - cell.d.x
   let yN, yd0 = if cell.d.y < 0.5f then 0, cell.d.y else 1, 1.0f - cell.d.y
@@ -183,9 +184,6 @@ let worleyBasis (cell : BasisData) (count : FeatureCount) maxDistance (distance 
   cell.d0 <- maxDistance
   cell.d1 <- maxDistance
   cell.d2 <- maxDistance
-  cell.h0 <- 0
-  cell.h1 <- 0
-  cell.h2 <- 0
   for x = cell.x0 to cell.x1 do
     for y = cell.y0 to cell.y1 do
       for z = cell.z0 to cell.z1 do scanCell x y z
@@ -222,6 +220,7 @@ let worleyBasis (cell : BasisData) (count : FeatureCount) maxDistance (distance 
   cell.d2 <- distance.normalize cell.d2
 
 
+
 /// Worley basis. Components contain Worley patterns p0, p1 and p2.
 let worley (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance : CellDistance) (fade : float32 -> float32) seed (frequency : float32) =
   let layoutInstance = layout seed frequency
@@ -233,6 +232,7 @@ let worley (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance :
     Vec3f(d *. worleyPattern.[p0], d *. worleyPattern.[p1], d *. worleyPattern.[p2])
 
 
+
 /// Default Worley basis with the default layout function and unity Poisson feature distribution.
 /// The cell hash seed is derived from the frequency.
 let inline worleyd p distance fade frequency =
@@ -241,6 +241,7 @@ let inline worleyd p distance fade frequency =
 
 
 /// Generic colored Worley cellular basis function.
+/// Evaluates weighted cell color and three closest distances (normalized).
 let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (distance : CellDistance) (color : CellColor) (colorSharpness : float32) (v : Vec3f) =
 
   let inline colorWeight d = colorSharpness * -d
@@ -261,14 +262,14 @@ let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (dist
         elif linearWeight > 1.0e-4f then
           cell.worleyWeight <- cell.worleyWeight + log (1.0f + linearWeight)
       if d < cell.d0 then
-        cell.d2 <- cell.d1; cell.h2 <- cell.h1
-        cell.d1 <- cell.d0; cell.h1 <- cell.h0
-        cell.d0 <- d; cell.h0 <- h
+        cell.d2 <- cell.d1
+        cell.d1 <- cell.d0
+        cell.d0 <- d
       elif d < cell.d1 then
-        cell.d2 <- cell.d1; cell.h2 <- cell.h1
-        cell.d1 <- d; cell.h1 <- h
+        cell.d2 <- cell.d1
+        cell.d1 <- d
       elif d < cell.d2 then
-        cell.d2 <- d; cell.h2 <- h
+        cell.d2 <- d
         
   let xN, xd0 = if cell.d.x < 0.5f then 0, cell.d.x else 1, 1.0f - cell.d.x
   let yN, yd0 = if cell.d.y < 0.5f then 0, cell.d.y else 1, 1.0f - cell.d.y
@@ -304,9 +305,6 @@ let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (dist
   cell.d0 <- maxDistance
   cell.d1 <- maxDistance
   cell.d2 <- maxDistance
-  cell.h0 <- 0
-  cell.h1 <- 0
-  cell.h2 <- 0
   cell.worleyColor <- Vec3f.zero
   cell.worleyWeight <- -infinityf
   for x = cell.x0 to cell.x1 do
@@ -325,7 +323,7 @@ let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (dist
   let mutable faceDistance = 1.0f
   let mutable ready = false
 
-  // Keep expanding until the first 3 distances are known with certainty up to the maximum distance,
+  // Keep expanding until the first 2 distances are known with certainty up to the maximum distance,
   // and the cell color is known with sufficient accuracy.
   while not ready do
     if earlyBreak (faceDistance + float32 faceSign * cell.search.[faceIndex].fst) then
@@ -344,17 +342,18 @@ let worleyColorBasis (cell : BasisData) (count : FeatureCount) maxDistance (dist
         faceIndex <- faceIndex + faceSign
 
 
+
 /// Worley colored basis. Components contain Worley patterns p0, p1 and p2
 /// adjusted by closest cell color. Color fade distance between closest cells
 /// is typically a small value, somewhere around [0.02, 0.2].
-let camo (layout : LayoutFunction)
-         (count : FeatureCount)
-         p0 p1 p2
-         (distance : CellDistance)
-         (color : CellColor)
-         (fade : float32 -> float32)
-         colorFadeDistance
-         seed frequency =
+let worleyColor (layout : LayoutFunction)
+                (count : FeatureCount)
+                p0 p1 p2
+                (distance : CellDistance)
+                (color : CellColor)
+                (fade : float32 -> float32)
+                colorFadeDistance
+                seed frequency =
   let layoutInstance = layout seed frequency
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
@@ -365,3 +364,24 @@ let camo (layout : LayoutFunction)
     data.release()
     (1G + worleyColor) * Vec3f(d *. worleyPattern.[p0], d *. worleyPattern.[p1], d *. worleyPattern.[p2])
 
+
+
+/// Colored Worley tile basis. Evaluates weighted closest cell color.
+/// Color fade distance between closest cells is typically a small value, somewhere around [0.02, 0.2].
+let camo (layout : LayoutFunction)
+         (count : FeatureCount)
+         (distance : CellDistance)
+         shading
+         (color : CellColor)
+         colorFadeDistance
+         seed frequency =
+  let layoutInstance = layout seed frequency
+  fun (v : Vec3f) ->
+    let data = layoutInstance.run v
+    worleyColorBasis data count 2.0f distance color (3.0f / colorFadeDistance) v
+    let G = min 1.0f (shading * 2.0f)
+    let D = min 0.5f (1.0f - shading)
+    let S = lerp 1.0f (D + 2.0f * shading * (data.d1 - data.d0)) G
+    let color = data.worleyColor * S
+    data.release()
+    color

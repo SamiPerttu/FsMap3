@@ -15,8 +15,8 @@ FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
   X offset: -4.36059474945068
-  Y offset: -0.034504890441894
-  Z offset: -4.78103351593018
+  Y offset: 0.921292781829834
+  Z offset: -4.385009765625
   Octaves: 6
   Frequency: 5.74401235580444
   Roughness: 0.626170516014099
@@ -24,9 +24,10 @@ Node: Fractalizer
     Lacunarity: 0.518564522266387
     Lowpass filter: 0.25808823108673
     Mix operator: sum
-    Displace amount: 0.074063293635845
-    Displace response: reverse power-2
     Walk operator: bounce
+      Displace amount: 0.074063293635845
+      Displace response: reverse power-2
+      Displace damping: 0.074063293635845
     Basis: colored Worley
       Cell seed: 11132
       Features per cell: Poisson
@@ -36,6 +37,7 @@ Node: Fractalizer
       Worley fade: reverse power-2
       Cell fade distance: 0.030413130298256
       Cell color: unit
+        Color variation: none
   Shape: scatter
     Scatter seed: 2860338684
     Scatter amount: 0.845588207244873

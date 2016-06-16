@@ -55,6 +55,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="common.fs" />
+    <Compile Include="optionval.fs" />
     <Compile Include="mat.fs" />
     <Compile Include="bits.fs" />
     <Compile Include="pretty.fs" />

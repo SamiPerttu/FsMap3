@@ -12,25 +12,32 @@ open Mangle
 type CellColor = int -> Vec3f -> Vec3f
 
 
-/// Returns a unit length color.
-let unitColor h (_ : Vec3f) = mangle12UnitVec3 <| mangle32c h
+/// Picks a uniformly distributed color.
+let anyColor h (_ : Vec3f) =
+  Vec3f.fromSeed(mangle32c h, -1.0f, 1.0f)
 
-/// Returns a unit length color from n possible choices.
-let unitColors n seed h (_ : Vec3f) = mangle12UnitVec3 <| mangle32c (seed + ((h &&& 0x7fffffff) % n))
+/// Picks a unit length color.
+let unitColor h (_ : Vec3f) =
+  mangle12UnitVec3 <| mangle32c h
 
-/// Returns all ones.
-let monoColor (_ : int) (_ : Vec3f) = Vec3f.one
+/// Picks a unit length color from n possible choices.
+let unitColors n seed h (_ : Vec3f) =
+  mangle12UnitVec3 <| mangle32c (seed + ((h &&& 0x7fffffff) % n))
 
-/// Returns uniformly picked components.
-let anyColor h (_ : Vec3f) = Vec3f.fromSeed(mangle32c h, -1.0f, 1.0f)
+/// All ones color.
+let monoColor (_ : int) (_ : Vec3f) =
+  Vec3f.one
 
-/// Returns a color from n possible choices with uniformly picked components.
-let anyColors n seed h (_ : Vec3f) = Vec3f.fromSeed(mangle32c (seed + ((h &&& 0x7fffffff) % n)), -1.0f, 1.0f)
+/// Picks a color from n possible choices with uniformly picked components.
+let anyColors n seed h (_ : Vec3f) =
+  Vec3f.fromSeed(mangle32c (seed + ((h &&& 0x7fffffff) % n)), -1.0f, 1.0f)
 
-/// Returns a vector where every component is -1 or 1.
-let fullColor h (_ : Vec3f) = let h = mangle32c h in Vec3f(float32 (h &&& 1) * 2.0f - 1.0f, float32 (h &&& 2) - 1.0f, float32 (h &&& 4) * 0.5f - 1.0f)
+/// Picks a color where every component is -1 or 1.
+let fullColor h (_ : Vec3f) =
+  let h = mangle32c h
+  Vec3f(float32 (h &&& 1) * 2.0f - 1.0f, float32 (h &&& 2) - 1.0f, float32 (h &&& 4) * 0.5f - 1.0f)
 
-/// Returns a reflection vector except that one of the components may be zero.
+/// Picks a color where every component is -1, 0 or 1. There is at most one zero component.
 let bigColor h (_ : Vec3f) =
   let h = mangle32c h
   let v =
@@ -41,9 +48,16 @@ let bigColor h (_ : Vec3f) =
     | _ -> Vec3f(1.0f, 1.0f, 0.0f)
   v * Vec3f(float32 (h &&& 1) * 2.0f - 1.0f, float32 (h &&& 2) - 1.0f, float32 (h &&& 4) * 0.5f - 1.0f)
 
-/// Returns a color where the absolute value of each component is at least d.
-let highColor d h (_ : Vec3f) = Vec3f.fromSeed(mangle32c h, d - 1.0f, 1.0f - d).map(fun x -> if x < 0.0f then x - d else x + d)
+/// Picks a color where the absolute value of each component is at least d.
+let highColor d h (_ : Vec3f) =
+  Vec3f.fromSeed(mangle32c h, d - 1.0f, 1.0f - d).map(fun x -> if x < 0.0f then x - d else x + d)
 
-/// Returns a color from n choices where the absolute value of each component is at least d.
-let highColors n seed d h (_ : Vec3f) = Vec3f.fromSeed(mangle32c (seed + ((h &&& 0x7fffffff) % n)), d - 1.0f, 1.0f - d).map(fun x -> if x < 0.0f then x - d else x + d)
+/// Picks a color from n choices where the absolute value of each component is at least d.
+let highColors n seed d h (_ : Vec3f) =
+  Vec3f.fromSeed(mangle32c (seed + ((h &&& 0x7fffffff) % n)), d - 1.0f, 1.0f - d).map(fun x -> if x < 0.0f then x - d else x + d)
+
+/// Picks a color from the palette.
+let paletteColor (palette : Vec3f[]) h (_ : Vec3f) =
+  let h = mangle32c h
+  palette.[emod h palette.size]
 

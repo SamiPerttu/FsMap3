@@ -11,6 +11,7 @@ Palette:
   Saturation minimum: 0
   Saturation skew: 0
   Value skew: -0.395348787307739
+Auto Normalize: yes
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Unary
@@ -49,12 +50,18 @@ Node: Unary
                     Frequency: 5.15609645843506
                     Basis: cubex noise
                       Cell seed: 819429502
-                      Cell color: random choice
-                        Choices: 1
-                        Seed: 2697813182
+                      Cell color: any
+                        Color variation: none
                       Cubex fade: sine
                       Mix operator: sum
                     Shape: none
+              Normalization: auto
+              Mean X: 0.054931640625
+              Mean Y: 0.05084228515625
+              Mean Z: -0.018146514892578
+              Range X: 3.68960309028625
+              Range Y: 2.44318604469299
+              Range Z: 3.30970764160156
             Basis: Julia
               Cell seed: 0
               Iterations: 7
@@ -74,5 +81,6 @@ Node: Unary
               Q-range: 1.81535124778747
               C-scale: 0.020932575687766
               Q-scale: 1.36762833595276
+            Normalization: none
           Shape: component overdrive
-            Overdrive amount: 2.76212000846863
+            Overdrive amount: 2.85399770736694

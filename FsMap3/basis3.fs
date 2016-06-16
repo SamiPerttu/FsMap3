@@ -42,13 +42,10 @@ type BasisData =
     // Closest cell color for the colored Worley basis.
     mutable worleyColor : Vec3f
 
-    // Closest point distances and hashes for the Worley basis.
+    // Closest point distances for the Worley basis.
     mutable d0 : float32
-    mutable h0 : int
     mutable d1 : float32
-    mutable h1 : int
     mutable d2 : float32
-    mutable h2 : int
 
     // Current scan box. Also current search neighborhood for the Worley basis.
     mutable x0 : int
@@ -181,9 +178,9 @@ type BasisData =
       d = Vec3f.zero
       fix = 0; fiy = 0; fiz = 0
       worleyColor = Vec3f.zero
-      d0 = 0.0f; h0 = 0
-      d1 = 0.0f; h1 = 0
-      d2 = 0.0f; h2 = 0
+      d0 = 0.0f
+      d1 = 0.0f
+      d2 = 0.0f
       x0 = 0; x1 = 0
       y0 = 0; y1 = 0
       z0 = 0; z1 = 0

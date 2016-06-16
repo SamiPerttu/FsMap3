@@ -1,7 +1,7 @@
-View Center X: -0.191642761230468
-View Center Y: -0.001174926757812
-View Center Z: 0.524795532226562
-View Zoom: 1.33100044727325
+View Center X: -0.612165451049804
+View Center Y: -5.66616249084473
+View Center Z: 0.351226806640625
+View Zoom: 1.10000050067902
 Palette:
   Color space: Mugsell
   Hue origin: 0.227941170334815
@@ -26,20 +26,28 @@ Node: Fractalizer
     Mix operator: layer
       Layer width: 0.324553191661834
       Layer hardness: 7
-      Layer persist: 0.955882370471954
-    Displace amount: 0.463067591190338
-    Displace response: sine
+      Layer persist: 0.906976759433746
     Walk operator: lurch
+      Displace amount: 0.321863174438476
+      Displace response: sine
+      Displace damping: 0.308139532804489
     Basis: leopard
       Cell seed: 3573493429
       Leopard radius: 0.868941128253936
       Features per cell: Poisson
         Mean: 0.7477183734
       Potential fade: smooth line
+      Falloff width: 1
       Mix operator: over
-      Cell color: random choice
-        Choices: 3
-        Seed: 1090145654
+      Cell color: palette
+        Choices: 4
+        Color 0 seed: 188486526
+        Color 1 seed: 2223475640
+        Color 2 seed: 660080265
+        Color 3 seed: 3239934719
+        Color variation: gradient
+          Amount: 0.463067591190338
+          Angle seed: 3573493429
   Shape: scatter
     Scatter seed: 3573493427
     Scatter amount: 0.911764681339263

@@ -1,0 +1,51 @@
+View Center X: 0.5
+View Center Y: 0.5
+View Center Z: 0.5
+View Zoom: 1
+Palette:
+  Color space: CIELch
+  Hue origin: 0.011627906933426
+  Hue range: 0.145758599042892
+  Hue skew: -0.647162973880767
+  Saturation range: 0.800000011920929
+  Saturation minimum: 0
+  Saturation skew: -1.48837208747864
+  Value skew: 0.521860361099243
+FsMap3 Editor Version 0.3.0:
+Layout: Tile All
+Node: Unary
+  Unary op: bleed
+    Bleed 1: 0.347393870353698
+    Bleed 2: 0.851029634475708
+    Node: Fractalizer
+      X offset: 1.02912902832031
+      Y offset: 0.428826808929443
+      Z offset: -2.04900503158569
+      Octaves: 6
+      Frequency: 4.0446138381958
+      Roughness: 0.541964530944824
+      Fractalizer: mix and displace
+        Lacunarity: 0.384917795658111
+        Highpass filter: 0.597356677055358
+        Mix operator: norm
+          Hardness: 0.709302306175231
+        Walk operator: cross
+          Displace amount: 0.162381038069725
+          Displace response: power-2
+          Displace damping: 0.162790700793266
+        Basis: leopard
+          Cell seed: 3672678985
+          Leopard radius: 0.607742607593536
+          Features per cell: rounded
+            Mean: 0.5001468204
+          Potential fade: reverse power-2
+          Falloff width: 0.251744180917739
+          Mix operator: soft
+            Bias: -0.209302306175231
+          Cell color: unit
+            Color variation: gradient
+              Amount: 0.885882675647735
+              Angle seed: 2157871631
+      Shape: component posterize
+        Posterize levels: 5.77908372879028
+        Posterize hardness: 4

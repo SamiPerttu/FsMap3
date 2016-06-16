@@ -23,9 +23,12 @@ type Map3Info =
     min : Vec3f
     /// Estimated maximum component values of the original map.
     max : Vec3f
+    /// The original map.
+    original : Map3
     /// The normalized map.
     map : Map3
-    /// Sampled 90 percentile slope of the normalized map.
+
+   /// Sampled 90 percentile slope of the normalized map.
     slope90 : float32 Optionval
     /// Sampled 99 percentile slope of the normalized map.
     slope99 : float32 Optionval
@@ -39,10 +42,13 @@ type Map3Info =
     gradientArray : Vec3f[]
   }
 
+  member inline this.mean = average this.min this.max
+  member inline this.range = this.max - this.min
+
   /// A normalizer for the source map.
   member inline this.normalizer =
-    let Z = Vec3f(2.0f) / (this.max - this.min)
-    let mean = average this.min this.max
+    let Z = Vec3f(2.0f) / this.range
+    let mean = this.mean
     fun (v : Vec3f) -> (v - mean) * Z
 
 
@@ -167,6 +173,7 @@ type Map3Info with
           min = minV
           max = maxV
           map = fun (v : Vec3f) -> (map v - meanV) * rangeZ
+          original = map
           slope90 = slope90
           slope99 = slope99
           deviation = deviation
@@ -191,15 +198,14 @@ type Map3Info with
       hash.hash(dna.[i].semanticId)
       hash.hash(dna.[i].value)
     hash.hashEnd()
-    Map3Info.create(map, hash.a64, retainSamples = (retainSamples >? false), computeSlopes = (computeSlopes >? false))
+    Map3Info.create(map, hash.a64, ?retainSamples = retainSamples, ?computeSlopes = computeSlopes)
 
 
 
 /// Normalizes the map from the generator, including in the hash extraId, which summarizes
 /// extra data already supplied to the generator. Cache aware.
 let normalizeWithId extraId (generator : Dna -> Map3) (dna : Dna) =
-  let info = Map3Info.create(generator, dna)
-  info.map
+  let info = Map3Info.create(generator, dna) in info.map
 
 
 
@@ -210,7 +216,7 @@ let normalize generator dna =
 
 
 /// Normalizes the basis from the generator. Cache aware.
-let normalizeBasis (basisGenerator : Dna -> float32 -> Map3) (dna : Dna) =
+let normalizeBasis (basisGenerator : Dna -> Basis3) (dna : Dna) =
 
   let basis = ref nullRef
 
@@ -224,5 +230,4 @@ let normalizeBasis (basisGenerator : Dna -> float32 -> Map3) (dna : Dna) =
   fun frequency ->
     let map = !basis frequency
     map >> info.normalizer
-
 

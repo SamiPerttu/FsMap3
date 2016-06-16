@@ -16,14 +16,17 @@ let capflow (layout : LayoutFunction)
             (mix : MixOp)
             (color : CellColor)
             (fade : float32 -> float32)
+            fadeWidth
             (length : float32)
             (radius : float32)
             (flow : Basis3)
             (flowFrequencyFactor : float32)
             seed
             frequency =
+
   let R2 = squared radius
   let Ri = 1G / radius
+  let wi = 1.0f / fadeWidth
 
   let layoutInstance = layout seed frequency
 
@@ -48,11 +51,10 @@ let capflow (layout : LayoutFunction)
             let P = data.d - Vec3f.fromSeed(h) - Vec3f(float32 jx, float32 jy, float32 jz)
             let p = clamp 0.0f L (P *. D)
             let S = P - p * D
-            let distance2 = S.length2
-            if distance2 < R2 then
-              let distance = sqrt distance2
-              let w = fade (1G - distance * Ri)
-              // TODO. Do we want to use S or P or both here to calculate color?
+            let d2 = S.length2
+            if d2 < R2 then
+              let d = sqrt d2 * Ri
+              let w = fade (min 1.0f (wi - wi * d))
               value <- mix value 1.0f w (color h (S * Ri))
     data.release()
     Mix.result value

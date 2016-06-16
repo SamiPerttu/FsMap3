@@ -3,6 +3,7 @@ namespace FsMap3
 
 open System
 open System.Windows
+open System.Windows.Input
 open System.Windows.Media
 open System.Windows.Shapes
 open System.Windows.Controls
@@ -33,7 +34,7 @@ type Editor =
     /// Minimum resolution of a view.
     let minimumR = 16
     /// View border thickness.
-    let viewBorder = 2
+    let viewBorder = 3
     /// How far user has to move the mouse before it is recognized as dragging.
     let dragMinimum = 16.0f
     /// Width of tool bar panel.
@@ -77,12 +78,24 @@ type Editor =
     /// Current user action.
     let userAction = ref Idle
 
+    /// Whether map filtering is enabled.
+    let mapFiltering = ref true
+
     let window = Window(Title = "FsMap3 Editor",
                         ResizeMode = ResizeMode.CanResize,
                         Width = 1024.0, Height = 480.0,
                         SizeToContent = SizeToContent.Manual,
                         Topmost = false,
                         WindowStartupLocation = WindowStartupLocation.CenterScreen)
+
+    let createShortcut key modifier handler =
+      let command = RoutedCommand()
+      command.InputGestures.Add(KeyGesture(key, modifier)) |> ignore
+      window.CommandBindings.Add(CommandBinding(command, fun _ _ -> handler())) |> ignore
+      command
+
+    let setMenuItemShortcut (item : MenuItem) key modifier handler =
+      item.Command <- createShortcut key modifier handler
 
     let canvas = Grid(Background = viewBg, ClipToBounds = false, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch)
     canvas.ColumnDefinitions.Add(ColumnDefinition())
@@ -109,7 +122,7 @@ type Editor =
       }
     let richSeed = { RichMap3.map = mapSeed; palette = Map3.identity; center = Vec3f(0.5f); zoom = 1.0f; info = Map3Info.create(mapSeed) }
 
-    let deepGenerator = Map3Dna.generateEditorMap
+    let deepGenerator = fun (dna : Dna) -> Map3Dna.generateEditorMap (!mapFiltering) dna
     let pixmapGenerator extraTransform =
       match extraTransform with
       | Some(transform) -> RichMap3.pixmapSourceWith(transform)
@@ -123,7 +136,7 @@ type Editor =
         minDifference = 0.01f
         maxDifference = infinityf
       }
-    let deepFilter = fun map previous -> mapFilter.filter(map, previous)
+    let deepFilter = fun map previous -> if !mapFiltering then mapFilter.filter(map, previous) else true
 
     let fullView = EditorView.create(FullView, 0, 0, 0, pixmapSeed, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, true, 4)
 
@@ -152,7 +165,7 @@ type Editor =
     let layoutCanvas() =
 
       let canvasWidth = int canvas.ActualWidth + 1
-      let canvasHeight = int canvas.ActualHeight + 1
+      let canvasHeight = int canvas.ActualHeight
 
       if canvasWidth <> !currentCanvasWidth || canvasHeight <> !currentCanvasHeight then
 
@@ -498,13 +511,13 @@ type Editor =
     let fileMenu = makeTopMenuItem "_File"
 
     let newWindowItem = MenuItem(Header = "New Window")
-    newWindowItem.Click.Add(fun _ ->
+    setMenuItemShortcut newWindowItem Key.N ModifierKeys.Control (fun _ ->
       Editor.start()
       )
     fileMenu.add(newWindowItem)
 
     let openItem = MenuItem(Header = "_Open..")
-    openItem.Click.Add(fun _ ->
+    setMenuItemShortcut openItem Key.O ModifierKeys.Control (fun _ ->
       let dialog = new Microsoft.Win32.OpenFileDialog(Title = "Load Map File..", Filter = "YAML files (.yaml)|*.yaml")
       let result = dialog.ShowDialog()
       if result.HasValue && result.Value then
@@ -515,7 +528,7 @@ type Editor =
     fileMenu.add(openItem)
 
     let saveItem = MenuItem(Header = "Save")
-    saveItem.Click.Add(fun _ ->
+    setMenuItemShortcut saveItem Key.S ModifierKeys.Control (fun _ ->
       match !focusView with
       | Some(view) when view.filename <> "" -> saveYaml true false view.filename
       | _ -> ()
@@ -563,7 +576,7 @@ type Editor =
 
     let quitItem = MenuItem(Header = "Quit")
     fileMenu.add(quitItem)
-    quitItem.Click.Add(fun _ -> window.Close())
+    setMenuItemShortcut quitItem Key.Q ModifierKeys.Control (fun _ -> window.Close())
 
     // Enable file menu items selectively.
     fileMenu.SubmenuOpened.Add(fun (args : RoutedEventArgs) ->
@@ -584,12 +597,12 @@ type Editor =
 
     let editMenu = makeTopMenuItem "_Edit"
     let undoItem = MenuItem(Header = "Undo")
-    undoItem.Click.Add(fun _ -> controller.postUndo())
+    setMenuItemShortcut undoItem Key.Z ModifierKeys.Control (fun _ -> controller.postUndo())
     editMenu.add(undoItem)
     let redoItem = MenuItem(Header = "Redo")
-    redoItem.Click.Add(fun _ -> controller.postRedo())
+    setMenuItemShortcut redoItem Key.Y ModifierKeys.Control (fun _ -> controller.postRedo())
     editMenu.add(redoItem)
-    
+
     // Set edit menu item states appropriately.
     editMenu.SubmenuOpened.Add(fun (args : RoutedEventArgs) ->
       let undo, redo = controller.undoStack.undoRedoTitles
@@ -622,6 +635,10 @@ type Editor =
     menu.add(toolsMenu)
 
     let filterMenu = makeTopMenuItem "Filters"
+
+    let enableFilteringItem = MenuItem(Header = "Enable Map Filtering", IsCheckable = true, IsChecked = true)
+    enableFilteringItem.Click.Add(fun _ -> mapFiltering := enableFilteringItem.IsChecked)
+    filterMenu.add(enableFilteringItem)
 
     let minDetailItem = MenuItem(Header = "Minimum Detail Level")
     let minDetailAnyItem = MenuItem(Header = "any", IsCheckable = true)
@@ -712,7 +729,7 @@ type Editor =
             presetItem.GotFocus.Add(fun _ ->
               let w = previewSize
               let h = previewSize
-              let popup = Popup(IsOpen = true, PlacementTarget = presetItem, Placement = PlacementMode.Right, HorizontalOffset = 100.0, IsHitTestVisible = false)
+              let popup = Popup(IsOpen = true, PlacementTarget = presetItem, Placement = PlacementMode.Bottom, HorizontalOffset = 100.0, IsHitTestVisible = false)
               openPopup := Some(popup)
               match loadYamlPreview file with
               | Some(map) ->
@@ -1081,7 +1098,7 @@ type Editor =
       )
     
     let randomizeAllButton = Button(Content = "Randomize All", Background = toolBg, Margin = Thickness(1.0, 2.0, 1.0, 1.0), withToolTip = "Randomize all visible views.")
-    randomizeAllButton.Click.Add(fun _ ->
+    randomizeAllButton.Command <- createShortcut Key.R ModifierKeys.Control (fun _ ->
       let views = Darray.create()
       iterateViews(fun view visible -> if visible then views.add(view))
       controller.post(ApplyMapRestart(views.toArray, "Randomize All", randomizePredicate))
@@ -1156,7 +1173,7 @@ type Editor =
     setToolMode PanTool
     setViewMode FullView
     setMinDetailLevel 50.0f
-    setMaxDetailLevel 1000.0f
+    setMaxDetailLevel 2000.0f
 
     sourceView.apply(fun sourceView ->
       fullView.controller.restart(bypassFilter = true, dnaSource = DnaData(!sourceView.controller.dna))
@@ -1172,7 +1189,11 @@ TODO
 -Aspect ratio support.
 -Export dialog with options.
 -DDS export, 2-D and 3-D.
--Add Map3 projection modes: rectangle, sphere, ?
+-Add Map3 projection modes (in absence of depth channel): rectangle, sphere, ?
+-Add channels like specular, normal (and/or displacement), depth.
+-Add some non-tiling post fx options like bloom and enhance; although, may have to think about
+ HDR tone mapping for these and channels.
+-Palette editing tool where user can set pixel colors directly.
 -History.
 -Add either hover options or extra buttons to parameters in Dna view:
  -display range of parameter values in a gradient, pick new value by clicking.
@@ -1184,7 +1205,6 @@ TODO
  2-slice. The filter would be run when the first mosaic level is computed to decide whether to
  display or reject it.
 -Recent files menu item.
--Keyboard shortcuts.
 
 *)
 

@@ -344,5 +344,5 @@ type PixmapController<'a> =
     predicate.apply(fun predicate -> this.editSource.parameterPredicate <- predicate)
     let dnaSource = dnaSource >? (this.editSource :> DnaSource)
     dnaSource.observe(sourceDna, this.fitnessCounter.tick)
-    this.generate(bypassFilter >? false, sourceDeep, dnaSource = dnaSource, preAction = (preAction >? ignore))
+    this.generate(bypassFilter >? false, sourceDeep, dnaSource = dnaSource, ?preAction = preAction)
 

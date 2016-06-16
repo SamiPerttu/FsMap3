@@ -58,9 +58,6 @@ let inline smooth3 (x : 'a) : 'a = let x2 = x * x in x2 * x2 * (35G - 84G * x + 
 /// A cubic fade that starts and ends at a slope but has a plateau in the middle.
 let inline shelf (x : 'a) : 'a = ((4G * x - 6G) * x + 3G) * x
 
-/// Smooth second order continuous fade using a rational polynomial approximating a hyperbolic tangent shape.
-let inline rational (x : 'a) : 'a = let x = x * 2G - 1G in Q 1 2 + Q 1 2 * x * (3G + x * x) / (1G + 3G * x * x)
-
 /// Exponential fade over the given number of magnitudes (M > 0). In other words, the slope grows geometrically.
 /// The slope at x = 1 is exp10(M) times the slope at x = 0.
 let inline geometric (M : 'a) : 'a -> 'a = let d = exp10(-M) in fun x -> (exp10((x - 1G) * M) - d) / (1G - d)

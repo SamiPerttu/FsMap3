@@ -16,9 +16,9 @@ let showAboutWindow() =
   let effect = Effects.DropShadowEffect(BlurRadius = 3.0, Color = Wpf.color(1.0), Opacity = 1.0, ShadowDepth = 0.0)
   let map =
     let data = [|
-      DnaData("-0GUy0-13D-0-1hWS0ZRQ0Z003-ac3a0+++++++nwml++VRah+-beny0-QY660+5Z1vg001YFuyXvZGbHq+YUAoyv2ZHJuV0Zp0lt00ZvOAd0Y6iTLc0Zz1gx010fZFMGb0-vMky008P701ZK8nC0YENchw-Pvmq04+cFxm0ZaTNW+ZQlHo++k3lO0ZZWMXCZOl+h0-InEZ+ZjlbV00085302-OXJ7m+mkAi0YKlGOw4YvVTOfYQOdavZV-l6++s3ae0-nxay0ZySyp0-gthW0ZjlbV001+++++++T4tN7"B)
+      DnaData("-147J+ZW04r0-1lcN+ZPIoj003-ac3a0+-KSC0+nwml++VRah+-beny0-QY660-OMGC0001YFuyXvZGbHq+YUAoyv2ZHJuV0Zp0lt00ZvOAd0Y6iTLc00Zz1gx01ZcCsB0gZFMGb0-vMky0099702-OXJ7mYENchw-Pvmq04+cFxm0ZaTNW+ZQlHo++k3lO0-nxay0ZOl+h0-InEZ+ZjlbV00095302-OXJ7m+mkAi0YKlGOw4YvVTOfYQOdavZV-l6++s3ae0-nxay0ZySyp0-gthW0ZjlbV001+ZMO20+haza0"B)
       |]
-    data.[Common.timeSeed() |> Mangle.mangle32 |> flip emod data.size].generate(Map3Dna.generateEditorMap)
+    data.[Common.timeSeed() |> Mangle.mangle32 |> flip emod data.size].generate(Map3Dna.loadEditorMap)
   let w = 600.0
   let h = 300.0
   let bgImage = Image(Width = w, Height = h, SnapsToDevicePixels = true)

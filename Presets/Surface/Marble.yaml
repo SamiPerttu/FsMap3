@@ -14,25 +14,27 @@ Palette:
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
-  X offset: -4.81102752685547
-  Y offset: -1.78702783584595
+  X offset: -2.41859531402588
+  Y offset: -0.940824508666992
   Z offset: 0.019205093383789
   Octaves: 8
   Frequency: 2.51512956619263
   Roughness: 0.487291425466537
   Fractalizer: mix and displace
-    Lacunarity: 0.622877538204193
+    Lacunarity: 0.605857253074646
     Highpass filter: 0.894282281398773
     Mix operator: layer
-      Layer width: 0.339431583881378
+      Layer width: 0.36880749464035
       Layer hardness: 5
-      Layer persist: 0.112674824893474
-    Displace amount: 0.527266979217529
-    Displace response: line
+      Layer persist: 0.406976729631423
     Walk operator: bounce
+      Displace amount: 0.527266979217529
+      Displace response: line
+      Displace damping: 0.209302321076393
     Basis: radial value noise
-      Cell seed: 49941472
+      Cell seed: 49941475
       Cell color: any
+        Color variation: none
       Radial fade: smooth-2
   Shape: shift
     X shift: -0.203727707266807

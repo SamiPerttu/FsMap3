@@ -11,15 +11,15 @@ let testMap3Dna (seed : int) =
 
   for i = 1 to n do
 
-    let specimen = Specimen.generate(rnd, Map3Dna.generateEditorMap)
+    let specimen = Specimen.generate(rnd, Map3Dna.generateEditorMap false)
     let predicate : ParameterPredicate = fun rnd dna i ->
       rnd.choose(2.0, Retain, 0.5, Jolt01 (rnd.float()), 0.5, Adjust01 (rnd.float(-1.0, 1.0)))
     let editor = InteractiveSource(rnd.tick, parameterPredicate = predicate)
     editor.observe(specimen.dna, rnd.float(1.0e6))
     let mutator = RecombinationSource(rnd.tick, parameterPredicate = predicate)
     mutator.observe(specimen.dna, rnd.float(1.0e6))
-    let map1 = mutator.generate(Map3Dna.generateEditorMap)
-    let map2 = editor.generate(Map3Dna.generateEditorMap)
+    let map1 = mutator.generate(Map3Dna.generateEditorMap false)
+    let map2 = editor.generate(Map3Dna.generateEditorMap false)
     // Take some samples.
     for j = 1 to 100 do
       let v = map1.map (rnd.vec3f())

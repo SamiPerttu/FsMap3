@@ -23,7 +23,7 @@ Node: Basis
     Features per cell: one
     Cell distance norm: 2-norm
     Worley pattern: 7214
-    Worley fade: line
+    Worley fade: sine
   Shape: bleed
-    Bleed 1: -0.389999985694885
-    Bleed 2: 0.28176474571228
+    Bleed 1: -0.069999933242797
+    Bleed 2: 0.387441754341125

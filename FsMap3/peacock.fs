@@ -16,14 +16,19 @@ let peacock (layout : LayoutFunction)
             (count : FeatureCount)
             (potential : Potential3)
             (mix : MixOp)
+            (gradient : float32)
             (color : CellColor)
             (fade : float32 -> float32)
-            (radius : float32)
+            fadeWidth
+            radius
             seed
             frequency =
+
   assert (radius > 0G)
+
   let R2 = squared radius
   let Ri = 1G / radius
+  let wi = 1.0f / fadeWidth
 
   let layoutInstance = layout seed frequency
 
@@ -43,25 +48,26 @@ let peacock (layout : LayoutFunction)
             let r2 = P.length2
             if r2 < R2 then
               let q = mangle12Rotation (mangle32fast h)
-              let v = Ri * P * q
-              let p = potential v
+              let L = Ri * P * q
+              let p = potential L
               if p < 1G then
-                let w = fade (1G - p)
-                let g = Potential.gradient potential v * 0.5f
-                let gN2 = g.length2
-                // TODO. Roll off gradient magnitude smoothly.
-                let g = if gN2 > 1G then g / sqrt gN2 else g
-                value <- mix value 1.0f w (color h g)
+                let w = fade (min 1.0f (wi - wi * p))
+                let g = Potential.gradient potential L
+                let gN = g.length
+                let g = gN / (squared gN + 1.0f) * g
+                value <- mix value 1.0f w (color h (lerp L g gradient))
     data.release()
     Mix.result value
 
 
-/// Default peacock pattern with the standard cell layout and the smooth-2 fade function.
+/// Default peacock pattern with the standard cell layout, one feature per cell and the smooth-2 fade function.
 /// The cell hash seed is derived from the frequency.
-let inline peacockd potential radius frequency = peacock hifiLayout unityCount potential Mix.sum anyColor Fade.smooth2 radius (manglef32 frequency) frequency
+let inline peacockd potential radius frequency =
+  peacock hifiLayout unityCount potential Mix.sum 0.5f anyColor Fade.smooth2 1.0f radius (manglef32 frequency) frequency
 
 
-/// Peacock pattern with the standard cell layout.
+/// Peacock pattern with the standard cell layout and one feature per cell.
 /// The cell hash seed is derived from the frequency.
-let inline peacockf potential fade radius frequency = peacock hifiLayout unityCount potential Mix.sum anyColor fade radius (manglef32 frequency) frequency
+let inline peacockf potential fade radius frequency =
+  peacock hifiLayout unityCount potential Mix.sum 0.5f anyColor fade 1.0f radius (manglef32 frequency) frequency
 

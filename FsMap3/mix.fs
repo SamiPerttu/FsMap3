@@ -110,6 +110,7 @@ module Mix =
   let layer (width : float32) (fade : float32 -> float32) (persist : float32) (state : MixState) (w : float32) (a : float32) (u : Vec3f) =
     let state' =
       alphaProcess state w a u (fun I V i v ->
+        // TODO. Investigate what influence the choice of norm has on the result.
         let Lw = fade (max 0G (1G - (u - state.c).norm1 * 0.2f / width))
         Pair(I + Lw * i, V + Lw * v)
         )
@@ -143,7 +144,7 @@ module Mix =
 
   /// Mixes colors according to their 1-norms with mixing hardness in [0, 1].
   let norm (hardness : float32) (state : MixState) (w : float32) (a : float32) (u : Vec3f) =
-    // This is the simplest weight response that starts linearly and keeps accelerating.
+    // This is a polynomial weight response that starts linearly and keeps accelerating.
     // Unlike exp, it does not work with negative arguments.
     // We just need to tweak the hardness transformation to get the desired response curve.
     let h = squared hardness * 2.0f

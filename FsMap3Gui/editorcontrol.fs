@@ -148,6 +148,7 @@ type EditorController =
             view.filename <- ""
             view.presetFilename <- ""
             view.controller.restart(predicate)
+            view.updateCursor()
             SetMap(view, beforeState, view.editState)
             )
           let edit =
@@ -239,6 +240,7 @@ type EditorController =
                   view.controller.generate(true, dnaSource = DnaData(before.genotype))
                 else
                   view.controller.reset()
+                view.updateCursor()
                 this.setViewMode view.mainMode
               | SetFocus(before, _) ->
                 this.setFocus before
@@ -260,6 +262,7 @@ type EditorController =
                   view.controller.generate(true, dnaSource = DnaData(after.genotype))
                 else
                   view.controller.reset()
+                view.updateCursor()
                 this.setViewMode view.mainMode
               | SetFocus(_, after) ->
                 this.setFocus after

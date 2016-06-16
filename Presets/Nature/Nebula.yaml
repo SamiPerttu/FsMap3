@@ -27,9 +27,10 @@ Node: Fractalizer
       Layer width: 1
       Layer hardness: 0
       Layer persist: 1
-    Displace amount: 0.535492181777954
-    Displace response: smooth line
     Walk operator: march
+      Displace amount: 0.535492181777954
+      Displace response: smooth line
+      Displace damping: 0.535492181777954
     Basis: component softmix
       Frequency factor: 0.281435400247573
       Mix bias: 3.9069766998291
@@ -42,9 +43,10 @@ Node: Fractalizer
           Worley pattern: 9092
           Worley fade: power-2
           Cell fade distance: 0.148318663239479
-          Cell color: random choice
-            Choices: 5
-            Seed: 3494112031
+          Cell color: any
+            Color variation: gradient
+              Amount: 0.535492181777954
+              Angle seed: 9113
       Basis 2:
         Basis: leopard
           Cell seed: 9100
@@ -52,8 +54,10 @@ Node: Fractalizer
           Features per cell: geometric
             Mean: 4
           Potential fade: power-2
+          Falloff width: 1
           Mix operator: over
-          Cell color: random choice
-            Choices: 5
-            Seed: 2367529070
+          Cell color: any
+            Color variation: gradient
+              Amount: 0.535492181777954
+              Angle seed: 9113
   Shape: none

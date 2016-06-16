@@ -1,5 +1,5 @@
-View Center X: 0.5
-View Center Y: 0.5
+View Center X: 0.55276870727539
+View Center Y: 0.213409423828125
 View Center Z: 0.5
 View Zoom: 1
 Palette:
@@ -18,18 +18,20 @@ Node: Fractalizer
   Y offset: -0.856419563293457
   Z offset: -0.296729087829589
   Octaves: 7
-  Frequency: 2.19770574569702
-  Roughness: 0.499224543571472
+  Frequency: 2.48621916770935
+  Roughness: 0.538340508937835
   Fractalizer: inverted mix and displace
     Lacunarity: 0.442071884870529
-    Lowpass filter: 0
+    Lowpass filter: 0.580813944339752
     Mix operator: sum
-    Displace amount: 0.275762319564819
-    Displace response: line
-    Walk operator: lurch
+    Walk operator: bounce
+      Displace amount: 0.268320709466934
+      Displace response: smooth line
+      Displace damping: 0.261627912521362
     Basis: cubex noise
-      Cell seed: 15
+      Cell seed: 19
       Cell color: any
+        Color variation: none
       Cubex fade: smooth-2
       Mix operator: min
   Shape: none

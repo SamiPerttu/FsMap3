@@ -83,7 +83,7 @@ type Parameter =
     /// Set of choices, if applicable (optional).
     mutable choices : IChoices option
     /// Generated object (optional).
-    mutable generated : obj
+    mutable generated : obj option
   }
 
   static member getSemanticId(format : ParameterFormat, name, maxValue : uint) =
@@ -261,7 +261,8 @@ type [<ReferenceEquality>] Dna =
 
 
   /// Creates a new parameter. If the prior transform is specified, then both transforms must be monotonic.
-  member private this.addParameter(format, name, maximumValue, valueTransform : uint -> 'a, stringConverter : 'a -> string, ?priorTransform : uint -> 'a) =
+  /// The value can be optionally injected directly from the generator.
+  member private this.addParameter(format, name, maximumValue, valueTransform : uint -> 'a, stringConverter : 'a -> string, ?priorTransform : uint -> 'a, ?value : uint) =
     let i = this.size
     let a = this.state.[this.level]
     let semanticId = Parameter.getSemanticId(format, name, maximumValue)
@@ -278,16 +279,16 @@ type [<ReferenceEquality>] Dna =
       value = 0u
       valueString = ""
       choices = None
-      generated = obj()
+      generated = None
       }
     this.parameterArray.add(parameter)
     parameter.value <-
-      match priorTransform with
-      | Some(priorTransform) -> this.choose(valueTransform, priorTransform)
-      | None -> this.choose()
+      value >? match priorTransform with
+               | Some(priorTransform) -> this.choose(valueTransform, priorTransform)
+               | None -> this.choose()
     let generated = valueTransform parameter.value
     parameter.valueString <- stringConverter generated
-    parameter.generated <- box generated
+    parameter.generated <- Some(box generated)
     this.updateFingerprint(parameter)
     this.state.[this.level] <- LevelState(a.address, Someval(i), a.children, a.number + 1)
     generated
@@ -311,13 +312,13 @@ type [<ReferenceEquality>] Dna =
       value = 0u
       valueString = ""
       choices = Some (choices :> IChoices)
-      generated = obj()
+      generated = None
       }
     this.parameterArray.add(parameter)
     parameter.value <- this.choose(choices)
     parameter.valueString <- choices.name(parameter.value)
     let generated = choices.value(parameter.value)
-    parameter.generated <- box generated
+    parameter.generated <- Some(box generated)
     this.updateFingerprint(parameter)
     this.state.[this.level] <- LevelState(a.address, Someval(i), a.children, a.number + 1)
     generated
@@ -399,7 +400,7 @@ type [<ReferenceEquality>] Dna =
       value = 0u
       valueString = ""
       choices = None
-      generated = obj()
+      generated = None
       }
     this.parameterArray.add(parameter)
     this.choose(ignore, ignore) |> ignore
@@ -426,25 +427,28 @@ type [<ReferenceEquality>] Dna =
 
   /// Queries a float parameter. Both transform and prior from the unit range with the given interval type
   /// (closed by default) must be monotonic if specified.
-  member this.float(name, ?transform : float -> float, ?prior : float -> float, ?interval, ?suffix) =
-    let interval = interval >? Closed
-    let transform = transform >? id
-    let prior = prior >? id
-    let suffix = suffix >? ""
+  member this.float(name, ?transform : float -> float, ?prior : float -> float, ?interval, ?suffix, ?value) =
+    let interval       = interval >? Closed
+    let transform      = transform >? id
+    let valueTransform = float01u interval >> transform
+    let prior          = prior >? id
+    let suffix         = suffix >? ""
+    let value          = value.map(fun value -> Fun.binarySearchClosest 0u (maxValue uint) valueTransform value)
     this.addParameter(
       Ordered,
       name,
       maxValue uint,
-      float01u interval >> transform,
+      valueTransform,
       (fun x -> Pretty.string x + suffix),
-      float01u interval >> prior >> transform
+      float01u interval >> prior >> transform,
+      ?value = value
       )
 
 
   /// Queries a float32 parameter. Both transform and prior from the unit range with the given interval type
   /// (closed by default) must be monotonic if specified.
-  member this.float32(name, ?transform, ?prior, ?interval, ?suffix) =
-    this.float(name, float32 >> (transform >? id) >> float, float32 >> (prior >? id) >> float, interval >? Closed, suffix >? "") |> float32
+  member this.float32(name, ?transform, ?prior, ?interval, ?suffix, ?value : float32) =
+    this.float(name, float32 >> (transform >? id) >> float, float32 >> (prior >? id) >> float, ?interval = interval, ?suffix = suffix, ?value = value.map(float)) |> float32
 
 
   /// Queries a categorical parameter.

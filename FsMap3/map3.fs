@@ -18,7 +18,8 @@ type Map3 = Vec3f -> Vec3f
 let shape (f: float32 -> float32) : Map3 = fun v -> v.map(f)
 
 
-/// Shapes the components of a vector with the antisymmetric extension of a fade function. Inputs are clamped.
+/// Shapes the components of a vector with the antisymmetric extension of a fade function.
+/// Inputs are clamped to [-1, 1].
 let shapef (fade : float32 -> float32) : Map3 =
   let inline g x = Fade.threshold fade x
   fun v -> Vec3f(g v.x, g v.y, g v.z)
@@ -115,12 +116,6 @@ let softmix3 (a : float32) (v : Vec3f) (u : Vec3f) =
   let wZ = 1G / (wf + wg)
   let inline soft sf sg = (sf * wf + sg * wg) * wZ
   Vec3f.bimap(v, u, soft)
-
-
-/// Shifts vector components by a wavified fade function.
-let shiftf (offset : Vec3f) (fade : float32 -> float32) =
-  let wavef = Fade.sinefyr fade
-  fun (v : Vec3f) -> (v * 0.25f + offset).map(wavef)
 
 
 /// Shifts vector components by feeding them to a (unity period) wave function with an offset.
@@ -286,20 +281,20 @@ let overdrive3 (a : float32) (v : Vec3f) =
   // Use the 8-norm as a smooth proxy for the largest magnitude component.
   let m = v.map(squared >> squared >> squared).sum |> sqrt |> sqrt |> sqrt
   if m > 0.0f then
-    (tanh(m * a) / m) * v
+    tanh(m * a) / m * v
   else
     Vec3f.zero
 
 
-/// Crushes components with the specified number of levels per unit,
+/// Posterizes components with the specified number of levels per unit,
 /// using the fade function to transition between levels.
-let crush (fade : float32 -> float32) (levels : float32) =
+let posterize (fade : float32 -> float32) (levels : float32) =
   shape (fun x -> Fade.staircase fade (x * levels) / levels)
 
 
-/// Crushes components proportional to the maximum component with the specified number of levels per unit,
+/// Posterizes components proportional to the maximum component with the specified number of levels per unit,
 /// using the fade function to transition between levels.
-let crush3 (fade : float32 -> float32) (levels : float32) (v : Vec3f) =
+let posterize3 (fade : float32 -> float32) (levels : float32) (v : Vec3f) =
   let m = (abs v).maximum * levels
   if m > 1.0e-6f then
     let c = (Fade.staircase fade m) / m
@@ -363,7 +358,7 @@ let normalizeBasis (f : Basis3) : Basis3 =
   fun frequency v -> ((f frequency v - mM) * mS).map(clamp11)
 
 
-/// Produces a permutation-reflection of components from a seed value, which is wrapped to the range [0, 48[.
+/// Produces a permutation-reflection of components from a seed value which is wrapped to [0, 48[.
 let inline permute (seed : int) : Map3 =
   let sx = float32 (seed &&& 1) * 2.0f - 1.0f
   let sy = float32 (seed &&& 2) - 1.0f
@@ -377,7 +372,7 @@ let inline permute (seed : int) : Map3 =
   | _ -> fun v -> Vec3f(sx * v.z, sy * v.y, sz * v.x)
 
 
-/// Normalizes a map and colors it with a pseudo-random palette. The output range is [-1, 1].
+/// Normalizes and permutes a map and colors it with a pseudo-random palette. The output range is [-1, 1].
 let color (seed : int) (f : Map3) =
   normalize f >> permute (mangle32 seed) >> Dna.generate(seed, ColorDna.genPalette 32)
 
@@ -385,15 +380,15 @@ let color (seed : int) (f : Map3) =
 /// Variable shapes v with u. Components of u provide parameters for
 /// saturation (X), monoization (Y) and scattering (Z).
 let variableShape (u : Vec3f) (v : Vec3f) =
+  let p = u.map(map11to01 >> clamp01)
   // Monoization.
-  let mono = abs u.y
-  let v = lerp v (Vec3f(v.average)) mono
+  let v = lerp v (Vec3f(v.average)) p.y
   // Saturation.
-  let S = 0.01f + squared u.x * 20.0f
+  let S = 0.01f + squared p.x * 20.0f
   let Z = 1G / softsign S
   let v = v.map(fun x -> Z * softsign(x * S))
   // Scattering.
-  v + u * abs u.z
+  v + u * p.z
 
 
 /// Returns a single Fourier style basis function direction.
@@ -419,6 +414,7 @@ let fourierWave (f : float32) =
 
 
 /// Slightly more complicated basis function. Still quite fast. Tiles the unit cube.
+/// The wave function should have unity period.
 let packetw (wavef : float32 -> float32) (f : float32) =
   let h = manglef64 f
   let f = int f
@@ -442,10 +438,6 @@ let packetw (wavef : float32 -> float32) (f : float32) =
 let packet (f : float32) = packetw sinr f
 
 
-/// Packet basis function using a wave function derived from a fade function.
-let packetf (fade : float32 -> float32) (f : float32) = packetw (Fade.sinefyr fade) f
-
-    
 /// Basic fractalizer. Samples many octaves of basis g.
 /// Roughness is the attenuation for each doubling of frequency (typically < 1).
 /// Lacunarity (lacunarity > 0) is the wavelength scaling of successive octaves.
@@ -477,12 +469,13 @@ let fractald (roughness : float32) (lacunarity : float32) (highpass : float32) (
   fun (v : Vec3f) ->
     let mutable F = initialFrequency
     let mutable w = w0
-    let mutable d = Vec3f.zero
+    let mutable d = WalkState.start
     let mutable value = Mix.start
     let mutable h = 1.0f - highpass
     for i = 0 to g.last do
-      let a = g.[i] (v + d)
+      let a = g.[i] (v + d.read(F))
       value <- mix value w h a
+      d <- walk d F a
       F <- F / lacunarity
       w <- w * r
       h <- sqrt h
@@ -518,9 +511,9 @@ let multid roughness lacunarity minDisplace maxDisplace minTwist maxTwist initia
     let mutable rotation = Quaternionf.one
     let mutable value = Mix.start
 
-    for i = 0 to int octaves - 1 do
+    for i = 0 to min g.last (int octaves) do
       // Fade out smoothly the final octave.
-      let P = Fade.smooth2(delerp01 (octaves - 1.0f) (octaves - 2.0f) (float32 i))
+      let P = Fade.smooth2(delerp01 octaves (octaves - 1.0f) (float32 i))
       if P > 0.0f then
         let y = g.[i] (v + Vec3f.fromSeed(mangle32 (i + manglef (float F))))
         let L2 = y.length2
@@ -528,7 +521,7 @@ let multid roughness lacunarity minDisplace maxDisplace minTwist maxTwist initia
           let L = sqrt L2
           rotation <- Quaternionf(Vec3f(y.y, y.z, -y.x) / L, L * twist) * rotation
         v <- v + displace / F * y * rotation
-        value <- mix value w P y
+        value <- mix value (w * P) 1.0f y
       F <- F / lacunarity
       w <- w * r
 

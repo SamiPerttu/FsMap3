@@ -16,27 +16,35 @@ let impflow (layout : LayoutFunction)
             (count : FeatureCount)
             (potential : Potential3)
             (mix : MixOp)
+            (gradient : float32)
             (color : CellColor)
             (fade : float32 -> float32)
+            fadeWidth
             (radius : float32)
             (flow : Basis3)
             (flowFrequencyFactor : float32)
             seed
             frequency =
+
+  assert (radius > 0G)
+
   let R2 = squared radius
   let Ri = 1G / radius
+  let wi = 1.0f / fadeWidth
 
   let layoutInstance = layout seed frequency
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
+
     // Get rotation from the flow map.
     let L = G pi * flow (frequency * flowFrequencyFactor) v
     let length = L.length
     let pose = if length > 1.0e-9f then Quaternionf(L / length, length) else Quaternionf.one
-    data.scan(radius)
 
+    data.scan(radius)
     let mutable value = Mix.start
+
     for jx = data.x0 to data.x1 do
       let hx = data.hashX(jx)
       for jy = data.y0 to data.y1 do
@@ -47,14 +55,14 @@ let impflow (layout : LayoutFunction)
             h <- mangle32 h
             let P = data.d - Vec3f.fromSeed(h) - Vec3f(float32 jx, float32 jy, float32 jz)
             if P.length2 < R2 then
-              let v = P * Ri * pose
-              let p = potential v
+              let L = P * Ri * pose
+              let p = potential L
               if p < 1G then
-                let w = fade (1G - p)
-                let g = Potential.gradient potential v * 0.5f
-                let gN = g.length2
-                let g = if gN > 1G then g / sqrt gN else g
-                value <- mix value 1.0f w (color h g)
+                let w = fade (min 1.0f (wi - wi * p))
+                let g = Potential.gradient potential L
+                let gN = g.length
+                let g = gN / (squared gN + 1.0f) * g
+                value <- mix value 1.0f w (color h (lerp L g gradient))
     data.release()
     Mix.result value
 
@@ -62,5 +70,5 @@ let impflow (layout : LayoutFunction)
 /// Default implicit flow basis with the standard layout, count, mixing and color functions.
 /// The cell hash seed is derived from the frequency.
 let inline impflowd fade potential radius flow flowFactor frequency =
-  impflow hifiLayout unityCount potential Mix.sum anyColor fade radius flow flowFactor (manglef32 frequency) frequency
+  impflow hifiLayout unityCount potential Mix.sum 0.5f anyColor fade 1.0f radius flow flowFactor (manglef32 frequency) frequency
 

@@ -40,13 +40,13 @@ let genBleed (dna : Dna) =
 /// Generates a vector posterizer map.
 let genVectorPosterize (dna : Dna) =
   let levels = dna.float32("Posterize levels", xerp 1.0f 20.0f)
-  crush3 (genSigmoidFade "Posterize hardness" dna) levels
+  posterize3 (genSigmoidFade "Posterize hardness" dna) levels
 
 
 /// Generates a component posterizer map.
 let genComponentPosterize (dna : Dna) =
   let levels = dna.float32("Posterize levels", xerp 1.0f 20.0f)
-  crush (genSigmoidFade "Posterize hardness" dna) levels
+  posterize (genSigmoidFade "Posterize hardness" dna) levels
 
 
 /// Generates a vector reflection map.
@@ -108,3 +108,4 @@ let genShape (dna : Dna) =
     C(0.25, "component reflect", genComponentReflect),
     C(0.25, "vector reflect", genVectorReflect)
     )
+

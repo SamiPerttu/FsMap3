@@ -27,9 +27,10 @@ Node: Fractalizer
       Layer width: 0.617198288440704
       Layer hardness: 4
       Layer persist: 0.546871960163116
-    Displace amount: 0.218966245651245
-    Displace response: shelf
     Walk operator: bounce
+      Displace amount: 0.350459694862365
+      Displace response: shelf
+      Displace damping: 0.267441868782043
     Basis: colored Worley
       Cell seed: 7285
       Features per cell: Poisson
@@ -38,9 +39,8 @@ Node: Fractalizer
       Worley pattern: 7287
       Worley fade: sine
       Cell fade distance: 0.25
-      Cell color: unit choice
-        Choices: 2
-        Seed: 46705604
+      Cell color: unit
+        Color variation: none
   Shape: vector posterize
     Posterize levels: 11.5310821533203
     Posterize hardness: 2

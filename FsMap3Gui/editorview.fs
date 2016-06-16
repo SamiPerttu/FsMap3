@@ -86,10 +86,18 @@ type [<NoComparison; NoEquality>] EditorView<'a> =
       this.busyTimer.Start()
       )
 
-  /// Updates the cursor now. This must be called from the UI thread.
-  member private this.updateCursor() =
-    this.image.Cursor <- if this.isEmpty then this.emptyCursor else this.readyCursor
+  member this.layoutBusy() =
+    let busyBorder = 4.0
+    this.busyImage.Margin <- Thickness(Left = this.image.Margin.Left + this.image.Width - this.busyImage.Width - busyBorder,
+                                       Top = this.image.Margin.Top + busyBorder)
 
+  /// Updates the cursor now.
+  member this.updateCursor() =
+    Wpf.dispatch(this.image, fun _ ->
+      this.image.Cursor <- if this.isEmpty then this.emptyCursor else this.readyCursor
+    )
+
+  /// Sets the cursors shown in this view.
   member this.setCursors(readyCursor, emptyCursor) =
     Wpf.dispatch(this.image, fun _ ->
       this.readyCursor <- readyCursor
@@ -97,17 +105,12 @@ type [<NoComparison; NoEquality>] EditorView<'a> =
       this.updateCursor()
       )
 
-  member this.layoutBusy() =
-    let busyBorder = 4.0
-    this.busyImage.Margin <- Thickness(Left = this.image.Margin.Left + this.image.Width - this.busyImage.Width - busyBorder,
-                                       Top = this.image.Margin.Top + busyBorder)
-
   member this.setVisibility(visibility) =
     this.image.Visibility <- visibility
     if visibility = Visibility.Collapsed then this.idle()
 
   member this.focus(visibility) =
-    this.focusShape.apply(fun focusShape -> for shape in focusShape do shape.Visibility <- visibility)
+    this.focusShape.apply(Array.iter (fun shape -> shape.Visibility <- visibility))
 
   static member create(mainMode, gridI, gridX, gridY, pixmapSeed, deepSeed, deepGenerator, pixmapGenerator, deepFilter, grid : Grid, visible : bool, previewLevels) : 'a EditorView =
     let image = Image(SnapsToDevicePixels = true, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Visibility = match visible with | true -> Visibility.Visible | false -> Visibility.Collapsed)

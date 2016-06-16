@@ -1,6 +1,6 @@
 View Center X: 0.5
 View Center Y: 0.5
-View Center Z: 0.465847015380859
+View Center Z: 0.5
 View Zoom: 1.61051058769226
 Palette:
   Color space: HSV
@@ -18,17 +18,18 @@ Node: Fractalizer
   Y offset: 0
   Z offset: 0
   Octaves: 10
-  Frequency: 2.19215989112854
+  Frequency: 2.51645922660828
   Roughness: 0.704806387424469
   Fractalizer: mix and displace
     Lacunarity: 0.5
     Highpass filter: 0.105882354080677
     Mix operator: sum
-    Displace amount: 0.292387545108795
-    Displace response: reverse power-2
     Walk operator: march
+      Displace amount: 0.119253650307655
+      Displace response: reverse power-2
+      Displace damping: 0.156976744532585
     Basis: Perlin noise
-      Cell seed: 1260196396
+      Cell seed: 1260196434
       Perlin fade: smooth-1
   Shape: wave packet
     Packet seed: 1260196345
