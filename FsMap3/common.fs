@@ -51,13 +51,6 @@ module NumericLiteralG =
 
 
 
-/// Numeric interval type definition. Most often, the "default" interval type is closed or left-closed
-/// for floating point intervals and closed for integer intervals.
-[<NoComparison>]
-type Interval = Closed | LeftClosed | RightClosed | Open
-
-
-
 // Global operator overloads.
 
 /// Reference equality operator. Returns false if either a or b is not a reference type.
@@ -65,6 +58,13 @@ let inline ( === ) a b = obj.ReferenceEquals(a, b)
 
 /// Reference inequality operator. Returns true if either a or b is not a reference type.
 let inline ( <>= ) a b = obj.ReferenceEquals(a, b) = false
+
+/// Duck typed dereferencing operator. Duck typing enables us to use it with other types besides reference cells.
+let inline ( ! ) x = (^X : (member get_Value : unit -> _) (x))
+
+/// Convenience duck typed infix operator that returns the value of option (or Optionval) a,
+/// defaulting to b if the option does not have a value. Note that the default value b is always evaluated.
+let inline ( >? ) (a : ^a) (b : ^b) = if (^a : (member get_IsSome : unit -> bool) (a)) then !a else b
 
 /// Dot product operator. We declare this as a global, duck typed operator to make it compatible with
 /// SIMD accelerated types from System.Numerics.
@@ -74,12 +74,12 @@ let inline ( *. ) (v : ^a) (u : ^a) = (^a : (static member Dot : ^a * ^a -> _) (
 /// SIMD accelerated types from System.Numerics.
 let inline ( *+ ) (v : ^a) (u : ^a) = (^a : (static member Cross : ^a * ^a -> _) (v, u))
 
-/// Duck typed dereferencing operator. Duck typing enables us to use it with other types besides reference cells.
-let inline ( ! ) x = (^X : (member get_Value : unit -> _) (x))
 
-/// Convenience duck typed infix operator that returns the value of option (or Optionval) a,
-/// defaulting to b if the option does not have a value. Note that the default value b is always evaluated.
-let inline ( >? ) (a : ^a) (b : ^b) = if (^a : (member get_IsSome : unit -> bool) (a)) then !a else b
+
+/// Numeric interval type definition. Most often, the "default" interval type is closed or left-closed
+/// for floating point intervals and closed for integer intervals.
+[<NoComparison>]
+type Interval = Closed | LeftClosed | RightClosed | Open
 
 
 
@@ -205,7 +205,7 @@ let inline G x = NumericTraits.convert(Unchecked.defaultof<NumericTraits>, x, Ge
 // Note. If the argument to Common.G is constant, then the compiler emits the constant in the original type.
 // The type conversion is optimized away at runtime by the JIT compiler.
 
-/// Generic conversion of quotients x / y. This is equal to G x / G y.
+/// Generic conversion of quotients x / y. This is equivalent in effect with G x / G y.
 /// For now, the arguments must be int or float and the target type float or float32.
 let inline Q x y = NumericTraits.quotient(Unchecked.defaultof<NumericTraits>, x, y, GenericZero)
 
@@ -419,7 +419,9 @@ let inline fract x = x - floor x
 let inline log2 x = log x * Q 1 ln2
 
 /// Logarithm to an arbitrary base (b > 1).
-let inline logb b = let Z = 1G / log b in fun x -> Z * log x
+let inline logb b =
+  assert (b > 1G)
+  let Z = 1G / log b in fun x -> Z * log x
 
 /// Binary exponential.
 let inline exp2 x = exp(x * G ln2)
@@ -734,7 +736,7 @@ let createIterate value0 f = { Counter.value = value0; f = f }
 /// Creates a MINSTD linear congruential generator (seed > 0) that cycles through the positive ints.
 let createLcg seed =
   enforce (seed > 0) "Common.createLcg: Seed must be greater than zero."
-  { Counter.value = seed; f = minstd }
+  { Counter.value = seed |> minstd |> minstd; f = minstd }
 
 
 

@@ -22,8 +22,8 @@ Node: Basis
     Cell seed: 1779836788
     Iterations: 10
     Formula: White
-    Features per cell: rounded average
-      Average: 1.55392
+    Features per cell: rounded
+      Mean: 1.5539
     Feature radius: 1.16661763191223
     Roughness: 0.811133086681366
     Feature fade: upward arc

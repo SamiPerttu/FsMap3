@@ -9,13 +9,13 @@ open CellColor
 
 /// Cubex noise. Radial basis gradient noise resembling Perlin noise.
 /// The implementation is similar to simplex noise except we interpolate inside a cube.
-let cubex (layout : LayoutFunction) (mix : MixOp) (color : CellColor) (fade : float32 -> float32) (seed : int) (frequency : float32) =
+let cubex (layout : LayoutFunction) (color : CellColor) (fade : float32 -> float32) (seed : int) (frequency : float32) =
   let layoutInstance = layout seed frequency
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
 
-    let mutable value = Mix.start
+    let mutable value = Vec3f.zero
 
     for jx = 0 to 1 do
       let hx = data.hashX(jx)
@@ -27,20 +27,20 @@ let cubex (layout : LayoutFunction) (mix : MixOp) (color : CellColor) (fade : fl
           if r2 < 1G then
             let h = data.hashZ(jz, hxy)
             let w = fade (1G - sqrt r2)
-            value <- mix value 1.0f w (P *. mangle12UnitVec3 h * 2.0f * color h P)
+            value <- value + (P *. mangle12UnitVec3 h * 2.0f * w * color h P)
 
     data.release()
-    Mix.result value
+    value
 
 
 /// Default cubex noise with the standard cell layout and the smooth-2 fade function.
 /// The cell hash seed is derived from the frequency.
-let cubexd frequency = cubex hifiLayout Mix.sum anyColor Fade.smooth2 (manglef32 frequency) frequency
+let cubexd frequency = cubex hifiLayout anyColor Fade.smooth2 (manglef32 frequency) frequency
 
 
 /// Cubex noise with the standard cell layout.
 /// The cell hash seed is derived from the frequency.
-let cubexf fade frequency = cubex hifiLayout Mix.sum anyColor fade (manglef32 frequency) frequency
+let cubexf fade frequency = cubex hifiLayout anyColor fade (manglef32 frequency) frequency
 
 
 

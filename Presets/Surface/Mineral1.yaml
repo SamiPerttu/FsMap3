@@ -1,0 +1,107 @@
+View Center X: 0.5
+View Center Y: 0.5
+View Center Z: 0.5
+View Zoom: 1
+Palette:
+  Color space: HSL
+  Hue origin: 0.430232554674148
+  Hue range: 0.196430504322052
+  Hue skew: -0.125560045242309
+  Saturation range: 0.350928008556365
+  Saturation minimum: 0.001412699348293
+  Saturation skew: -0.023255825042724
+  Value skew: 0
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Binary
+  X offset: 0
+  Y offset: 4.77123165130615
+  Z offset: 0.649287700653076
+  Operator: displace and layer
+    Displace response: power-1/2
+      Displace amount: 0.001831719418987
+    Layer width: 0.223822742700576
+    Falloff shape: smooth line
+  Modifier:
+    Node: Basis
+      X offset: 0
+      Y offset: 1.50684070587158
+      Z offset: -0.4396653175354
+      Frequency: 19.624626159668
+      Basis: colored Worley
+        Cell seed: 3780376411
+        Features per cell: one
+        Cell distance norm: 2-norm
+        Worley pattern: 17354
+        Worley fade: smooth line
+        Cell fade distance: 0.029423456639051
+        Cell color: unit
+          Color variation: none
+      Shape: none
+  Base:
+    Node: Fractalizer
+      X offset: 0
+      Y offset: 1.50684070587158
+      Z offset: 0
+      Octaves: 10
+      Frequency: 3.57318186759949
+      Roughness: 0.804309487342834
+      Fractalizer: variable
+        Lacunarity: 0.5
+        Minimum octaves: 1
+        Octave direction: inverse
+        First octave: 5
+        Displace variation: 0.869745731353759
+        Twist variation: 0.969427049160003
+        Mix operator: layer
+          Layer width: 0.209017723798751
+          Falloff shape: reverse power-3
+          Layer norm: max
+          Layer persist: 0.357943505048751
+        Walk operator: twist
+          Displace response: power-1/2
+            Displace amount: 0.195240676403045
+          Twist amount: 0.380521029233932
+          Displace damping: 0.094097636640071
+        Basis: colored Worley
+          Cell seed: 1159955891
+          Features per cell: one
+          Cell distance norm: 2-norm
+          Worley pattern: 1899
+          Worley fade: smooth line
+          Cell fade distance: 0.054572116583585
+          Cell color: unit
+            Color variation: gradient
+              Amount: 0.146104544401168
+              Angle seed: 2402411707
+        Variable map:
+          Node: Fractalizer
+            X offset: 1.13440406322479
+            Y offset: 2.63435125350952
+            Z offset: 2.56800413131714
+            Octaves: 2
+            Frequency: 7.87214183807373
+            Roughness: 0.804309487342834
+            Fractalizer: mix and displace
+              Lacunarity: 0.641078650951385
+              Highpass filter: 0.385611534118652
+              Mix operator: sum
+              Walk operator: shuffle
+                Displace response: power-1/2
+                  Displace amount: 0.00732687767595
+                Displace damping: 0.094097636640071
+              Basis: colored Worley
+                Cell seed: 1159955891
+                Features per cell: Poisson
+                  Mean: 2.42118515
+                Cell distance norm: 3-norm
+                Worley pattern: 1899
+                Worley fade: smooth line
+                Cell fade distance: 0.029423456639051
+                Cell color: unit
+                  Color variation: gradient
+                    Amount: 0.146104544401168
+                    Angle seed: 2402411707
+            Shape: none
+      Shape: none
+  Shape: none

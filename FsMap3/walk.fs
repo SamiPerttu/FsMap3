@@ -2,25 +2,20 @@
 module FsMap3.Walk
 
 open Common
+open Map3
 
 
-/// Shapes the magnitude of a vector with a fade function. The input to the fade function is clamped.
-let inline shape3f (fade : float32 -> float32) (v : Vec3f) =
-  let length = min 1.0f v.length
-  if length > 0.0f then
-    (fade length / length) * v
-  else
-    Vec3f.zero
-
-
-/// Walk operator state is stored here. The delta value is the current displacement. Modifications
-/// to it are generally scaled by inverse frequency to equalize slope (the absolute value of displacement
-/// is inconsequential).
+/// Walk operator state is stored here.
 [<NoComparison; NoEquality>]
 type WalkState = struct
+  /// Current displacement. Modifications to delta are generally scaled by inverse frequency
+  /// to equalize slope (the absolute value of displacement is inconsequential).
   val delta : Vec3f
+  /// Current twist (optional).
   val twist : Quaternionf
+  /// Extra state vector (optional).
   val c : Vec3f
+
   new(delta, twist, c) = { delta = delta; twist = twist; c = c }
   new(delta, twist) = { delta = delta; twist = twist; c = Vec3f.zero }
   new(delta, c) = { delta = delta; twist = 1G; c = c }
@@ -33,42 +28,47 @@ end
 
 
 
-/// Walk operators derive a new state from old state, displacement frequency and displacement value.
-/// The displacement input value components are roughly in the customary [-1, 1] range.
-type WalkOp = WalkState -> float32 -> Vec3f -> WalkState
+/// Walk operators derive a new state from old state, displacement frequency, displacement value weight
+/// and displacement value. The displacement value is weighted. Unweighted displacement value components
+/// are roughly in the customary [-1, 1] range. Weight is in unit range; its purpose is to enable
+/// smooth interpolation between partial and full steps.
+type WalkOp = WalkState -> float32 -> float32 -> Vec3f -> WalkState
 
 
-let march (amount : float32) (fade : float32 -> float32) (damping : float32) (state : WalkState) (f : float32) (v : Vec3f) =
-  WalkState((1.0f - damping) * state.delta + amount / f * shape3f fade v)
+
+let stand (state : WalkState) (f : float32) (w : float32) (v : Vec3f) = state
 
 
-let twist (walkAmount : float32) (walkFade : float32 -> float32) (twistAmount : float32) (damping : float32) (state : WalkState) (f : float32) (v : Vec3f) =
+let march (response : float32 -> float32) (damping : float32) (state : WalkState) (f : float32) (w : float32) (v : Vec3f) =
+  WalkState((1.0f - w * damping) * state.delta + shape3 response v / f)
+
+
+let twist (response : float32 -> float32) (twistAmount : float32) (damping : float32) (state : WalkState) (f : float32) (w : float32) (v : Vec3f) =
   let u = v / f
   let L2 = u.length2
   if L2 > 0G then
     let L = sqrt L2
     let twist = state.twist * Quaternionf(u / L, twistAmount * L * 100.0f)
-    WalkState((1.0f - damping) * state.delta + walkAmount / f * shape3f walkFade v * twist, twist)
+    WalkState((1.0f - w * damping) * state.delta + shape3 response v / f * twist, twist)
   else
     state
 
 
-let cross (amount : float32) (fade : float32 -> float32) (damping : float32) (state : WalkState) (f : float32) (v : Vec3f) =
-  let u = shape3f fade v
-  WalkState((1.0f - damping) * state.delta + amount / f * (u *+ state.c), u)
+let cross (response : float32 -> float32) (damping : float32) (state : WalkState) (f : float32) (w : float32) (v : Vec3f) =
+  WalkState((1.0f - w * damping) * state.delta + shape3 response (v *+ state.c) / f, v)
 
 
-let bounce (amount : float32) (fade : float32 -> float32) (damping : float32) (state : WalkState) (f : float32) (v : Vec3f) =
-  WalkState((1.0f - damping) * -state.delta + amount / f * shape3f fade v)
+let bounce (response : float32 -> float32) (damping : float32) (state : WalkState) (f : float32) (w : float32) (v : Vec3f) =
+  WalkState((1.0f - w * damping) * lerp state.delta -state.delta w + shape3 response v / f)
 
 
-let shuffle (amount : float32) (fade : float32 -> float32) (damping : float32) (state : WalkState) (f : float32) (v : Vec3f) =
+let shuffle (response : float32 -> float32) (damping : float32) (state : WalkState) (f : float32) (w : float32) (v : Vec3f) =
   let u = state.delta
-  WalkState((1.0f - damping) * Vec3f(u.z, u.x, u.y) + amount / f * shape3f fade v)
+  WalkState((1.0f - w * damping) * lerp state.delta (Vec3f(u.z, u.x, u.y)) w + shape3 response v / f)
 
 
-let lurch (amount : float32) (fade : float32 -> float32) (damping : float32) (state : WalkState) (f : float32) (v : Vec3f) =
+let lurch (response : float32 -> float32) (damping : float32) (state : WalkState) (f : float32) (w : float32) (v : Vec3f) =
   let u = state.delta
-  WalkState((1.0f - damping) * Vec3f(u.y, u.z, -u.x) + amount / f * shape3f fade v)
+  WalkState((1.0f - damping) * lerp state.delta (Vec3f(u.y, u.z, -u.x)) w + shape3 response v / f)
 
 

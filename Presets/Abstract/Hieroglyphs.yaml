@@ -10,7 +10,7 @@ Palette:
   Saturation range: 0.268108069896698
   Saturation minimum: 0.061037696897983
   Saturation skew: -1.23452997207642
-  Value skew: -1.0930233001709
+  Value skew: -0.744185984134674
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -26,8 +26,8 @@ Node: Fractalizer
     Mix operator: soft
       Bias: 0.569767475128173
     Walk operator: march
-      Displace amount: 0.006670548580586
-      Displace response: power-4
+      Displace response: power-2
+        Displace amount: 0.080697678029537
       Displace damping: 0.828635036945343
     Basis: Julia
       Cell seed: 2688914599

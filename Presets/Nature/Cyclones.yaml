@@ -25,8 +25,8 @@ Node: Fractalizer
     Highpass filter: 0.105882354080677
     Mix operator: sum
     Walk operator: march
-      Displace amount: 0.119253650307655
-      Displace response: reverse power-2
+      Displace response: line
+        Displace amount: 0.731206059455871
       Displace damping: 0.156976744532585
     Basis: Perlin noise
       Cell seed: 1260196434

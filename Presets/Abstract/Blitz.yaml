@@ -1,0 +1,58 @@
+View Center X: 0.5
+View Center Y: 0.5
+View Center Z: 0.470714569091796
+View Zoom: 0.683013379573822
+Palette:
+  Color space: HSL
+  Hue origin: 0.809761583805084
+  Hue range: 0.233091250061988
+  Hue skew: 0.156120300292968
+  Saturation range: 0.800000011920929
+  Saturation minimum: 0.162307187914848
+  Saturation skew: 2
+  Value skew: -1
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Fractalizer
+  X offset: 3.11673355102539
+  Y offset: -1.98596358299255
+  Z offset: -4.42208003997803
+  Octaves: 6
+  Frequency: 2.3688485622406
+  Roughness: 0.674223661422729
+  Fractalizer: inverted mix and displace
+    Lacunarity: 0.524374723434448
+    Lowpass filter: 0.589604377746582
+    Mix operator: norm
+      Hardness: 0.468846261501312
+    Walk operator: twist
+      Displace response: power-1/2
+        Displace amount: 0.058243513107299
+      Twist amount: 0.098837211728096
+      Displace damping: 0.125981748104095
+    Basis: potential flow
+      Cell seed: 1458272282
+      Potential: rounded cone
+        Cone radius: 0.454058229923248
+      Potential radius: 1
+      Falloff width: 0.755317032337188
+      Falloff shape: reverse power-2
+      Gradient: 0
+      Cell color: palette
+        Choices: 3
+        Color 0 seed: 3996400629
+        Color 1 seed: 4241198359
+        Color 2 seed: 1052394340
+        Color variation: position
+          Amount: 0.668604671955108
+      Mix operator: product
+      Features per cell: Poisson
+        Mean: 4
+      Flow frequency: 0.072650797665119
+      Flow:
+        Basis: Perlin noise
+          Cell seed: 2942405905
+          Perlin fade: smooth-2
+        Shape: component overdrive
+          Overdrive amount: 2.55086970329285
+  Shape: none

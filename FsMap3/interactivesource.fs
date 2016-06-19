@@ -8,6 +8,8 @@ open DnaParameter
 type InteractiveSource(seed) =
   inherit DnaSource()
 
+  // TODO. Create a set of pools that allows for exact node insertion and removal.
+
   let poolSet =
     [| CodePool.create(structuralHash, 1)
        CodePool.create(addressHash, 1)

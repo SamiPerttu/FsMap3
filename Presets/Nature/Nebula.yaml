@@ -1,5 +1,5 @@
-View Center X: -0.257146835327148
-View Center Y: 0.479305267333984
+View Center X: -2.16432762145996
+View Center Y: -1.09452247619629
 View Center Z: 0.5
 View Zoom: 0.826446413993835
 Palette:
@@ -25,12 +25,13 @@ Node: Fractalizer
     Highpass filter: 0.334883719682693
     Mix operator: layer
       Layer width: 1
-      Layer hardness: 0
+      Falloff shape: reverse power-2
+      Layer norm: 1-norm
       Layer persist: 1
     Walk operator: march
-      Displace amount: 0.535492181777954
-      Displace response: smooth line
-      Displace damping: 0.535492181777954
+      Displace response: line
+        Displace amount: 0.745335280895233
+      Displace damping: 0.476744174957275
     Basis: component softmix
       Frequency factor: 0.281435400247573
       Mix bias: 3.9069766998291
@@ -53,11 +54,9 @@ Node: Fractalizer
           Leopard radius: 0.25
           Features per cell: geometric
             Mean: 4
-          Potential fade: power-2
           Falloff width: 1
-          Mix operator: over
+          Falloff shape: power-2
+          Mix operator: sum
           Cell color: any
-            Color variation: gradient
-              Amount: 0.535492181777954
-              Angle seed: 9113
+            Color variation: none
   Shape: none

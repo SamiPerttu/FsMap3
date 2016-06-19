@@ -22,38 +22,27 @@ let genSigmoidFade (parameterName : string) (dna : Dna) : float32 -> float32 =
 
 
 /// Generates a fade for the layering mix operator.
-let genLayerFade = genSigmoidFade "Layer hardness"
+let genLayerFade (dna : Dna) =
+  dna.branch("Falloff shape",
+    C("reverse power-3", fun _ -> Fade.reverse Fade.power3),
+    C("reverse power-2", fun _ -> Fade.reverse Fade.power2),
+    C("line", fun _ -> Fade.line),
+    C("smooth line", fun _ -> Fade.smoothLine),
+    C("sigmoid", genSigmoidFade "Sigmoid hardness")
+    )
 
 
 /// Generates a fade for potential functions.
 let genPotentialFade (dna : Dna) : float32 -> float32 =
-  dna.category("Potential fade",
+  dna.category("Falloff shape",
     C("downward arc", Fade.downarc),
     C("reverse power-3", Fade.reverse Fade.power3),
     C("reverse power-2", Fade.reverse Fade.power2),
-    C("saturated smooth", Fade.skew 1.0f >> Fade.smooth2),
     C("line", Fade.line),
     C("smooth line", Fade.smoothLine),
     C("sine", Fade.sine),
     C("smooth-2", Fade.smooth2),
     C("power-2", Fade.power2)
-    )
-
-
-/// Generates a fade for displacements.
-let genDisplaceFade (dna : Dna) : float32 -> float32 =
-  dna.category("Displace response",
-    C("reverse power-4", Fade.reverse Fade.power4),
-    C("reverse power-3", Fade.reverse Fade.power3),
-    C("reverse power-2", Fade.reverse Fade.power2),
-    C("shelf", Fade.shelf),
-    C("line", Fade.line),
-    C("smooth line", Fade.smoothLine),
-    C("sine", Fade.sine),
-    C("smooth-2", Fade.smooth2),
-    C("power-2", Fade.power2),
-    C("power-3", Fade.power3),
-    C("power-4", Fade.power4)
     )
 
 

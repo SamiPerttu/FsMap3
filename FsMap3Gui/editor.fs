@@ -704,12 +704,12 @@ type Editor =
 
     let rec addPresets (menuItem : MenuItem) directory =
       try
-        for directory in System.IO.Directory.GetDirectories(directory) |> Array.sort do
+        for directory in System.IO.Directory.GetDirectories(directory) |> Array.sortWith (fun a b -> String.Compare(a, b, ignoreCase = true)) do
           let directoryItem = MenuItem(Header = System.IO.Path.GetFileName(directory))
           addPresets directoryItem directory
           if directoryItem.Items.IsEmpty = false then
             menuItem.add(directoryItem)
-        for file in System.IO.Directory.GetFiles(directory) |> Array.sort do
+        for file in System.IO.Directory.GetFiles(directory) |> Array.sortWith (fun a b -> String.Compare(a, b, ignoreCase = true)) do
           if System.IO.Path.GetExtension(file) = ".yaml" then
             let presetItem = MenuItem(Header = System.IO.Path.GetFileNameWithoutExtension(file))
             let openPopup = ref none<Popup>

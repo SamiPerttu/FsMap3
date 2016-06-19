@@ -25,9 +25,11 @@ Node: Fractalizer
     Lowpass filter: 0.808721244335174
     Mix operator: soft
       Bias: 0.076081037521362
-    Displace amount: 0.305876672267913
-    Displace response: reverse power-4
     Walk operator: march
+      Displace response: sigmoid
+        Displace maximum: 0.5
+        Displace steepness: 0.511627912521362
+      Displace damping: 0.305876672267913
     Basis: component softmix
       Frequency factor: 0.384361058473587
       Mix bias: -0.643747091293335
@@ -41,11 +43,12 @@ Node: Fractalizer
           Worley fade: reverse power-2
           Cell fade distance: 0.028672257438302
           Cell color: big
+            Color variation: none
       Basis 2:
         Basis: Worley
           Cell seed: 2322278840
-          Features per cell: rounded average
-            Average: 0.4873254906
+          Features per cell: Poisson
+            Mean: 1.239452686
           Cell distance norm: 2-norm
           Worley pattern: 14046
           Worley fade: power-2

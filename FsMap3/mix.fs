@@ -30,7 +30,7 @@ type MixOp = MixState -> float32 -> float32 -> Vec3f -> MixState
 
 
 (*
-A "transmissive" prescription for smooth mixing with alpha.
+A "transmissive" prescription for smooth mixing with weights and alpha.
 
 state.i = I = current influence >= 0
 state.a = A = current alpha in [0, 1]
@@ -78,6 +78,9 @@ module Mix =
   /// Initial mixing state is all zeros.
   let start = MixState()
 
+  /// The result of mixing is stored in MixState.v.
+  let inline result (state : MixState) = state.v
+
   /// Smooth mixing helper.
   let inline alphaProcess (state : MixState) (w : float32) (a : float32) (u : Vec3f) (f : float32 -> Vec3f -> float32 -> Vec3f -> Pair<float32, Vec3f>) =
     let i = w * a
@@ -100,18 +103,14 @@ module Mix =
     else
       state
 
-  /// The result of mixing is stored in MixState.v.
-  let inline result (state : MixState) = state.v
-
   /// Layering operator that maintains a comparand value. The influence of new features
-  /// is diminished by the distance to the comparand in a curve defined by the width and fade parameters.
+  /// is diminished by normed distance to the comparand in a curve defined by the width and fade parameters.
   /// The comparand itself is influenced according to the persist parameter (persist in [0, 1]).
   /// Layering can produce effects that resemble painting with a brush or pen.
-  let layer (width : float32) (fade : float32 -> float32) (persist : float32) (state : MixState) (w : float32) (a : float32) (u : Vec3f) =
+  let layer (width : float32) (fade : float32 -> float32) (norm : Vec3f -> float32) (persist : float32) (state : MixState) (w : float32) (a : float32) (u : Vec3f) =
     let state' =
       alphaProcess state w a u (fun I V i v ->
-        // TODO. Investigate what influence the choice of norm has on the result.
-        let Lw = fade (max 0G (1G - (u - state.c).norm1 * 0.2f / width))
+        let Lw = fade (max 0G (1G - norm (u - state.c) * 0.2f / width))
         Pair(I + Lw * i, V + Lw * v)
         )
     let Pw = (1G - persist) * a
@@ -122,10 +121,28 @@ module Mix =
   let sum (state : MixState) (w : float32) (a : float32) (u : Vec3f) =
     alphaProcess state w a u (fun I V i v -> Pair(I + i, V + v))
 
+  /// Weighted difference.
+  let difference (state : MixState) (w : float32) (a : float32) (u : Vec3f) =
+    alphaProcess state w a u (fun I V i v -> Pair(I + i, v - V))
+
+  /// Weighted product.
+  let product (state : MixState) (w : float32) (a : float32) (u : Vec3f) =
+    alphaProcess state w a u (fun I V i v -> Pair(I + i, V * v))
+
+  /// Weighted rotation. Typical amount is in [0, 1].
+  let rotate (amount : float32) (state : MixState) (w : float32) (a : float32) (u : Vec3f) =
+    let L = u.length
+    if L > 0.0f then
+      alphaProcess state w a u (fun I V i v -> Pair(I + i, V * Quaternionf(u / L, amount * L * G tau)))
+    else
+      alphaProcess state w a u (fun I V i v -> Pair(I + i, V))
+
   /// Composites new features over old features.
   let over (state : MixState) (w : float32) (a : float32) (u : Vec3f) =
     alphaProcess state w a u (fun I V i v ->
       let O = min I i
+      // Thickening is the total weight of two overlapping features.
+      // TODO: Is there some principled way to deal with this?
       let thickening = 1.2f
       Pair(I - O + i - O + O * thickening, (I - O) / I * V + (i - O + O * thickening) / i * v)
       )
@@ -144,10 +161,10 @@ module Mix =
 
   /// Mixes colors according to their 1-norms with mixing hardness in [0, 1].
   let norm (hardness : float32) (state : MixState) (w : float32) (a : float32) (u : Vec3f) =
+    let h = squared hardness * 2.0f
     // This is a polynomial weight response that starts linearly and keeps accelerating.
     // Unlike exp, it does not work with negative arguments.
     // We just need to tweak the hardness transformation to get the desired response curve.
-    let h = squared hardness * 2.0f
     let inline f x = let x = h * x in 1.0f + x + (squared x * (1.0f + 0.2f * squared x))
     alphaProcess state w a u (fun I V i v ->
       let U = V / I

@@ -42,9 +42,8 @@ let inline smoothLine (x : 'a) : 'a =
   elif x < Q 4 5 then x * Q 4 3 - Q 1 6
   else let x = 1G - x in 1G - squared x * (Q 50 6 * x + Q 5 6)
 
-/// Sine fade based on a Taylor series approximation. Not completely accurate.
-// TODO: Fix this to machine precision.
-let inline sine (x : 'a) : 'a = (1G - sinTaylor ((Q 1 2 - x) * G 3.14110099335114)) * Q 1 2
+/// Sine fade based on a Taylor series approximation.
+let inline sine (x : 'a) : 'a = sinTaylor ((x - Q 1 2) * G 3.13981162410392) * G 0.5000782624053935 + Q 1 2
 
 /// First order continuous, smooth cubic fade.
 let inline smooth1 (x : 'a) : 'a = x * x * (3G - 2G * x)

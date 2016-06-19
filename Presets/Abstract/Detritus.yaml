@@ -1,7 +1,7 @@
 View Center X: 0.5
 View Center Y: 0.5
 View Center Z: 0.5
-View Zoom: 0.826446413993835
+View Zoom: 1
 Palette:
   Color space: CIELch
   Hue origin: 0.534883737564086
@@ -17,61 +17,29 @@ Node: Fractalizer
   X offset: -0.783938407897949
   Y offset: 0.003005981445312
   Z offset: 1.94841814041138
-  Octaves: 3
+  Octaves: 6
   Frequency: 2.72270202636719
-  Roughness: 0.614312171936035
-  Fractalizer: variable lowpass and displace
+  Roughness: 0.583264887332916
+  Fractalizer: inverted mix and displace
     Lacunarity: 0.488917857408523
-    Displace amount: 0.803993642330169
-    Displace variability: 6.55842399597168
-    Twist amount: 0.007682202849537
-    Twist variability: 2.45693039894104
+    Lowpass filter: 0.488917827606201
     Mix operator: soft
-      Bias: -0.245641350746154
-    Variable map:
-      Node: Unary
-        Unary op: bleed
-          Bleed 1: -0.050855129957199
-          Bleed 2: 0.12548816204071
-          Node: Fractalizer
-            X offset: 1.35663270950317
-            Y offset: -4.63716220855713
-            Z offset: 1.94841814041138
-            Octaves: 3
-            Frequency: 6.38381385803223
-            Roughness: 0.843777894973754
-            Fractalizer: inverted mix and displace
-              Lacunarity: 0.521352589130401
-              Lowpass filter: 0.321664988994598
-              Mix operator: soft
-                Bias: -0.639534950256347
-              Walk operator: bounce
-                Displace amount: 0.300718426704406
-                Displace response: smooth-2
-                Displace damping: 0.258155047893524
-              Basis: leopard
-                Cell seed: 2439484832
-                Leopard radius: 0.564254760742187
-                Features per cell: one
-                Potential fade: line
-                Falloff width: 1
-                Mix operator: over
-                Cell color: any
-                  Color variation: none
-            Shape: scatter
-              Scatter seed: 2053095810
-              Scatter amount: 0.760930478572845
-              Scatter tuning: 0.468945980072021
+      Bias: -0.5
+    Walk operator: twist
+      Displace response: line
+        Displace amount: 0.803993642330169
+      Twist amount: 0.007682202849537
+      Displace damping: 0.803993642330169
     Basis: leopard
-      Cell seed: 4126209381
-      Leopard radius: 0.754202246665954
+      Cell seed: 4126209448
+      Leopard radius: 0.702109217643737
       Features per cell: one
-      Potential fade: downward arc
       Falloff width: 1
+      Falloff shape: downward arc
       Mix operator: min
       Cell color: palette
         Choices: 1
         Color 0 seed: 16916910
         Color variation: none
   Shape: component overdrive
-    Overdrive amount: 6.03331470489502
+    Overdrive amount: 6.94244813919067

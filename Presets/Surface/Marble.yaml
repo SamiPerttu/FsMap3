@@ -24,12 +24,13 @@ Node: Fractalizer
     Lacunarity: 0.605857253074646
     Highpass filter: 0.894282281398773
     Mix operator: layer
-      Layer width: 0.36880749464035
-      Layer hardness: 5
+      Layer width: 0.368807464838027
+      Falloff shape: line
+      Layer norm: 1-norm
       Layer persist: 0.406976729631423
     Walk operator: bounce
-      Displace amount: 0.527266979217529
       Displace response: line
+        Displace amount: 0.527266979217529
       Displace damping: 0.209302321076393
     Basis: radial value noise
       Cell seed: 49941475

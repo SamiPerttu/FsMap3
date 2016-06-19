@@ -24,20 +24,22 @@ Node: Fractalizer
     Lacunarity: 0.502123415470123
     Highpass filter: 0.264705896377563
     Mix operator: layer
-      Layer width: 0.324553191661834
-      Layer hardness: 7
+      Layer width: 0.287499994039535
+      Falloff shape: sigmoid
+        Sigmoid hardness: 7
+      Layer norm: 1-norm
       Layer persist: 0.906976759433746
     Walk operator: lurch
-      Displace amount: 0.321863174438476
-      Displace response: sine
+      Displace response: line
+        Displace amount: 0.321863174438476
       Displace damping: 0.308139532804489
     Basis: leopard
       Cell seed: 3573493429
       Leopard radius: 0.868941128253936
       Features per cell: Poisson
         Mean: 0.7477183734
-      Potential fade: smooth line
       Falloff width: 1
+      Falloff shape: smooth line
       Mix operator: over
       Cell color: palette
         Choices: 4
@@ -51,4 +53,4 @@ Node: Fractalizer
   Shape: scatter
     Scatter seed: 3573493427
     Scatter amount: 0.911764681339263
-    Scatter tuning: 0.717087030410766
+    Scatter tuning: 0.700465142726898

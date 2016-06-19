@@ -5,7 +5,6 @@ open Common
 open Mangle
 open Potential
 open Basis3
-open Walk
 
 
 /// Maps in 3-space form the foundation of the texture engine.
@@ -75,7 +74,7 @@ let flattenY (y : float32) (v : Vec3f) = Vec3f(v.x, y, v.z)
 let flattenZ (z : float32) (v : Vec3f) = Vec3f(v.x, v.y, z)
 
 
-/// Averages components. If they are colors, then the result is a grayscale map. All components are assigned equal weight.
+/// Averages components. All components are assigned equal weight.
 let grayscale (v : Vec3f) = Vec3f(v.sum / 3.0f)
 
 
@@ -109,6 +108,14 @@ let softmix (a : float32) (v : Vec3f) (u : Vec3f) =
   Vec3f.bimap(v, u, soft)
 
 
+/// Mixes inputs with the mix operator.
+let mix (mixOp : MixOp) (v : Vec3f) (u : Vec3f) =
+  let mutable value = Mix.start
+  value <- mixOp value 1.0f 1.0f u
+  value <- mixOp value 1.0f 1.0f v
+  Mix.result value
+
+
 /// Vector softmin when a < 0, softmax when a > 0, otherwise a linear mix.
 let softmix3 (a : float32) (v : Vec3f) (u : Vec3f) =
   let wf = exp(a * v.sum)
@@ -125,74 +132,6 @@ let shift (wave : float32 -> float32) (offset : Vec3f) =
 
 /// Displaces map g by samples from map f scaled by a.
 let inline displace a (f : Map3) (g : Map3) (v : Vec3f) = g (v + a * f v)
-
-
-/// Displaces v0 repeatedly by f. The initial displacement amount is scaled by roughness each step.
-/// Establishes a coordinate frame as well, which is used to orient the displacements.
-/// Samples from f, scaled by twist radians, twist the frame. Returns the final twisted map value.
-/// The results often resemble creases when visualized.
-let walk (roughness : float32) (displace : float32) twist n (f : Map3) (v0 : Vec3f) =
-  let mutable v = v0
-  let mutable y = Vec3f.zero
-  let mutable D = displace
-  let mutable T = Quaternionf.one
-  for i = 1 to n do
-    y <- f v
-    let L2 = y.length2
-    if L2 * twist > 1.0e-9f then
-      let L = sqrt L2
-      T <- Quaternionf(y / L, twist * L) * T
-    y <- y * T
-    v <- v + D * y
-    D <- D * roughness
-  y
-
-
-/// Displaces v0 by a series of functions. The initial displacement amount is scaled by roughness each step.
-/// Establishes a coordinate frame as well, which is used to orient the displacements.
-/// Samples from f, scaled by twist radians, twist the frame. Returns the final twisted map value.
-/// The results often resemble creases when visualized.
-let walki (roughness : float32) (displace : float32) twist n (f : int -> Map3) =
-  // Precompute the function series.
-  let a = Array.init n f
-  fun (v0 : Vec3f) ->
-    let mutable v = v0
-    let mutable y = Vec3f.zero
-    let mutable D = displace
-    let mutable T = Quaternionf.one
-    for i = 0 to n - 1 do
-      y <- a.[i] v
-      let L2 = y.length2
-      if L2 * twist > 1.0e-9f then
-        let L = sqrt L2
-        T <- Quaternionf(y / L, twist * L) * T
-      y <- y * T
-      v <- v + D * y
-      D <- D * roughness
-    y
-
-
-/// Iterates a map neighborhood. c is the neighborhood size.
-let iterate n c (f : Map3) (v0 : Vec3f) =
-  let mutable i = 0
-  let mutable v = Vec3f.zero
-  while i < n do
-    v <- f (v0 + c * v)
-    i <- i + 1
-  v
-
-
-/// Iterates neighborhoods of a series of maps.
-let iteratei n c (f : int -> Map3) =
-  // Precompute the function series.
-  let a = Array.init n f
-  fun (v0 : Vec3f) ->
-    let mutable i = 0
-    let mutable v = Vec3f.zero
-    while i < n do
-      v <- a.[i] (v0 + c * v)
-      i <- i + 1
-    v
 
 
 /// Combines two maps with a binary operation.
@@ -247,7 +186,7 @@ let layer width (fade : float32 -> float32) (a : Vec3f) (b : Vec3f) =
   (b + a * w) / (1G + w)
 
 
-/// Reflects components by shaping them with a wave function (e.g., sinr, trir).
+/// Reflects components by shaping them with a wave function with period unity (e.g., sinr, trir).
 /// Parameter a is the number of reflections.
 let reflect (wave : float32 -> float32) (a : float32) = shape (fun x -> wave(x * a))
 
@@ -279,7 +218,7 @@ let overdrive (a : float32) =
 /// Saturates the input while retaining component proportions. Amount a > 0 (typically, 1 < a < 10 for normalized inputs).
 let overdrive3 (a : float32) (v : Vec3f) =
   // Use the 8-norm as a smooth proxy for the largest magnitude component.
-  let m = v.map(squared >> squared >> squared).sum |> sqrt |> sqrt |> sqrt
+  let m = v.norm8
   if m > 0.0f then
     tanh(m * a) / m * v
   else
@@ -295,8 +234,8 @@ let posterize (fade : float32 -> float32) (levels : float32) =
 /// Posterizes components proportional to the maximum component with the specified number of levels per unit,
 /// using the fade function to transition between levels.
 let posterize3 (fade : float32 -> float32) (levels : float32) (v : Vec3f) =
-  let m = (abs v).maximum * levels
-  if m > 1.0e-6f then
+  let m = levels * v.maxNorm
+  if m > 0.0f then
     let c = (Fade.staircase fade m) / m
     v * c
   else
@@ -378,18 +317,19 @@ let color (seed : int) (f : Map3) =
 
 
 /// Variable shapes v with u. Components of u provide parameters for
-/// saturation (X), monoization (Y) and scattering (Z).
-let variableShape (u : Vec3f) (v : Vec3f) =
+/// overdrive (X), monoization (Y) and shift (Z).
+let variableShape overdriveAmount monoizeAmount shiftAmount (u : Vec3f) (v : Vec3f) =
   let p = u.map(map11to01 >> clamp01)
   // Monoization.
-  let v = lerp v (Vec3f(v.average)) p.y
+  let v = lerp v (Vec3f(v.average)) (monoizeAmount * Fade.smooth3 p.y)
   // Saturation.
-  let S = 0.01f + squared p.x * 20.0f
+  let S = 0.01f + cubed p.x * overdriveAmount * 20.0f
   let Z = 1G / softsign S
   let v = v.map(fun x -> Z * softsign(x * S))
-  // Scattering.
-  v + u * p.z
-
+  // Shift.
+  let bleed = shiftAmount * squared p.z
+  Vec3f(lerp v.x v.z bleed, lerp v.y v.x bleed, lerp v.z v.y bleed)
+  
 
 /// Returns a single Fourier style basis function direction.
 let fourierDirection (seed : int) (f : int) =
@@ -436,94 +376,4 @@ let packetw (wavef : float32 -> float32) (f : float32) =
 
 /// Packet basis function with the default, sine, wave function.
 let packet (f : float32) = packetw sinr f
-
-
-/// Basic fractalizer. Samples many octaves of basis g.
-/// Roughness is the attenuation for each doubling of frequency (typically < 1).
-/// Lacunarity (lacunarity > 0) is the wavelength scaling of successive octaves.
-let fractal (roughness : float32) (lacunarity : float32) (initialFrequency : float32) (octaves : int) (g : Basis3) =
-  // Roughness per octave.
-  let r = roughness ** (-log2 lacunarity)
-  // Set initial weight to make the weights sum to unity.
-  let w0 = 1.0f / Mat.geometricSum octaves 1.0f r
-  // Instantiate basis functions.
-  let g = Array.init octaves (fun i -> g (initialFrequency / pow lacunarity i))
-  fun (v : Vec3f) ->
-    let mutable result = Vec3f.zero
-    let mutable F = initialFrequency
-    let mutable w = w0
-    for i = 0 to g.last do
-      result <- result + w * g.[i] (v + Vec3f.fromSeed(mangle32 (i + manglef (float F))))
-      w <- w * r
-      F <- F / lacunarity
-    result
-
-
-/// Fractalizes basis g. Displaces successive samples with the walk operator.
-let fractald (roughness : float32) (lacunarity : float32) (highpass : float32) (mix : MixOp) (walk : WalkOp) (initialFrequency : float32) (octaves : int) (g : Basis3) =
-  assert (roughness > 0.0f && lacunarity > 0.0f && highpass >= 0.0f && highpass < 1.0f && initialFrequency > 0.0f)
-  let r = roughness ** (-log2 lacunarity)
-  // Set the initial weight so the most important octave has unity weight.
-  let w0 = if r <= 1.0f then 1.0f else 1.0f / pow r (octaves - 1)
-  let g = Array.init octaves (fun i -> g (initialFrequency / pow lacunarity i))
-  fun (v : Vec3f) ->
-    let mutable F = initialFrequency
-    let mutable w = w0
-    let mutable d = WalkState.start
-    let mutable value = Mix.start
-    let mutable h = 1.0f - highpass
-    for i = 0 to g.last do
-      let a = g.[i] (v + d.read(F))
-      value <- mix value w h a
-      d <- walk d F a
-      F <- F / lacunarity
-      w <- w * r
-      h <- sqrt h
-      d <- walk d F a
-    Mix.result value
-
-
-/// Fractalizes basis g. Displacement is applied starting from the most detailed octave.
-/// This tends to produce a billowy appearance, as opposed to creases.
-let fractaldi roughness lacunarity lowpass mix walk initialFrequency octaves g =
-  fractald roughness (1.0f / lacunarity) lowpass mix walk (initialFrequency / pow lacunarity (octaves - 1)) octaves g
-
-
-/// Creates a lowpass, variable displaced and twisted version of a fractalized map.
-/// The aforementioned parameters for each point are drawn from map h.
-let multid roughness lacunarity minDisplace maxDisplace minTwist maxTwist initialFrequency minOctaves maxOctaves (mix : MixOp) (h : Map3) (g : Basis3) =
-  enforce (0.0f < lacunarity && lacunarity < 1.0f) "Map3.multid: 0 < lacunarity < 1."
-
-  let g = Array.init (int maxOctaves) (fun i -> g (initialFrequency / pow lacunarity i))
-  let r = roughness ** (-log2 lacunarity)
-  // Set the initial weight so the most important octave has unity weight.
-  let w0 = if r <= 1.0f then 1.0f else 1.0f / pow r (int maxOctaves - 1)
-
-  fun (v : Vec3f) ->
-    let u = (h v).map(map11to01 >> clamp01)
-    let octaves = lerp minOctaves maxOctaves u.x
-    let displace = xerp minDisplace maxDisplace u.y
-    let twist = lerp minTwist maxTwist u.z
-
-    let mutable w = w0
-    let mutable F = initialFrequency
-    let mutable v = v
-    let mutable rotation = Quaternionf.one
-    let mutable value = Mix.start
-
-    for i = 0 to min g.last (int octaves) do
-      // Fade out smoothly the final octave.
-      let P = Fade.smooth2(delerp01 octaves (octaves - 1.0f) (float32 i))
-      if P > 0.0f then
-        let y = g.[i] (v + Vec3f.fromSeed(mangle32 (i + manglef (float F))))
-        let L2 = y.length2
-        if L2 * twist > 1.0e-9f then
-          let L = sqrt L2
-          rotation <- Quaternionf(Vec3f(y.y, y.z, -y.x) / L, L * twist) * rotation
-        v <- v + displace / F * y * rotation
-        value <- mix value (w * P) 1.0f y
-      F <- F / lacunarity
-      w <- w * r
-
-    Mix.result value
 

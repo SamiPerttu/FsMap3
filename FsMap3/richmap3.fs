@@ -6,13 +6,6 @@ open Map3
 open Map3Info
 
 
-type NormalizationMode =
-  AutoNormalization | ManualNormalization | NoNormalization
-
-  static member choices = Choices(C("auto", AutoNormalization), C("manual", ManualNormalization), C("none", NoNormalization))
-
-
-
 /// A "rich" Map3 stores a 2-window for displaying an image and sampled information
 /// for normalization and filtering.
 [<NoEquality; NoComparison>]

@@ -18,11 +18,11 @@ Node: Basis
   Y offset: -0.932822227478027
   Z offset: -2.06774520874023
   Frequency: 8.33292865753174
-  Basis: camo
+  Basis: tiles
     Cell seed: 3454189202
     Features per cell: one
     Cell distance norm: 4-norm
-    Cell fade distance: 0.030559714883565
+    Cell fade distance: 0.042138997465372
     Shading: 0.5
     Cell color: palette
       Choices: 3

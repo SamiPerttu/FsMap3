@@ -89,12 +89,13 @@
     <Compile Include="recombinationsource.fs" />
     <Compile Include="potential.fs" />
     <Compile Include="color.fs" />
-    <Compile Include="walk.fs" />
     <Compile Include="mix.fs" />
     <Compile Include="cellcolor.fs" />
     <Compile Include="featurecount.fs" />
     <Compile Include="basis3.fs" />
     <Compile Include="map3.fs" />
+    <Compile Include="walk.fs" />
+    <Compile Include="fractalizer.fs" />
     <Compile Include="map3info.fs" />
     <Compile Include="perlin.fs" />
     <Compile Include="cubex.fs" />
@@ -110,6 +111,7 @@
     <Compile Include="concurrent.fs" />
     <Compile Include="pixmap.fs" />
     <Compile Include="fadedna.fs" />
+    <Compile Include="walkdna.fs" />
     <Compile Include="shapedna.fs" />
     <Compile Include="richmap3.fs" />
     <Compile Include="map3dna.fs" />

@@ -8,11 +8,6 @@ open System.Windows.Controls
 open System.Windows.Controls.Primitives
 
 open Common
-open Basis3
-open Map3
-open Map3Info
-open Map3Dna
-open Map3Gui
 
 
 type EditorViewMode = FullView | HalfView | ThirdView
@@ -238,12 +233,14 @@ type View =
         else Retain
 
     | Everything | _ ->
-      let mR = mR * rnd.exp(0.01, 1.0)
+      let mR = mR * rnd.exp(0.01, 0.5)
       fun rnd (dna : Dna) i ->
         let name = dna.[i].name
         if View.shouldRetainAlways name then
           Retain
-        elif rnd.boolean(mR) then
+        elif rnd.boolean(mR * 0.2) then
+          Randomize
+        elif rnd.boolean(mR * 0.8) then
           Jolt01(rnd.exp(0.01, 1.0))
         else
           Retain

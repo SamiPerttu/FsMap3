@@ -55,11 +55,14 @@ module Vector3Extensions =
     /// Transforms the components of the vector with the given function.
     member inline v.map(f : float32 -> float32) = Vector3(f v.x, f v.y, f v.z)
 
+    /// 4-norm of the vector.
+    member inline v.norm4 = v.map(fun x -> squared (squared x)).sum |> sqrt |> sqrt
+
+    /// 8-norm of the vector.
+    member inline v.norm8 = v.map(fun x -> squared (squared (squared x))).sum |> sqrt |> sqrt |> sqrt
+
     /// L-norm of the vector.
     member inline v.norm(L : float32) = (abs v.x ** L + abs v.y ** L + abs v.z ** L) ** (1.0f / L)
-
-    /// Raises components to the given power.
-    member inline v.power(a : float32) = Vector3(v.x ** a, v.y ** a, v.z ** a)
 
     /// Reduces the components of a vector with a binary operator.
     member inline v.reduce(op : float32 -> float32 -> float32) = op (op v.x v.y) v.z

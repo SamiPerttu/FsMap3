@@ -368,7 +368,7 @@ let worleyColor (layout : LayoutFunction)
 
 /// Colored Worley tile basis. Evaluates weighted closest cell color.
 /// Color fade distance between closest cells is typically a small value, somewhere around [0.02, 0.2].
-let camo (layout : LayoutFunction)
+let tiles (layout : LayoutFunction)
          (count : FeatureCount)
          (distance : CellDistance)
          shading

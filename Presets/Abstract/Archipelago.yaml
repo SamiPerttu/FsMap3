@@ -10,7 +10,7 @@ Palette:
   Saturation range: 0.800000011920929
   Saturation minimum: 0
   Saturation skew: -1.48837208747864
-  Value skew: 0.521860361099243
+  Value skew: 0.418604612350463
 FsMap3 Editor Version 0.3.0:
 Layout: Tile All
 Node: Unary
@@ -30,16 +30,17 @@ Node: Unary
         Mix operator: norm
           Hardness: 0.709302306175231
         Walk operator: cross
-          Displace amount: 0.162381038069725
-          Displace response: power-2
+          Displace response: smooth line
+            Displace amount: 0.46572470664978
+            Response smoothness: 0.46572470664978
           Displace damping: 0.162790700793266
         Basis: leopard
           Cell seed: 3672678985
           Leopard radius: 0.607742607593536
           Features per cell: rounded
             Mean: 0.5001468204
-          Potential fade: reverse power-2
           Falloff width: 0.251744180917739
+          Falloff shape: reverse power-2
           Mix operator: soft
             Bias: -0.209302306175231
           Cell color: unit
