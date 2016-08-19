@@ -2,7 +2,6 @@
 
 open Common
 open Mangle
-open Walk
 open Basis3
 open Map3
 
@@ -53,7 +52,7 @@ let fractal (roughness : float32)
   // Get roughness per octave from roughness.
   let r = roughness ** (-log2 lacunarity)
   // Instantiate bases.
-  let basis = Array.init octaves (fun i -> basis (initialFrequency / pow lacunarity i))
+  let basis = Array.init octaves (fun i -> basis i (initialFrequency / pow lacunarity i))
 
   fun (v : Vec3f) ->
     let mutable value = Mix.start
@@ -83,7 +82,7 @@ let fractald (roughness : float32)
   let r = roughness ** (-log2 lacunarity)
   // Set the initial weight so the most important octave has unity weight.
   let w0 = if r <= 1.0f then 1.0f else 1.0f / pow r (octaves - 1)
-  let basis = Array.init octaves (fun i -> basis (initialFrequency / pow lacunarity i))
+  let basis = Array.init octaves (fun i -> basis i (initialFrequency / pow lacunarity i))
 
   fun (v : Vec3f) ->
     let mutable F     = initialFrequency
@@ -127,7 +126,7 @@ let fractalv roughness
              (variable : Map3)
              (basis : Basis3) =
 
-  let basis = Array.init (int maxOctaves) (fun i -> basis (initialFrequency / pow lacunarity i))
+  let basis = Array.init (int maxOctaves) (fun i -> basis i (initialFrequency / pow lacunarity i))
   let r     = roughness ** (-log2 lacunarity)
 
   fun (v : Vec3f) ->

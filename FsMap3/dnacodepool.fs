@@ -3,7 +3,7 @@ namespace FsMap3
 
 open Common
 open Mangle
-open DnaParameter
+open DnaParameterHash
 
 
 /// Occurrence of a parameter code.
@@ -82,8 +82,8 @@ type CodeMemory =
 [<NoEquality; NoComparison>]
 type CodePool =
   {
-    storeHash : ParameterHash
-    retrieveHash : ParameterHash
+    storeHash : DnaParameterHash
+    retrieveHash : DnaParameterHash
     hashMap : HashMap<int64, CodeMemory>
     maxValuesPerKey : int
     hash128 : Hash128

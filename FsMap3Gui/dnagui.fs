@@ -27,18 +27,18 @@ end
 
 
 /// Plug-in for custom choice visualization. Value goes into ComboBoxItem.
-type ChoiceVisualizer = Parameter -> int -> obj option
+type ChoiceVisualizer = DnaParameter -> int -> obj option
 
 
 /// Plug-in for custom value visualization.
-type ValueVisualizer = Parameter -> UIElement option
+type ValueVisualizer = DnaParameter -> UIElement option
 
 
 /// Expresses extra-genetic dependencies in the visualization of a parameter as a list of
 /// pairs (maximum distance to dependency source, dependency source parameter name).
 /// These are needed if the visualization of a parameter can change even when
 /// the value and value string remain the same.
-type VisualizerDependency = Parameter -> (int * string) list
+type VisualizerDependency = DnaParameter -> (int * string) list
 
 
 
@@ -80,7 +80,7 @@ type DnaView() =
   member val valueBoxMargin = 1.0 with get, set
 
   /// Parameter display filtering. Read-only by default. Note that read-only parameters still receive callbacks.
-  member val viewFilter = fun (_ : Parameter) -> ReadOnly with get, set
+  member val viewFilter = fun (_ : DnaParameter) -> ReadOnly with get, set
 
   /// Called when the user clicks the left mouse button on the value of a parameter.
   /// The callback is invoked only if the value is different from the displayed value.
@@ -110,7 +110,7 @@ type DnaView() =
     this.treeView.Items.Clear()
 
 
-  member private this.populateItemCanvas(i : int, parameter : Parameter, editable : bool, vcanvas : Canvas) =
+  member private this.populateItemCanvas(i : int, parameter : DnaParameter, editable : bool, vcanvas : Canvas) =
     if parameter.format = Ordered then
       let vrect = Rectangle(Fill = this.valueBoxFg, Width = max 1.0 ((this.valueBoxWidth - this.valueBoxMargin * 2.0) * (float parameter.value / float parameter.maxValue)), Height = this.valueBoxHeight - this.valueBoxMargin * 2.0)
       vcanvas.add(vrect, this.valueBoxMargin, this.valueBoxMargin)
@@ -118,7 +118,7 @@ type DnaView() =
     vcanvas.add(vtext, 2.0, 2.0)
 
   /// Creates a UI element for the parameter.
-  member private this.createItemPanel(i : int, parameter : Parameter, editable : bool) =
+  member private this.createItemPanel(i : int, parameter : DnaParameter, editable : bool) =
     let itemPanel = StackPanel(Orientation = Orientation.Horizontal)
     itemPanel.add(TextBlock(Documents.Run(parameter.name), Width = this.nameWidth, VerticalAlignment = VerticalAlignment.Center))
     // If we have editable choices, show them in a list.

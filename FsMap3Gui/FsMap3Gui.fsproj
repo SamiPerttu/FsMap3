@@ -72,6 +72,7 @@
     <Compile Include="richmap3gui.fs" />
     <Compile Include="fileutil.fs" />
     <Compile Include="busyimage.fs" />
+    <Compile Include="editorsettings.fs" />
     <Compile Include="editorabout.fs" />
     <Compile Include="editorview.fs" />
     <Compile Include="editorundo.fs" />
@@ -120,6 +121,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>

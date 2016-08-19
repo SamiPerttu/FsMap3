@@ -1,7 +1,7 @@
-View Center X: 0.5
-View Center Y: 0.5
+View Center X: 1.89955139160156
+View Center Y: -1.64616203308105
 View Center Z: 0.379989624023437
-View Zoom: 1
+View Zoom: 0.909091114997863
 Palette:
   Color space: CIELch
   Hue origin: 0
@@ -10,35 +10,36 @@ Palette:
   Saturation range: 0.800000011920929
   Saturation minimum: 0.019944034516811
   Saturation skew: -0.348837316036224
-  Value skew: 1.16279077529907
+  Value skew: 0.976744174957275
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
   X offset: -2.41859531402588
   Y offset: -0.940824508666992
-  Z offset: 0.019205093383789
+  Z offset: 0.219919681549072
   Octaves: 8
   Frequency: 2.51512956619263
-  Roughness: 0.487291425466537
+  Roughness: 0.543440759181976
   Fractalizer: mix and displace
-    Lacunarity: 0.605857253074646
-    Highpass filter: 0.894282281398773
+    Lacunarity: 0.596231579780578
+    Highpass filter: 0.811046481132507
     Mix operator: layer
-      Layer width: 0.368807464838027
-      Falloff shape: line
-      Layer norm: 1-norm
-      Layer persist: 0.406976729631423
+      Layer width: 0.339810401201248
+      Falloff shape: sigmoid
+        Sigmoid hardness: 1
+      Layer norm: max
+      Layer persist: 0.668604671955108
     Walk operator: bounce
       Displace response: line
-        Displace amount: 0.527266979217529
+        Displace amount: 0.694858610630035
       Displace damping: 0.209302321076393
     Basis: radial value noise
-      Cell seed: 49941475
-      Cell color: any
+      Cell seed: 2592065788
+      Cell color: big
         Color variation: none
       Radial fade: smooth-2
   Shape: shift
-    X shift: -0.203727707266807
+    X shift: -0.216431736946105
     Y shift: -0.319761455059051
-    Z shift: 0.074960768222808
-    Shift wave: smooth triangle
+    Z shift: 0.364696621894836
+    Shift wave: triangle

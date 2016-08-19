@@ -6,7 +6,7 @@ open Common
 
 /// A 3-channel pixel image stored in row-major order with 32-bit floating point components.
 /// The components are customarily in the unit range if they are intended to be interpreted as colors.
-/// Note that this is different from Map3 functions, where the standard range is [-1, 1].
+/// Note that this is different from Map3 functions where the standard range is [-1, 1].
 [<NoEquality; NoComparison>]
 type Pixmap =
   {
@@ -257,5 +257,4 @@ type PixmapSource() =
     source.finish()
     source.postFx(pixmap)
     pixmap
-
 

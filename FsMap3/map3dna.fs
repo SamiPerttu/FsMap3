@@ -135,8 +135,11 @@ let genFeatureCount (dna : Dna) =
     )
 
 
-/// Generates a mixing operator for octave or map mixing.
-let genMixOp (dna : Dna) =
+
+
+/// Generates a mixing operator for octave or map mixing. The binary argument indicates whether
+/// there are only two maps to mix (as "persistence" parameters will not be used in that case).
+let genMapMixOp (binary : bool) (dna : Dna) =
   dna.branch("Mix operator",
     C(4.0, "sum", fun _ -> Mix.sum),
     C(0.5, "difference", fun _ -> Mix.difference),
@@ -151,11 +154,19 @@ let genMixOp (dna : Dna) =
       let norm    = dna.category("Layer norm", C(1.5, "1-norm", fun (v : Vec3f) -> v.norm1),
                                                C(3.0, "2-norm", fun (v : Vec3f) -> 1.633f * v.length),
                                                C(1.5, "max", fun (v : Vec3f) -> 2.0f * v.maxNorm))
-      let persist = dna.float32("Layer persist", lerp 0.0f 1.0f)
+      let persist = match binary with | true -> 0.0f | false -> dna.float32("Layer persist", lerp 0.0f 1.0f)
       Mix.layer width fade norm persist
       ),
     C(1.0, "rotate", fun _ -> Mix.rotate (dna.float32("Rotate amount", lerp 0.1f 1.0f)))
     )
+
+
+/// Generates a mixing operator for arbitrary octave or map mixing.
+let genMixOp = genMapMixOp false
+
+
+/// Generates a mixing operator for mixing of two octaves or maps.
+let genBinaryMixOp = genMapMixOp true
 
 
 /// Generates a mixing operator for intra-basis (feature) mixing.
@@ -389,76 +400,27 @@ let rec genBasis maxDepth (dna : Dna) =
       let basis1            = dna.descend("Flow", recurseShapedBasis)
       impflow (layoutFunction <| genLayout dna) featureCount potential mixOp gradient cellColor fade fadeWidth radius basis1 flowFrequency seed
       ),
+    C(dualWeight, "mix", fun _ ->
+      let factor   = genFactor()
+      let mixOp    = genMixOp dna
+      let basis1   = dna.descend("Base", recurseBasis)
+      let basis2   = dna.descend("Modifier", recurseShapedBasis)
+      binaryBasis (mix mixOp) factor basis1 basis2
+      ),
     C(dualWeight, "displace", fun _ ->
       let factor   = genFactor()
-      let displace = shape3 (genDisplaceResponse 0.1f 1.5f dna)
-      let basis1   = dna.descend("Displacer", recurseShapedBasis)
-      let basis2   = dna.descend("Base", recurseBasis)
+      let displace = shape3 (genDisplaceResponse 0.0f 1.5f dna)
+      let basis1   = dna.descend("Base", recurseBasis)
+      let basis2   = dna.descend("Displacement", recurseShapedBasis)
       displaceBasis displace factor basis1 basis2
       ),
     C(dualWeight, "displace and mix", fun _ ->
       let factor   = genFactor()
-      let mixOp    = genBasisMixOp dna
+      let mixOp    = genMixOp dna
       let displace = shape3 (genDisplaceResponse 0.0f 1.5f dna)
-      let basis1   = dna.descend("Modifier", recurseShapedBasis)
-      let basis2   = dna.descend("Base", recurseBasis)
+      let basis1   = dna.descend("Base", recurseBasis)
+      let basis2   = dna.descend("Modifier", recurseShapedBasis)
       binaryBasisd (mix mixOp) displace factor basis1 basis2
-      ),
-    C(dualWeight, "layer", fun _ ->
-      let factor = genFactor()
-      let width  = dna.float32("Layer width", squared >> lerp 0.05f 1.0f)
-      let fade   = genLayerFade dna
-      let basis1 = dna.descend("Layer", recurseBasis)
-      let basis2 = dna.descend("Base", recurseBasis)
-      binaryBasis (layer width fade) factor basis1 basis2
-      ),
-    C(dualWeight, "component softmix", fun _ ->
-      let factor = genFactor()
-      let mix    = genSoftmix dna
-      let basis1 = dna.descend("Basis 1", recurseBasis)
-      let basis2 = dna.descend("Basis 2", recurseBasis)
-      binaryBasis mix factor basis1 basis2
-      ),
-    C(dualWeight, "norm softmix", fun _ ->
-      let factor = genFactor()
-      let mix    = genSoftmix3 dna
-      let basis1 = dna.descend("Basis 1", recurseBasis)
-      let basis2 = dna.descend("Basis 2", recurseBasis)
-      binaryBasis mix factor basis1 basis2
-      ),
-    C(dualWeight, "layered rotate", fun _ ->
-      let factor       = genFactor()
-      let rotateAmount = dna.float32("Rotate amount", lerp 2.0f 6.0f)
-      let rotateWidth  = dna.float32("Rotate width", lerp 1.0f 3.0f)
-      let fade         = genLayerFade dna
-      let basis1       = dna.descend("Rotator", recurseShapedBasis)
-      let basis2       = dna.descend("Base", recurseBasis)
-      binaryBasis (rotatef rotateWidth rotateAmount fade) factor basis1 basis2
-      ),
-    C(dualWeight, "displace and rotate", fun _ ->
-      let factor       = genFactor()
-      let rotateAmount = dna.float32("Rotate amount", lerp 2.0f 6.0f)
-      let displace     = shape3 (genDisplaceResponse 0.0f 1.5f dna)
-      let basis1       = dna.descend("Modifier", recurseShapedBasis)
-      let basis2       = dna.descend("Base", recurseBasis)
-      binaryBasisd (rotate rotateAmount) displace factor basis1 basis2
-      ),
-    C(dualWeight, "displace and softmix", fun _ ->
-      let factor   = genFactor()
-      let mix      = genSoftmix3 dna
-      let displace = shape3 (genDisplaceResponse 0.0f 1.5f dna)
-      let basis1   = dna.descend("Modifier", recurseShapedBasis)
-      let basis2   = dna.descend("Base", recurseBasis)
-      binaryBasisd mix displace factor basis1 basis2
-      ),
-    C(dualWeight, "shape", fun _ ->
-      let factor      = genFactor()
-      let overdrive   = dna.float32("Overdrive")
-      let monoization = dna.float32("Monoization")
-      let shift       = dna.float32("Shift")
-      let basis1      = dna.descend("Shaper", recurseShapedBasis)
-      let basis2      = dna.descend("Base", recurseBasis)
-      binaryBasis (variableShape overdrive monoization shift) factor basis1 basis2
       )
     )
 
@@ -501,7 +463,7 @@ let genFractalizer (subGen : Dna -> Map3) (dna : Dna) =
         let displace = dna.float32("Displace amount", xerp 0.2f 3.0f)
         let twist    = dna.float32("Twist amount", lerp 0.0f 3.0f)
         let basis    = basis()
-        walk roughness (displace / basef) twist octaves (basis basef)
+        walk roughness (displace / basef) twist octaves (basis 0 basef)
         ),
       C(2.0, "variable", fun _ ->
         let lacunarity = genLacunarity()
@@ -524,45 +486,19 @@ let genFractalizer (subGen : Dna -> Map3) (dna : Dna) =
 let genBinop (subGen1 : Dna -> Map3) (subGen2 : Dna -> Map3) (dna : Dna) =
   let offset         = genOffset dna
   let displacement() = shape3 (genDisplaceResponse 0.0f 0.5f dna)
-  let rotateWidth()  = dna.float32("Rotate width", lerp 1.0f 4.0f)
-  let rotateAmount() = dna.float32("Rotate amount", lerp 2.0f 6.0f)
-  let layer()        = layer (dna.float32("Layer width", squared >> lerp 0.1f 1.0f)) (genLayerFade dna)
   let subName1, subName2, binop =
     dna.branch("Operator",
       C(1.0, "displace", fun _ ->
         let displace = displacement()
-        "Modifier", "Base", fun (a : Map3) (b : Map3) (v : Vec3f) -> b (v + displace (a v))
+        "Base", "Modifier", fun (a : Map3) (b : Map3) (v : Vec3f) -> b (v + displace (a v))
         ),
-      C(1.0, "displace and rotate", fun _ ->
+      C(1.0, "mix", fun _ ->
+        "Base", "Modifier", bimap (mix (genBinaryMixOp dna))
+        ),
+      C(1.0, "displace and mix", fun _ ->
+        let mixOp = genBinaryMixOp dna
         let displace = displacement()
-        let rotateWidth = rotateWidth()
-        let rotateAmount = rotateAmount()
-        "Modifier", "Base", bimapd displace <| rotatef rotateWidth rotateAmount (genLayerFade dna)
-        ),
-      C(1.0, "displace and softmix", fun _ ->
-        let displace = displacement()
-        "Modifier", "Base", bimapd displace <| genSoftmix3 dna
-        ),
-      C(2.0, "displace and layer", fun _ ->
-        let displace = displacement()
-        "Modifier", "Base", bimapd displace <| layer()
-        ),
-      C(1.0, "layered rotate", fun _ ->
-        let rotateWidth = rotateWidth()
-        let rotateAmount = rotateAmount()
-        "Rotator", "Base", bimap <| rotatef rotateWidth rotateAmount (genLayerFade dna)
-        ),
-      C(1.0, "rotate", fun _ ->
-        "Rotator", "Base", bimap <| rotate (rotateAmount())
-        ),
-      C(1.0, "component softmix", fun _ ->
-        "Map 1", "Map 2", bimap <| genSoftmix dna
-        ),
-      C(1.0, "norm softmix", fun _ ->
-        "Map 1", "Map 2", bimap <| genSoftmix3 dna
-        ),
-      C(2.0, "layer", fun _ ->
-        "Layer", "Base", bimap <| layer()
+        "Base", "Modifier", bimapd displace <| mix mixOp
         )
       )
   let b0 = dna.descend(subName1, subGen1)
@@ -582,7 +518,7 @@ let rec genNode (E : float) (dna : Dna) =
 
   dna.branch("Node",
     C(2.0 * nodeWeight 1.0 |> max 1.0e-6, "Basis", fun _ ->
-      genOffset dna >> genBasis 3 dna (dna.float32("Frequency", xerp 2.0f 64.0f)) >> genShape dna
+      genOffset dna >> genBasis 3 dna 0 (dna.float32("Frequency", xerp 2.0f 64.0f)) >> genShape dna
       ),
     C(nodeWeight 5.0, "Fractalizer", fun _ ->
       genFractalizer (genNode (0.7 * E)) dna

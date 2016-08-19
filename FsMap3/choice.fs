@@ -77,6 +77,9 @@ type Choices<'a>([<System.ParamArray>] v : C<'a> array) =
   /// Returns choice number u.
   member this.value(u : uint) = wset.at(int u).snd
 
+  /// Returns a default choice, which is the first choice with the greatest weight.
+  member this.pickDefault() = Fun.argMax 0 this.last this.weight |> uint
+
   /// Picks a choice proportionately using x in [0, 1].
   member this.pick(x) = uint (wset.pickIndex(x))
 

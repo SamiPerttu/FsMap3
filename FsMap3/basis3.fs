@@ -5,10 +5,10 @@ open Common
 open Mangle
 
 
-/// Basis functions accept a frequency argument. Invoking a basis with a frequency
-/// triggers the creation of a map for that particular frequency. For that reason,
+/// Basis functions accept octave number and frequency arguments. Invoking a basis
+/// triggers the creation of a map for that particular octave and frequency. For that reason,
 /// in a 3-texture, all basis functions should be instanced before use.
-type Basis3 = float32 -> Vec3f -> Vec3f
+type Basis3 = int -> float32 -> Vec3f -> Vec3f
 
 
 /// BasisData contains all kinds of information used during basis function calculations.
@@ -166,7 +166,8 @@ type BasisData =
     search.[2] <- Pair(zd0, 2)
     Fun.insertionSort 0 2 (fun i -> search.[i].x) (fun i j -> search.swap(i, j))
 
-  member inline this.release() = this.allocator.release(this)
+  member inline this.release() =
+    this.allocator.release(this)
 
   static member create(allocator) =
     {
@@ -194,7 +195,7 @@ let threadLocalBasisData = new System.Threading.ThreadLocal<Allocator<BasisData>
                              Allocator.create(BasisData.create, fun allocator data -> data.allocator <- allocator))
 
 
-/// Layout-specific data for an instanced basis.
+/// Layout-specific data for an instanced basis. Instancing a basis fixes the frequency and the layout.
 [<NoComparison; NoEquality>]
 type LayoutInstance =
   {
@@ -211,22 +212,22 @@ type LayoutInstance =
 
 
 (*
-Given a cell hash seed, a frequency and a 3-point, a basis layout makes available:
+Given a cell hash seed, an octave number, a frequency and a 3-point, a basis layout makes available:
 
 -coordinates of the 3-cell where the point is located.
 -fractional position inside the 3-cell.
 -hash value and coordinates of any other 3-cell.
 *)
-type LayoutFunction = int -> float32 -> LayoutInstance
+type LayoutFunction = int -> int -> float32 -> LayoutInstance
 
 
 /// Standard, high quality layout. Each instance has a distinct cell grid offset and rotation.
-let hifiLayout seed (f : float32) =
+let hifiLayout seed octave (f : float32) =
   let a = mangle64 (int64 seed)
   let b = mangle64 a
   {
     LayoutInstance.f = f
-    seed = seed
+    seed = seed + octave
     fix = 0
     fiy = 0
     fiz = 0
@@ -246,10 +247,10 @@ let hifiLayout seed (f : float32) =
 
 
 /// Constant orientation layout. Each frequency has a distinct cell grid offset.
-let offsetLayout seed (f : float32) =
+let offsetLayout seed octave (f : float32) =
   {
     LayoutInstance.f = f
-    seed = seed
+    seed = seed + octave
     fix = 0
     fiy = 0
     fiz = 0
@@ -269,10 +270,10 @@ let offsetLayout seed (f : float32) =
 
 
 /// Layout that does no processing of the coordinates.
-let passLayout seed (f : float32) =
+let passLayout seed octave (f : float32) =
   {
     LayoutInstance.f = f
-    seed = seed
+    seed = seed + octave
     fix = 0
     fiy = 0
     fiz = 0
@@ -294,11 +295,11 @@ let passLayout seed (f : float32) =
 /// A tiling layout. This layout tiles 3-space with copies of the unit cube.
 /// The frequency is rounded to an integer to tile correctly. The full frequency is still used to seed
 /// the frequency hash, so that every distinct frequency has a unique appearance and cell grid offset.
-let tileLayout seed (f : float32) =
+let tileLayout seed octave (f : float32) =
   let fi = maxi 1 (int (round f))
   {
     LayoutInstance.f = float32 fi
-    seed = seed
+    seed = seed + octave
     fix = fi
     fiy = fi
     fiz = fi
@@ -320,11 +321,11 @@ let tileLayout seed (f : float32) =
 /// This layout tiles the X dimension only by repeating the unit interval.
 /// The X frequency is rounded to the nearest integer to tile correctly.
 /// Each frequency has a distinct cell grid offset.
-let tileXLayout seed (f : float32) =
+let tileXLayout seed octave (f : float32) =
   let fi = maxi 1 (int (round f))
   {
     LayoutInstance.f = float32 fi
-    seed = seed
+    seed = seed + octave
     fix = fi
     fiy = 0
     fiz = 0
@@ -347,11 +348,11 @@ let tileXLayout seed (f : float32) =
 /// This layout tiles the Y dimension only by repeating the unit interval.
 /// The Y frequency is rounded to the nearest integer to tile correctly.
 /// Each frequency has a distinct cell grid offset.
-let tileYLayout seed (f : float32) =
+let tileYLayout seed octave (f : float32) =
   let fi = maxi 1 (int (round f))
   {
     LayoutInstance.f = float32 fi
-    seed = seed
+    seed = seed + octave
     fix = 0
     fiy = fi
     fiz = 0
@@ -374,11 +375,11 @@ let tileYLayout seed (f : float32) =
 /// This layout tiles the Z dimension only by repeating the unit interval.
 /// The Z frequency is rounded to the nearest integer to tile correctly.
 /// Each frequency has a distinct cell grid offset.
-let tileZLayout seed (f : float32) =
+let tileZLayout seed octave (f : float32) =
   let fi = maxi 1 (int (round f))
   {
     LayoutInstance.f = float32 fi
-    seed = seed
+    seed = seed + octave
     fix = 0
     fiy = 0
     fiz = fi

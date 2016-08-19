@@ -112,7 +112,7 @@ type [<NoComparison; NoEquality>] EditorView<'a> =
     let view = PixmapView(image, previewLevels = previewLevels)
     grid.add(image, 0, 0)
     let busySource = BusyImage.busyBitmaps.[0]
-    let busyImage = Image(SnapsToDevicePixels = true, Opacity = 0.5, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Visibility = Visibility.Collapsed, IsHitTestVisible = false, Width = float busySource.PixelWidth, Height = float busySource.PixelHeight, Source = busySource)
+    let busyImage = Image(SnapsToDevicePixels = true, Opacity = 1.0, Margin = Thickness(0.0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Visibility = Visibility.Collapsed, IsHitTestVisible = false, Width = float busySource.PixelWidth, Height = float busySource.PixelHeight, Source = busySource)
     grid.add(busyImage, 0, 0)
     let this = 
       {

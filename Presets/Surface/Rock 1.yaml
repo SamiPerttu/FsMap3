@@ -26,8 +26,8 @@ Node: Fractalizer
     Mix operator: sum
     Walk operator: bounce
       Displace response: line
-        Displace amount: 0.074668742716312
-      Displace damping: 0.074063293635845
+        Displace amount: 0.081158727407455
+      Displace damping: 0.523255825042724
     Basis: colored Worley
       Cell seed: 11132
       Features per cell: Poisson
@@ -35,7 +35,7 @@ Node: Fractalizer
       Cell distance norm: 2-norm
       Worley pattern: 11132
       Worley fade: reverse power-2
-      Cell fade distance: 0.030413130298256
+      Cell fade distance: 0.046902477741241
       Cell color: unit
         Color variation: none
   Shape: scatter

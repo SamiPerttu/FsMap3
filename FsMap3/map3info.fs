@@ -187,7 +187,7 @@ type Map3Info with
       info
 
 
-  /// Generates a map and its info. Cache aware.
+  /// Generates a (sub)map and its info. Cache aware.
   static member create(generator : Dna -> Map3, dna : Dna, ?extraId : int, ?retainSamples, ?computeSlopes) =
     let i0 = dna.size
     let map = generator dna
@@ -223,11 +223,11 @@ let normalizeBasis (basisGenerator : Dna -> Basis3) (dna : Dna) =
   let generator = fun (dna : Dna) ->
     basis := basisGenerator dna
     // Instantiate the basis with an arbitrary high frequency for sampling.
-    !basis 200.0f
+    !basis 0 200.0f
 
   let info = Map3Info.create(generator, dna, extraId = 0xba515)
 
-  fun frequency ->
-    let map = !basis frequency
+  fun octave frequency ->
+    let map = !basis octave frequency
     map >> info.normalizer
 

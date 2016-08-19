@@ -1,16 +1,17 @@
 View Center X: 0.5
 View Center Y: 0.5
 View Center Z: 0.5
-View Zoom: 1.61051058769226
+View Zoom: 1
 Palette:
   Color space: HSV
-  Hue origin: 0.519999980926513
-  Hue range: 0.1817447245121
-  Hue skew: 0
-  Saturation range: 0.800000011920929
-  Saturation minimum: 0
+  Hue origin: 0.604651153087616
+  Hue range: 0.12217753380537
+  Hue concentration: 0.715116262435913
+  Hue damping: 0.546511650085449
+  Saturation range: 0.879069745540618
+  Saturation minimum: 0.120930254459381
   Saturation skew: 0.235294103622436
-  Value skew: 0.941176414489746
+  Value skew: 1.56976747512817
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -18,18 +19,46 @@ Node: Fractalizer
   Y offset: 0
   Z offset: 0
   Octaves: 10
-  Frequency: 2.51645922660828
+  Frequency: 2
   Roughness: 0.704806387424469
-  Fractalizer: mix and displace
+  Fractalizer: variable
     Lacunarity: 0.5
-    Highpass filter: 0.105882354080677
+    Minimum octaves: 10
+    Octave direction: forward
+    First octave: 0
+    Displace variation: 0
+    Twist variation: 0.534883737564086
     Mix operator: sum
     Walk operator: march
       Displace response: line
-        Displace amount: 0.731206059455871
-      Displace damping: 0.156976744532585
+        Displace amount: 0.606949746608734
+      Displace damping: 0.215116277337074
     Basis: Perlin noise
-      Cell seed: 1260196434
+      Cell seed: 3551107634
       Perlin fade: smooth-1
+    Variable map:
+      Node: Basis
+        X offset: 2.82388162612915
+        Y offset: -4.4970440864563
+        Z offset: 2.25290727615356
+        Frequency: 4.47780227661133
+        Basis: Julia
+          Cell seed: 1629702709
+          Iterations: 4
+          Formula: Julia
+          Features per cell: Poisson
+            Mean: 1.568572801
+          Feature radius: 1.26427280902863
+          Roughness: 0.831998348236084
+          Feature fade: power-3
+          C-origin X: -0.791924715042114
+          C-origin Y: -0.425576478242874
+          Q-origin X: -0.388703852891922
+          Q-origin Y: 0.088795185089111
+          C-range: 0.591881990432739
+          Q-range: 0.830219268798828
+          C-scale: 0.991715908050537
+          Q-scale: 0.425608247518539
+        Shape: none
   Shape: wave packet
     Packet seed: 1260196345

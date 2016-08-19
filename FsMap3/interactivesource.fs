@@ -1,14 +1,14 @@
 ﻿namespace FsMap3
 
 open Common
-open DnaParameter
+open DnaParameterHash
 
 
 /// Dna source for interactive editing.
 type InteractiveSource(seed) =
   inherit DnaSource()
 
-  // TODO. Create a set of pools that allows for exact node insertion and removal.
+  // TODO. Support explicit node insertion and removal.
 
   let poolSet =
     [| CodePool.create(structuralHash, 1)

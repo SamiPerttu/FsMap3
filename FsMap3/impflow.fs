@@ -21,9 +21,10 @@ let impflow (layout : LayoutFunction)
             (fade : float32 -> float32)
             fadeWidth
             (radius : float32)
-            (flow : Basis3)
+            (flowBasis : Basis3)
             (flowFrequencyFactor : float32)
             seed
+            octave
             frequency =
 
   assert (radius > 0G)
@@ -32,13 +33,15 @@ let impflow (layout : LayoutFunction)
   let Ri = 1G / radius
   let wi = 1.0f / fadeWidth
 
-  let layoutInstance = layout seed frequency
+  let layoutInstance = layout seed octave frequency
+
+  let flow = flowBasis octave (frequency * flowFrequencyFactor)
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
 
     // Get rotation from the flow map.
-    let L = G pi * flow (frequency * flowFrequencyFactor) v
+    let L = G pi * flow v
     let length = L.length
     let pose = if length > 1.0e-9f then Quaternionf(L / length, length) else Quaternionf.one
 
@@ -70,5 +73,5 @@ let impflow (layout : LayoutFunction)
 /// Default implicit flow basis with the standard layout, count, mixing and color functions.
 /// The cell hash seed is derived from the frequency.
 let inline impflowd fade potential radius flow flowFactor frequency =
-  impflow hifiLayout unityCount potential Mix.sum 0.5f anyColor fade 1.0f radius flow flowFactor (manglef32 frequency) frequency
+  impflow hifiLayout unityCount potential Mix.sum 0.5f anyColor fade 1.0f radius flow flowFactor (manglef32 frequency) 0 frequency
 

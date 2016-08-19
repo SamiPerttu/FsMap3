@@ -29,6 +29,8 @@ type Editor =
 
   static member start(?sourceView) =
 
+    let settings = EditorSettings.read()
+
     let presetDirectory = "Presets"
 
     /// Minimum resolution of a view.
@@ -120,13 +122,10 @@ type Editor =
         member this.finish() = ()
         member this.postFx(_) = ()
       }
-    let richSeed = { RichMap3.map = mapSeed; palette = Map3.identity; center = Vec3f(0.5f); zoom = 1.0f; info = Map3Info.create(mapSeed) }
+    let richSeed = { RichMap3.uncolored = mapSeed; palette = Map3.identity; center = Vec3f(0.5f); zoom = 1.0f; info = Map3Info.create(mapSeed) }
 
     let deepGenerator = fun (dna : Dna) -> Map3Dna.generateEditorMap (!mapFiltering) dna
-    let pixmapGenerator extraTransform =
-      match extraTransform with
-      | Some(transform) -> RichMap3.pixmapSourceWith(transform)
-      | None -> RichMap3.pixmapSource
+    let pixmapGenerator = RichMap3.pixmapSource
 
     let mapFilter =
       { 
@@ -138,16 +137,16 @@ type Editor =
       }
     let deepFilter = fun map previous -> if !mapFiltering then mapFilter.filter(map, previous) else true
 
-    let fullView = EditorView.create(FullView, 0, 0, 0, pixmapSeed, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, true, 4)
+    let fullView = EditorView.create(FullView, 0, 0, 0, pixmapSeed, richSeed, deepGenerator, pixmapGenerator, deepFilter, canvas, true, 4)
 
     let halfView = Array.init 4 (fun i ->
       let x, y = i % 2, i / 2
-      EditorView.create(HalfView, i, x, y, pixmapSeed, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, false, 4)
+      EditorView.create(HalfView, i, x, y, pixmapSeed, richSeed, deepGenerator, pixmapGenerator, deepFilter, canvas, false, 4)
       )
 
     let thirdView = Array.init 9 (fun i ->
       let x, y = i % 3, i / 3
-      EditorView.create(ThirdView, i, x, y, pixmapSeed, richSeed, deepGenerator, pixmapGenerator None, deepFilter, canvas, false, 3)
+      EditorView.create(ThirdView, i, x, y, pixmapSeed, richSeed, deepGenerator, pixmapGenerator, deepFilter, canvas, false, 3)
       )
 
     let notFullView = Array.append halfView thirdView
@@ -510,6 +509,9 @@ type Editor =
 
     let fileMenu = makeTopMenuItem "_File"
 
+    let openView() = 
+      !focusView >? match !viewMode with | FullView -> fullView | HalfView -> halfView.[0] | ThirdView -> thirdView.[0]
+
     let newWindowItem = MenuItem(Header = "New Window")
     setMenuItemShortcut newWindowItem Key.N ModifierKeys.Control (fun _ ->
       Editor.start()
@@ -517,20 +519,52 @@ type Editor =
     fileMenu.add(newWindowItem)
 
     let openItem = MenuItem(Header = "_Open..")
+    fileMenu.add(openItem)
+
+    let openRecentItem = MenuItem(Header = "Open Recent")
+    let rec refreshRecentItems() =
+      openRecentItem.Items.Clear()
+      for file in settings.recentFiles do
+        let recentFileItem = MenuItem(Header = file)
+        recentFileItem.Click.Add(fun _ ->
+          let view = openView()
+          setFocus view
+          controller.post(ApplyMapLoad(view, "Open", file, false))
+          settings.addRecent(file)
+          refreshRecentItems()
+          )
+        openRecentItem.add(recentFileItem)
+      if settings.recentFiles.size > 0 then
+        openRecentItem.add(Separator())
+        let clearRecentItem = MenuItem(Header = "Clear Recent Files")
+        clearRecentItem.Click.Add(fun _ ->
+          settings.recentFiles <- Array.empty
+          refreshRecentItems()
+          )
+        openRecentItem.add(clearRecentItem)
+    refreshRecentItems()
+    fileMenu.add(openRecentItem)
+
     setMenuItemShortcut openItem Key.O ModifierKeys.Control (fun _ ->
       let dialog = new Microsoft.Win32.OpenFileDialog(Title = "Load Map File..", Filter = "YAML files (.yaml)|*.yaml")
       let result = dialog.ShowDialog()
       if result.HasValue && result.Value then
-        let view = !focusView >? match !viewMode with | FullView -> fullView | HalfView -> halfView.[0] | ThirdView -> thirdView.[0]
+        let file = dialog.FileName
+        let view = openView()
         setFocus view
-        controller.post(ApplyMapLoad(view, "Open", dialog.FileName, false))
+        controller.post(ApplyMapLoad(view, "Open", file, false))
+        settings.addRecent(file)
+        refreshRecentItems()
       )
-    fileMenu.add(openItem)
 
     let saveItem = MenuItem(Header = "Save")
     setMenuItemShortcut saveItem Key.S ModifierKeys.Control (fun _ ->
       match !focusView with
-      | Some(view) when view.filename <> "" -> saveYaml true false view.filename
+      | Some(view) when view.filename <> "" ->
+        let file = view.filename
+        saveYaml true false file
+        settings.addRecent(file)
+        refreshRecentItems()
       | _ -> ()
       )
     fileMenu.add(saveItem)
@@ -546,7 +580,11 @@ type Editor =
                                                         DefaultExt = ".yaml",
                                                         Filter = "YAML files (.yaml)|*.yaml")
         let result = dialog.ShowDialog()
-        if result.HasValue && result.Value then saveYaml true false dialog.FileName
+        if result.HasValue && result.Value then
+          let file = dialog.FileName
+          settings.addRecent(file)
+          refreshRecentItems()
+          saveYaml true false file
       | None -> ()
       )
     fileMenu.add(saveAsItem)
@@ -591,6 +629,7 @@ type Editor =
         exportItem.IsEnabled <- false
         saveItem.IsEnabled <- false
         saveAsItem.IsEnabled <- false
+      openRecentItem.IsEnabled <- settings.recentFiles.size > 0
       )
 
     menu.add(fileMenu)
@@ -729,7 +768,7 @@ type Editor =
             presetItem.GotFocus.Add(fun _ ->
               let w = previewSize
               let h = previewSize
-              let popup = Popup(IsOpen = true, PlacementTarget = presetItem, Placement = PlacementMode.Bottom, HorizontalOffset = 100.0, IsHitTestVisible = false)
+              let popup = Popup(IsOpen = true, PlacementTarget = presetItem, Placement = PlacementMode.RelativePoint, HorizontalOffset = 280.0, IsHitTestVisible = false)
               openPopup := Some(popup)
               match loadYamlPreview file with
               | Some(map) ->
@@ -940,7 +979,7 @@ type Editor =
       let copySource = MenuItem(Header = "Copy F# Code to Clipboard")
       copySource.Click.Add(fun _ ->
         let data = DnaData(!view.controller.dna)
-        System.Windows.Clipboard.SetText(data.sourceCode + ".generate(Map3Dna.generateExplorerMap)\n")
+        System.Windows.Clipboard.SetText(data.sourceCode + ".generate(Map3Dna.loadEditorMap)\n")
         )
       menu.add(copySource)
 
@@ -1161,7 +1200,37 @@ type Editor =
       controller.stop()
       iterateViews(fun view _ -> view.stop())
       (!logWindow).apply(fun logWindow -> logWindow.close())
+      settings.write()
       )
+    window.PreviewKeyDown.Add(fun (args : KeyEventArgs) ->
+      let scroll (text : string) (dx : float32) (dy : float32) =
+        match !focusView with
+        | Some(view) ->
+          // We want to scroll by a pixel multiple to take advantage of caching.
+          let pixels = max !view.pixmapView.renderWidth !view.pixmapView.renderHeight
+          let delta = round (float32 pixels * 0.125f) / float32 pixels / (!view.controller.deep).zoom
+          controller.postAction(view, text, View.transform(centerX = ModifyFloat(fun x -> x + float (dx * delta)), centerY = ModifyFloat(fun y -> y + float (dy * delta))))
+          args.Handled <- true
+        | _ -> ()
+      match args.Key with
+      | Key.Up    -> scroll "Pan Up" 0.0f -1.0f
+      | Key.Down  -> scroll "Pan Down" 0.0f 1.0f
+      | Key.Right -> scroll "Pan Right" 1.0f 0.0f
+      | Key.Left  -> scroll "Pan Left" -1.0f 0.0f
+      | _ -> ()
+      )
+    window.PreviewTextInput.Add(fun (args : TextCompositionEventArgs) ->
+      let zoom (text : string) delta =
+        match !focusView with
+        | Some(view) ->
+          controller.postAction(view, text, View.transform(zoom = ModifyFloat(fun zoom -> zoom * delta)))
+          args.Handled <- true
+        | _ -> ()
+      match args.Text with
+      | "+" -> zoom "Zoom In" 1.25
+      | "-" -> zoom "Zoom Out" 0.8
+      | _ -> ()
+     )
     window.LayoutUpdated.Add(fun _ -> layoutCanvas())
 
     window.Show()
@@ -1204,7 +1273,18 @@ TODO
 -Add screen space filter to PixmapView to reject mutations that do not influence the displayed
  2-slice. The filter would be run when the first mosaic level is computed to decide whether to
  display or reject it.
--Recent files menu item.
 
 *)
 
+
+(*
+0.4.0 Release TODO
+
+-Should we get rid of normalization once and for all? Replace with brightness & contrast sliders in palette,
+ extra shaping.
+-Templates?
+-Dna view filters?
+-Then, more Basic presets.
+-Update documentation.
+-Installer.
+*)

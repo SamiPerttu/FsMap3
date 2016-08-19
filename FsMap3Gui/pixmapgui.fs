@@ -21,19 +21,41 @@ module PixmapExtensions =
       let stride = (this.width * 3 + 3) &&& ~~~3
       let bytes = stride * this.height
       let pixelArray = Array.create bytes 0uy
-      let inline topix x = byte <| clampi 0 255 (int x)
-      let a = this.a
+      let inline topix x = byte <| clampi 0 255 (x * 256.0f |> int)
       let mutable i = 0
       for y = 0 to this.lastY do
         let mutable j = y * stride
         for x = 0 to this.lastX do
-          let color = a.[i] * 256.0f
-          i <- i + 1
+          let color = this.a.[i]
           pixelArray.[j] <- topix color.x
           pixelArray.[j + 1] <- topix color.y
           pixelArray.[j + 2] <- topix color.z
+          i <- i + 1
           j <- j + 3
       let source = System.Windows.Media.Imaging.BitmapSource.Create(this.width, this.height, 96.0, 96.0, System.Windows.Media.PixelFormats.Rgb24, null, pixelArray, stride)
+      source.Freeze()
+      source
+
+
+    /// Creates a frozen BitmapSource from the pixmap.
+    /// Colors are mapped from 3 components to non-premultiplied RGBA with the supplied function.
+    member this.bitmapSourceWithAlpha(f : Vec3f -> Vec4f) =
+      let stride = this.width * 4
+      let bytes = stride * this.height
+      let pixelArray = Array.create bytes 0uy
+      let inline topix x = byte <| clampi 0 255 (x * 256.0f |> int)
+      let mutable i = 0
+      let mutable j = 0
+      for y = 0 to this.lastY do
+        for x = 0 to this.lastX do
+          let color = f this.a.[i]
+          pixelArray.[j] <- topix (color.w * color.z)
+          pixelArray.[j + 1] <- topix (color.w * color.y)
+          pixelArray.[j + 2] <- topix (color.w * color.x)
+          pixelArray.[j + 3] <- topix color.w
+          i <- i + 1
+          j <- j + 4
+      let source = System.Windows.Media.Imaging.BitmapSource.Create(this.width, this.height, 96.0, 96.0, System.Windows.Media.PixelFormats.Pbgra32, null, pixelArray, stride)
       source.Freeze()
       source
 
@@ -204,7 +226,7 @@ type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeig
       | SetSource(source) ->
         currentSource <- source
 
-        // Returns whether rendering was finished.
+        // Renders and shows a level. Returns whether rendering was finished.
         let rec handleLevel level (previousPixmap : Pixmap option) renderWidth renderHeight =
           let t0 = Common.timeNow()
           match this.render(inbox, source, renderWidth, renderHeight, level, previousPixmap) with
@@ -215,9 +237,6 @@ type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeig
               if level > 0 then
                 if showThisLevel then Some(Pixmap.createCopy(levelPixmap)) else Some(levelPixmap)
               else None
-            // Call IPixmapSource.finish only if all pixels have been retrieved.
-            if level = 0 then
-              source.finish()
             if showThisLevel then
               source.postFx(levelPixmap)
               Wpf.dispatch(image, fun _ -> image.Source <- levelPixmap.bitmapSource())
@@ -232,6 +251,7 @@ type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeig
           let renderHeight = !this.renderHeight
           source.start(renderWidth, renderHeight)
           let ready = handleLevel this.previewLevels None renderWidth renderHeight
+          source.finish()
           if ready && this.quitWhenReady then
             alive <- false
     }

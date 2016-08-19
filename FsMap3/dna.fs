@@ -43,79 +43,9 @@ open Convert
 open Mangle
 
 
-
-/// Parameter format describes how different parameter values are related.
-type ParameterFormat = Categorical | Ordered
-
-
-
-/// Parameter of a procedural generator.
-[<NoEquality; NoComparison>]
-type Parameter =
-  {
-    /// Format of the parameter.
-    format : ParameterFormat
-    /// Name of the parameter.
-    name : string
-    /// The range of raw values is [0, maxValue].
-    maxValue : uint
-
-    /// Parameter level - zero is root.
-    level : int
-    /// Local tree address.
-    address : DnaAddress
-    /// Local, intra-node parameter number.
-    number : int
-    /// Parent parameter index, if any. Every parameter not in the root node has a parent on the previous level.
-    parent : int Optionval
-
-    /// Combined hash of format, name and number of categories.
-    semanticId : int64
-    /// Combined hash of format, name, number of categories, address, level and number.
-    /// This is enough to identify a parameter uniquely within a genotype.
-    structuralId : int64
-
-    /// Raw value. This is transformed into the generated object.
-    mutable value : uint
-
-    /// Description of the value of the parameter (optional). For interactive display; not used by the Dna system itself.
-    mutable valueString : string
-    /// Set of choices, if applicable (optional).
-    mutable choices : IChoices option
-    /// Generated object (optional).
-    mutable generated : obj option
-  }
-
-  static member getSemanticId(format : ParameterFormat, name, maxValue : uint) =
-    mangle64 (int64 (mangleString name) + mangle64 (match format with | Categorical -> int64 maxValue | _ -> -1L))
-
-  static member getStructuralId(semanticId, level, address : DnaAddress, number) =
-    mangle64 (semanticId + mangle64 (int64 address.x + mangle64 ((int64 number <<< 32) + int64 level)))
-
-  /// Returns whether the parameter has a parent. Every parameter except the root is supposed to have a parent.
-  member inline this.hasParent = this.parent.isSome
-
-  /// Label parameters exist only to serve as subtree roots: every subtree in a Dna should have a root parameter.
-  member inline this.isLabel = this.maxValue = 0u
-
-  /// Returns whether the given parameter value is legal.
-  member inline this.isLegal(x) = x <= this.maxValue
-
-  /// Returns whether the parameter has the full integer range.
-  member inline this.isFullRange = this.maxValue = maxValue uint
-
-  /// The number of possible values of the parameter (as uint64 because it may not fit into an uint).
-  member inline this.range = uint64 this.maxValue + 1UL
-
-  /// The value as a float in [0, 1]. This is often used by Dna sources to manipulate ordered values.
-  member inline this.value01 =
-    if this.maxValue > 0u then (float this.value / float this.maxValue) else 0.5
-
-
-
 /// Level state for a Dna object. Internal type.
 [<NoComparison; NoEquality>]
-type LevelState = struct
+type DnaLevelState = struct
   /// Current node address on this level.
   val address : DnaAddress
   /// Index of latest parameter drawn on this level.
@@ -136,7 +66,7 @@ end
 type [<ReferenceEquality>] Dna =
   {
     /// Dna parameters. These define the genotype.
-    parameterArray : Parameter Darray
+    parameterArray : DnaParameter Darray
 
     /// Fingerprint of the genotype.
     mutable fingerprint : int64
@@ -149,7 +79,7 @@ type [<ReferenceEquality>] Dna =
 
     /// Level states. The array always contains at least the root level during generation.
     /// Used during generation only.
-    state : LevelState Darray
+    state : DnaLevelState Darray
   }
 
 
@@ -185,26 +115,18 @@ type [<ReferenceEquality>] Dna =
   member this.isInSubtree(i, j) =
     this.[i].level >= this.[j].level && this.[i].address.ancestor(this.[i].level - this.[j].level) = this.[j].address
 
-  /// Computes a local fingerprint for the subtree rooted at the node containing parameter i.
-  member this.localFingerprint(i) =
-    let address = this.[i].address
-    let mutable localprint = 0L
-    for j = 0 to this.last do
-      if this.isInSubtree(j, i) then
-        localprint <- mangle64 (localprint + this.[j].structuralId)
-        localprint <- mangle64 (localprint + int64 this.[j].value)
-    localprint
- 
 
   // INTERNAL METHODS
 
 
-  /// Does bookkeeping after all parameter attributes have been set. Updates the Dna fingerprint.
+  /// Does bookkeeping after all parameter attributes have been set. Updates the Dna fingerprint
+  /// and the subtree fingerprint of the parent parameter (if any).
   /// This is called exactly once per created parameter.
-  member private this.updateFingerprint(parameter : Parameter) =
+  member private this.updateFingerprint(parameter : DnaParameter) =
     this.fingerprint <- mangle64 (this.fingerprint + parameter.structuralId)
     this.fingerprint <- mangle64 (this.fingerprint + int64 parameter.value)
-      
+    parameter.parent.apply(fun i -> this.[i].updateSubtreeId(parameter))
+
 
   /// Chooses a value for a new parameter using the given monotonic transforms.
   member private this.choose(valueTransform : uint -> 'a, priorTransform : uint -> 'a) =
@@ -265,32 +187,32 @@ type [<ReferenceEquality>] Dna =
   member private this.addParameter(format, name, maximumValue, valueTransform : uint -> 'a, stringConverter : 'a -> string, ?priorTransform : uint -> 'a, ?value : uint) =
     let i = this.size
     let a = this.state.[this.level]
-    let semanticId = Parameter.getSemanticId(format, name, maximumValue)
+    let semanticId = DnaParameter.getSemanticId(format, name, maximumValue)
     let parameter = {
-      Parameter.format = format
-      name = name
-      maxValue = maximumValue
-      level = this.level
-      address = a.address
-      number = a.number
-      parent = if this.level > 0 then this.state.[this.level - 1].parameterIndex else Noneval
-      semanticId = semanticId
-      structuralId = Parameter.getStructuralId(semanticId, this.level, a.address, a.number)
-      value = 0u
-      valueString = ""
-      choices = None
-      generated = None
+      format       = format
+      name         = name
+      maxValue     = maximumValue
+      level        = this.level
+      address      = a.address
+      number       = a.number
+      parent       = if this.level > 0 then this.state.[this.level - 1].parameterIndex else Noneval
+      semanticId   = semanticId
+      structuralId = DnaParameter.getStructuralId(semanticId, this.level, a.address, a.number)
+      subtreeId    = semanticId
+      value        = 0u
+      valueString  = ""
+      choices      = None
+      generated    = None
       }
     this.parameterArray.add(parameter)
-    parameter.value <-
-      value >? match priorTransform with
-               | Some(priorTransform) -> this.choose(valueTransform, priorTransform)
-               | None -> this.choose()
+    parameter.value <- value >? match priorTransform with
+                                | Some(priorTransform) -> this.choose(valueTransform, priorTransform)
+                                | None -> this.choose()
     let generated = valueTransform parameter.value
     parameter.valueString <- stringConverter generated
     parameter.generated <- Some(box generated)
     this.updateFingerprint(parameter)
-    this.state.[this.level] <- LevelState(a.address, Someval(i), a.children, a.number + 1)
+    this.state.[this.level] <- DnaLevelState(a.address, Someval(i), a.children, a.number + 1)
     generated
 
 
@@ -298,39 +220,43 @@ type [<ReferenceEquality>] Dna =
   member private this.addParameter(format, name, choices : Choices<'a>) =
     let i = this.size
     let a = this.state.[this.level]
-    let semanticId = Parameter.getSemanticId(format, name, choices.maximum)
+    let semanticId = DnaParameter.getSemanticId(format, name, choices.maximum)
     let parameter = {
-      Parameter.format = format
-      name = name
-      maxValue = choices.maximum
-      level = this.level
-      address = a.address
-      number = a.number
-      parent = if this.level > 0 then this.state.[this.level - 1].parameterIndex else Noneval
-      semanticId = semanticId
-      structuralId = Parameter.getStructuralId(semanticId, this.level, a.address, a.number)
-      value = 0u
-      valueString = ""
-      choices = Some (choices :> IChoices)
-      generated = None
+      format       = format
+      name         = name
+      maxValue     = choices.maximum
+      level        = this.level
+      address      = a.address
+      number       = a.number
+      parent       = if this.level > 0 then this.state.[this.level - 1].parameterIndex else Noneval
+      semanticId   = semanticId
+      structuralId = DnaParameter.getStructuralId(semanticId, this.level, a.address, a.number)
+      subtreeId    = semanticId
+      value        = 0u
+      valueString  = ""
+      choices      = Some (choices :> IChoices)
+      generated    = None
       }
     this.parameterArray.add(parameter)
     parameter.value <- this.choose(choices)
-    parameter.valueString <- choices.name(parameter.value)
     let generated = choices.value(parameter.value)
+    parameter.valueString <- choices.name(parameter.value)
     parameter.generated <- Some(box generated)
     this.updateFingerprint(parameter)
-    this.state.[this.level] <- LevelState(a.address, Someval(i), a.children, a.number + 1)
+    this.state.[this.level] <- DnaLevelState(a.address, Someval(i), a.children, a.number + 1)
     generated
 
 
   /// Calls a subgenerator in a child node in the parameter tree.
+  /// Creation of child branches is always done through this method.
   member private this.descend(generator : Dna -> _) =
     let a = this.state.[this.level]
-    this.state.push(LevelState(a.address.child(a.children), Noneval, 0, 0))
+    let subtreeRoot = this.parameterArray.lastItem
+    this.state.push(DnaLevelState(a.address.child(a.children), Noneval, 0, 0))
     let result = generator this
+    subtreeRoot.parent.apply(fun i -> this.[i].updateSubtreeId(subtreeRoot))
     this.state.pop()
-    this.state.[this.level] <- LevelState(a.address, a.parameterIndex, a.children + 1, a.number)
+    this.state.[this.level] <- DnaLevelState(a.address, a.parameterIndex, a.children + 1, a.number)
     result
 
 
@@ -344,7 +270,7 @@ type [<ReferenceEquality>] Dna =
     this.injectorArray.reset()
     source.start()
     this.state.reset()
-    this.state.push(LevelState(DnaAddress.Root, Noneval, 0, 0))
+    this.state.push(DnaLevelState(DnaAddress.Root, Noneval, 0, 0))
     this.fingerprint <- 0L
     let result = generator this
     this.source <- Noneval
@@ -386,26 +312,28 @@ type [<ReferenceEquality>] Dna =
   member this.addLabel(name) =
     let i = this.size
     let a = this.state.[this.level]
-    let semanticId = Parameter.getSemanticId(Categorical, name, 0u)
+    let semanticId = DnaParameter.getSemanticId(Categorical, name, 0u)
+    let parent = if this.level > 0 then this.state.[this.level - 1].parameterIndex else Noneval
     let parameter = {
-      Parameter.format = Categorical
-      name = name
-      maxValue = 0u
-      level = this.level
-      address = a.address
-      number = a.number
-      parent = if this.level > 0 then this.state.[this.level - 1].parameterIndex else Noneval
-      semanticId = semanticId
-      structuralId = Parameter.getStructuralId(semanticId, this.level, a.address, a.number)
-      value = 0u
-      valueString = ""
-      choices = None
-      generated = None
+      format       = Categorical
+      name         = name
+      maxValue     = 0u
+      level        = this.level
+      address      = a.address
+      number       = a.number
+      parent       = parent
+      semanticId   = semanticId
+      structuralId = DnaParameter.getStructuralId(semanticId, this.level, a.address, a.number)
+      subtreeId    = semanticId
+      value        = 0u
+      valueString  = ""
+      choices      = None
+      generated    = None
       }
     this.parameterArray.add(parameter)
     this.choose(ignore, ignore) |> ignore
     this.updateFingerprint(parameter)
-    this.state.[this.level] <- LevelState(a.address, Someval(i), a.children, a.number + 1)
+    this.state.[this.level] <- DnaLevelState(a.address, Someval(i), a.children, a.number + 1)
 
 
   /// Adds an injector. More recently added injectors have higher precedence.
@@ -517,7 +445,7 @@ type [<ReferenceEquality>] Dna =
       maximumValue,
       int,
       fun x ->
-        let nybbles = match range with | Some(r) -> max 1 ((Bits.highestBit32 (uint r - 1u) + 3) / 4) | None -> 8
+        let nybbles = match range with | Some(r) -> (Bits.highestBit32 (uint r - 1u) + 3) / 4 | None -> 8
         sprintf "%0*x" nybbles x
       )
 
@@ -729,6 +657,7 @@ and RandomSource(sourceRnd : Rnd) =
     rnd.uint(0u, dna.[i].maxValue) |> priorTransform |> Fun.binarySearchClosest 0u dna.[i].maxValue valueTransform
   override this.chooseFloat(dna, i, valueTransform, priorTransform) =
     rnd.uint(0u, dna.[i].maxValue) |> priorTransform |> Fun.binarySearchClosest 0u dna.[i].maxValue valueTransform
+
 
 
 /// Specimen is an individual generated from Dna, with an attached fitness value.

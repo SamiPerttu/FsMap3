@@ -43,7 +43,7 @@ type ParameterAction =
       pickAny()
     | SelectDefault ->
       match choices with
-      | Some(choices) -> Fun.argMax 0 choices.last choices.weight |> uint
+      | Some(choices) -> choices.pickDefault()
       | None -> 0u
     | Select v ->
       match choices with
@@ -99,7 +99,7 @@ type ParameterAction =
       pickAny()
     | SelectDefault ->
       match choices with
-      | Some(choices) -> Fun.argMax 0 choices.last choices.weight |> uint
+      | Some(choices) -> choices.pickDefault()
       | None -> maxValue / 2u
     | Select v ->
       tryPick(v)

@@ -17,27 +17,14 @@ Node: Binary
   X offset: 0
   Y offset: 4.77123165130615
   Z offset: 0.649287700653076
-  Operator: displace and layer
+  Operator: displace and mix
+    Mix operator: layer
+      Layer width: 0.209017723798751
+      Falloff shape: reverse power-3
+      Layer norm: max
+      Layer persist: 0.357943505048751
     Displace response: power-1/2
       Displace amount: 0.001831719418987
-    Layer width: 0.223822742700576
-    Falloff shape: smooth line
-  Modifier:
-    Node: Basis
-      X offset: 0
-      Y offset: 1.50684070587158
-      Z offset: -0.4396653175354
-      Frequency: 19.624626159668
-      Basis: colored Worley
-        Cell seed: 3780376411
-        Features per cell: one
-        Cell distance norm: 2-norm
-        Worley pattern: 17354
-        Worley fade: smooth line
-        Cell fade distance: 0.029423456639051
-        Cell color: unit
-          Color variation: none
-      Shape: none
   Base:
     Node: Fractalizer
       X offset: 0
@@ -103,5 +90,21 @@ Node: Binary
                     Amount: 0.146104544401168
                     Angle seed: 2402411707
             Shape: none
+      Shape: none
+  Modifier:
+    Node: Basis
+      X offset: 0
+      Y offset: 1.50684070587158
+      Z offset: -0.4396653175354
+      Frequency: 19.624626159668
+      Basis: colored Worley
+        Cell seed: 3780376411
+        Features per cell: one
+        Cell distance norm: 2-norm
+        Worley pattern: 17354
+        Worley fade: smooth line
+        Cell fade distance: 0.029423456639051
+        Cell color: unit
+          Color variation: none
       Shape: none
   Shape: none

@@ -64,9 +64,9 @@ type Log() =
       if consoleFilter entry then
         match entry.category with
         | Warning | Error ->
-          eprintfn "%A" entry
+          eprintfn "Log %s" (entry.ToString())
         | Info ->
-          printfn "%A" entry
+          printfn "Log Info: %s" (entry.ToString())
     )
 
 

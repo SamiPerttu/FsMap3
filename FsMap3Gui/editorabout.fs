@@ -16,7 +16,7 @@ let showAboutWindow() =
   let effect = Effects.DropShadowEffect(BlurRadius = 3.0, Color = Wpf.color(1.0), Opacity = 1.0, ShadowDepth = 0.0)
   let map =
     let data = [|
-      DnaData("-147G0ZW04r0-1lcK0ZPIoj003-ac3a0+-KSC0+nwml++VRah+-beny0-QY660-vgnQ5001YFuyXvZGbHq+YUAoyv2ZHJuV0Z4tN7s0-5ifTsYLEbW2001YFHaqOZ4tN7sZcCsB0hZFMGb0-vMky0099702-OXJ74YuAVeg-Pvmq02+cFxm0ZaTNW+ZV-l6++k3lO0-nxay0ZOl+h0-InEZ+ZjlbV00095302-OXJ74-wLre0ZyeUzK4YvVTOfYQOdavZ+QXLo+s3ae0-nxay0ZySyp0-gthW0ZH3Rn001+FHaqO+haza0"B)
+      DnaData("-3CVp+ZYJ5p0-1hWS0ZRQ0Z003YCIFHaZbW2-wYQ5Z1v+CIFHa+zFfNJYiIGCMZXyeUz-T4tN7001Y-1M3Q-HlNa0Z5RD903Zp94J0+tmK330YWK6lwZK8Xye6Zl99V901Y2tcEG20-TvynPZvL9+03YdQ77T31ZreVfH+wMH3j2+uHWEi300"B)
       |]
     data.[Common.timeSeed() |> Mangle.mangle32 |> flip emod data.size].generate(Map3Dna.loadEditorMap)
   let w = 600.0

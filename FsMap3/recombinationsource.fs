@@ -1,7 +1,7 @@
 ﻿namespace FsMap3
 
 open Common
-open DnaParameter
+open DnaParameterHash
 
 
 /// Dna source for mutation and crossover.

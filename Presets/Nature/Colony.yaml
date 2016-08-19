@@ -1,7 +1,7 @@
-View Center X: -0.612165451049804
-View Center Y: -5.66616249084473
-View Center Z: 0.351226806640625
-View Zoom: 1.10000050067902
+View Center X: 14.1469287872314
+View Center Y: -24.9544830322266
+View Center Z: 0.35123062133789
+View Zoom: 0.751314759254455
 Palette:
   Color space: Mugsell
   Hue origin: 0.227941170334815
@@ -14,39 +14,41 @@ Palette:
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
-  X offset: 0.124172687530517
-  Y offset: -0.385787487030029
-  Z offset: 2.05297708511352
+  X offset: -0.20608377456665
+  Y offset: -0.31147027015686
+  Z offset: 2.78318786621094
   Octaves: 8
   Frequency: 2.40278196334839
-  Roughness: 0.713261842727661
+  Roughness: 0.668721675872802
   Fractalizer: mix and displace
     Lacunarity: 0.502123415470123
-    Highpass filter: 0.264705896377563
+    Highpass filter: 0.467307269573211
     Mix operator: layer
       Layer width: 0.287499994039535
       Falloff shape: sigmoid
-        Sigmoid hardness: 7
+        Sigmoid hardness: 6
       Layer norm: 1-norm
-      Layer persist: 0.906976759433746
-    Walk operator: lurch
+      Layer persist: 1
+    Walk operator: twist
       Displace response: line
-        Displace amount: 0.321863174438476
+        Displace amount: 0.395015805959701
+      Twist amount: 0.401162803173065
       Displace damping: 0.308139532804489
     Basis: leopard
       Cell seed: 3573493429
       Leopard radius: 0.868941128253936
       Features per cell: Poisson
-        Mean: 0.7477183734
+        Mean: 0.6768913236
       Falloff width: 1
       Falloff shape: smooth line
-      Mix operator: over
+      Mix operator: sum
       Cell color: palette
-        Choices: 4
-        Color 0 seed: 188486526
-        Color 1 seed: 2223475640
-        Color 2 seed: 660080265
-        Color 3 seed: 3239934719
+        Choices: 5
+        Color 0 seed: 574430207
+        Color 1 seed: 2223475644
+        Color 2 seed: 660080263
+        Color 3 seed: 3239934728
+        Color 4 seed: 973864870
         Color variation: gradient
           Amount: 0.463067591190338
           Angle seed: 3573493429

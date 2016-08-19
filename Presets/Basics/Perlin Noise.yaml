@@ -6,10 +6,11 @@ Palette:
   Color space: CIELch
   Hue origin: 0.5
   Hue range: 0.299999982118606
-  Hue skew: 0
+  Hue concentration: 0
+  Hue damping: 0
   Saturation range: 0.800000011920929
   Saturation minimum: 0
-  Saturation skew: -1
+  Saturation skew: 0
   Value skew: 0
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
@@ -29,6 +30,6 @@ Node: Fractalizer
         Displace amount: 0
       Displace damping: 0
     Basis: Perlin noise
-      Cell seed: 41
+      Cell seed: 1445601039
       Perlin fade: smooth-2
   Shape: none

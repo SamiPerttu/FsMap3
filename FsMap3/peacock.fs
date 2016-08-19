@@ -22,6 +22,7 @@ let peacock (layout : LayoutFunction)
             fadeWidth
             radius
             seed
+            octave
             frequency =
 
   assert (radius > 0G)
@@ -30,7 +31,7 @@ let peacock (layout : LayoutFunction)
   let Ri = 1G / radius
   let wi = 1.0f / fadeWidth
 
-  let layoutInstance = layout seed frequency
+  let layoutInstance = layout seed octave frequency
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
@@ -63,11 +64,11 @@ let peacock (layout : LayoutFunction)
 /// Default peacock pattern with the standard cell layout, one feature per cell and the smooth-2 fade function.
 /// The cell hash seed is derived from the frequency.
 let inline peacockd potential radius frequency =
-  peacock hifiLayout unityCount potential Mix.sum 0.5f anyColor Fade.smooth2 1.0f radius (manglef32 frequency) frequency
+  peacock hifiLayout unityCount potential Mix.sum 0.5f anyColor Fade.smooth2 1.0f radius (manglef32 frequency) 0 frequency
 
 
 /// Peacock pattern with the standard cell layout and one feature per cell.
 /// The cell hash seed is derived from the frequency.
 let inline peacockf potential fade radius frequency =
-  peacock hifiLayout unityCount potential Mix.sum 0.5f anyColor fade 1.0f radius (manglef32 frequency) frequency
+  peacock hifiLayout unityCount potential Mix.sum 0.5f anyColor fade 1.0f radius (manglef32 frequency) 0 frequency
 

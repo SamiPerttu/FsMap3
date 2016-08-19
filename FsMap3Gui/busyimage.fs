@@ -5,44 +5,46 @@ open Common
 
 
 let busyBitmaps =
-  
-  let N = 3
-  let L = N - 1
+
+  // Number of animation frames.
+  let n      = 12
+  // Outer radius of disc.
+  let r1     = 9.4f
+  // Inner radius of disc.
+  let r0     = r1 * 0.33f
+  // Spinner border width.
+  let border = 0.3f
+  // Antialiasing width.
+  let A      = 0.9f
+
+  let r0b  = r0 + border
+  let r1b  = r1 - border
+  let size = r1 * 2.0f |> ceil |> int
 
   let bitmaps = Darray.create()
 
-  let next x y =
-    match x, y with
-    | x, 0 when x < L -> x + 1, 0
-    | L, y when y < L -> L, y + 1
-    | x, L when x > 0 -> x - 1, L
-    | 0, y when y > 0 -> 0, y - 1
-    | _ -> failwith "BusyImage.busyBitmaps: Bug."
+  let origin = Vec2f(float32 size * 0.5f, float32 size * 0.5f)
 
-  let border = 1
-  let dot    = 5
-  let size   = dot * N + border * (N + 1)
-  let trail  = 4
+  for i = 0 to n - 1 do
 
-  let rec drawPixmap x y =
+    let phi = G i / G n
 
-    let x, y = next x y
+    let pixmap = Pixmap.create(size, size, fun x y ->
+ 
+      let p     = Vec2f(float32 x + 0.5f, float32 y + 0.5f) - origin
+      let d     = p.length
+      let angle = p.angle / G tau
 
-    let pixmap = Pixmap.create(size, size)
+      if d > r0 && d < r1 then
+        let a = delerp01 r0 (r0 + A) d * delerp01 r1 (r1 - A) d
+        let c = fract (angle - phi)
+        let c = c * delerp01 r0b (r0b + A) d * delerp01 r1b (r1b - A) d
+        Vec3f(a, c, 0.0f)
+      else
+        Vec3f.zero
+      )
 
-    let rec drawTrail dx dy i =
-      let dx, dy = next dx dy
-      let color = lerp (Vec3f(0.0f)) (Vec3f(1.0f)) (Q i trail)
-      for px = 0 to dot - 1 do
-        for py = 0 to dot - 1 do
-          pixmap.[dx * (dot + border) + border + px, dy * (dot + border) + border + py] <- color
-      if i < trail then
-        drawTrail dx dy (i + 1)
+    bitmaps.add(pixmap.bitmapSourceWithAlpha(fun c -> Vec4f(c.y, sqrt c.y, sqrt c.y, c.x)))
 
-    drawTrail x y 1
-    bitmaps.add(pixmap.bitmapSource())
-
-    if x = 0 && y = 0 then bitmaps.toArray else drawPixmap x y
-
-  drawPixmap 0 0
+  bitmaps.toArray
 

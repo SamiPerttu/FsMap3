@@ -19,21 +19,24 @@ let capflow (layout : LayoutFunction)
             fadeWidth
             (length : float32)
             (radius : float32)
-            (flow : Basis3)
+            (flowBasis : Basis3)
             (flowFrequencyFactor : float32)
             seed
+            octave
             frequency =
 
   let R2 = squared radius
   let Ri = 1G / radius
   let wi = 1.0f / fadeWidth
 
-  let layoutInstance = layout seed frequency
+  let layoutInstance = layout seed octave frequency
+
+  let flow = flowBasis octave (frequency * flowFrequencyFactor)
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
     // Get streak vector from the flow map.
-    let V = length * flow (frequency * flowFrequencyFactor) v
+    let V = length * flow v
     let L = V.length
     let D = if L > 0.0f then V / L else Vec3f.unitX
 

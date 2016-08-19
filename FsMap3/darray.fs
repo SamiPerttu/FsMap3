@@ -4,6 +4,11 @@ namespace FsMap3
 open Common
 
 
+type DarrayTrim =
+  static member inline mask(autoTrim) = if autoTrim then ~~~0 else 0
+
+
+
 /// Dynamic array with amortized constant time insertion and removal from the end of the array.
 type [<NoEquality; NoComparison>] Darray<'a> =
   {
@@ -33,14 +38,22 @@ type [<NoEquality; NoComparison>] Darray<'a> =
   member inline this.set(i, x) = this.a.[i] <- x
 
   /// The first item in the array.
-  member inline this.firstItem =
-    assert (this.size > 0)
-    this.a.[0]
+  member inline this.firstItem
+    with get() = 
+      assert (this.size > 0)
+      this.a.[0]
+    and set(x) =
+      assert (this.size > 0)
+      this.a.[0] <- x
 
   /// The last item in the array.
-  member inline this.lastItem =
-    assert (this.size > 0)
-    this.a.[this.last]
+  member inline this.lastItem
+    with get() = 
+      assert (this.size > 0)
+      this.a.[this.last]
+    and set(x) =
+      assert (this.size > 0)
+      this.a.[this.last] <- x
 
   /// Returns whether the array is empty.
   member inline this.isEmpty = this.n = 0
@@ -54,7 +67,7 @@ type [<NoEquality; NoComparison>] Darray<'a> =
   /// Auto-trim accessor. If auto-trim is enabled, the array is trimmed automatically if it gets too empty.
   member inline this.autoTrim
     with get() = this.autoTrimMask <> 0
-    and set trim = this.autoTrimMask <- if trim then ~~~0 else 0
+    and set trim = this.autoTrimMask <- DarrayTrim.mask(trim)
 
   /// Allocates space for at least n' elements. Does not alter the logical size of the array.
   member this.allocate(n') =
@@ -229,7 +242,7 @@ type [<NoEquality; NoComparison>] Darray<'a> =
     if this.size < this.capacity then
       this.a <- this.a.[0 .. this.last]
 
-  /// Returns this as a native array.
+  /// Returns a copy of this array as a native array.
   member this.toArray =
     if this.size > 0 then
       this.a.[0 .. this.last]
@@ -334,37 +347,37 @@ type [<NoEquality; NoComparison>] Darray<'a> =
 
   /// Creates an empty dynamic array.
   static member create(?autoTrim) : Darray<'a> =
-    { a = Array.createEmpty; n = 0; autoTrimMask = (if autoTrim >? true then ~~~0 else 0) }
+    { a = Array.createEmpty; n = 0; autoTrimMask = DarrayTrim.mask(autoTrim >? true) }
 
   /// Creates a dynamic array of length n. Each item is initialized to the zero value.
   static member createZero(n, ?autoTrim) : Darray<'a> =
-    { a = Array.zeroCreate n; n = n; autoTrimMask = (if autoTrim >? true then ~~~0 else 0) }
+    { a = Array.zeroCreate n; n = n; autoTrimMask = DarrayTrim.mask(autoTrim >? true) }
 
   /// Creates a dynamic array of length n with its contents initialized with the supplied function.
-  static member createWith(n, f : int -> 'a) =
-    { a = Array.init n f; n = n; autoTrimMask = ~~~0 }
+  static member createWith(n, f : int -> 'a, ?autoTrim) =
+    { a = Array.init n f; n = n; autoTrimMask = DarrayTrim.mask(autoTrim >? true) }
 
   /// Creates a (shallow) copy of a dynamic array.
   static member createCopy(a : 'a Darray) =
     { a = Array.init a.size a.at; n = a.size; autoTrimMask = a.autoTrimMask }
 
   /// Creates a dynamic array containing a single item.
-  static member createSingle(v : 'a) =
-    { a = [| v |]; n = 1; autoTrimMask = ~~~0 }
+  static member createSingle(v : 'a, ?autoTrim) =
+    { a = [| v |]; n = 1; autoTrimMask = DarrayTrim.mask(autoTrim >? true) }
 
   /// Builds a dynamic array from a sequence.
-  static member createFrom(a : #seq<'a>) =
+  static member createFrom(a : #seq<'a>, ?autoTrim) =
     let a = Array.ofSeq a
-    { a = a; n = a.size; autoTrimMask = ~~~0 }
+    { a = a; n = a.size; autoTrimMask = DarrayTrim.mask(autoTrim >? true) }
 
   /// Builds a dynamic array from a list.
-  static member createFrom(a : list<'a>) =
+  static member createFrom(a : list<'a>, ?autoTrim) =
     let a = Array.ofList a
-    { a = a; n = a.size; autoTrimMask = ~~~0 }
+    { a = a; n = a.size; autoTrimMask = DarrayTrim.mask(autoTrim >? true) }
 
   /// Builds a dynamic array from a native array.
-  static member createFrom(a : array<'a>) =
-    { a = Array.copy a; n = a.size; autoTrimMask = ~~~0 }
+  static member createFrom(a : array<'a>, ?autoTrim) =
+    { a = Array.copy a; n = a.size; autoTrimMask = DarrayTrim.mask(autoTrim >? true) }
 
 
   interface System.Collections.IEnumerable with

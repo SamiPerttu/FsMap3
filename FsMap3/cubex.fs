@@ -9,8 +9,8 @@ open CellColor
 
 /// Cubex noise. Radial basis gradient noise resembling Perlin noise.
 /// The implementation is similar to simplex noise except we interpolate inside a cube.
-let cubex (layout : LayoutFunction) (color : CellColor) (fade : float32 -> float32) (seed : int) (frequency : float32) =
-  let layoutInstance = layout seed frequency
+let cubex (layout : LayoutFunction) (color : CellColor) (fade : float32 -> float32) (seed : int) (octave : int) (frequency : float32) =
+  let layoutInstance = layout seed octave frequency
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
@@ -35,12 +35,12 @@ let cubex (layout : LayoutFunction) (color : CellColor) (fade : float32 -> float
 
 /// Default cubex noise with the standard cell layout and the smooth-2 fade function.
 /// The cell hash seed is derived from the frequency.
-let cubexd frequency = cubex hifiLayout anyColor Fade.smooth2 (manglef32 frequency) frequency
+let cubexd frequency = cubex hifiLayout anyColor Fade.smooth2 (manglef32 frequency) 0 frequency
 
 
 /// Cubex noise with the standard cell layout.
 /// The cell hash seed is derived from the frequency.
-let cubexf fade frequency = cubex hifiLayout anyColor fade (manglef32 frequency) frequency
+let cubexf fade frequency = cubex hifiLayout anyColor fade (manglef32 frequency) 0 frequency
 
 
 

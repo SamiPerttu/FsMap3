@@ -24,8 +24,10 @@ let orbit (layout : LayoutFunction)
           (mix : MixOp)
           radius
           seed
+          octave
           frequency =
-  let layoutInstance = layout seed frequency
+
+  let layoutInstance = layout seed octave frequency
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v

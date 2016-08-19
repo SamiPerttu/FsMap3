@@ -59,6 +59,30 @@ let gaussianCdf x =
   let inline cdf z = (z * z + 5.575192695 * z + 12.77436324) / (2.506628274631 * z * z * z + 14.38718147 * z * z + 31.53531977 * z + 25.54872648) * exp(-0.5 * z * z)
   if x > 0.0 then 1.0 - cdf x else cdf -x
 
+/// Greatest common divisor. a, b >= 0.
+let gcd a b =
+  // This is the binary GCD algorithm.
+  let rec gcdr a b =
+    if a = b then
+      a
+    elif a = 0 then
+      b
+    elif b = 0 then
+      a
+    elif a &&& 1 = 0 then
+      if b &&& 1 <> 0 then
+        gcdr (a >>> 1) b
+      else
+        2 * gcdr (a >>> 1) (b >>> 1)
+    elif b &&& 1 = 0 then
+      gcdr a (b >>> 1)
+    elif a > b then
+      gcdr ((a - b) >>> 1) b
+    else
+      gcdr ((b - a) >>> 1) a
+  enforce (a >= 0 && b >= 0) "Mat.gcd: Arguments must be non-negative."
+  gcdr a b
+
 
 
 /// Keeps accurate running estimates of the mean, deviation and variance of a set of real-valued samples.

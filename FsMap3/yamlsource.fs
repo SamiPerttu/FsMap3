@@ -78,7 +78,7 @@ type DeserializerSource(readLine : unit -> string option) =
   inherit DnaSource()
 
   /// Returns a longest common subsequence similarity score between two strings.
-  /// The result is in unit range.
+  /// The score is in unit range.
   let similarity (x : string) (y : string) =
     if x = y then 1.0 else
       1.0 - Fun.editDistance x.size (fun i -> x.[i]) y.size (fun i -> y.[i]) 1.0 1.0 (fun a b -> if a = b then 0.0 else infinity) / (float x.size + float y.size)
@@ -142,7 +142,7 @@ type DeserializerSource(readLine : unit -> string option) =
   override this.choose(dna, i, choices) =
     fillSelection i
 
-    let mutable bestChoice = choices.pick(0.0)
+    let mutable bestChoice = choices.pickDefault()
     let mutable bestRecord = Noneval
     let mutable bestScore  = 0.0
 

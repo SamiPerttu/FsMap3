@@ -13,7 +13,7 @@ let colorSpaceChoiceVisualizer (width : int) (height : int) =
 
   let bitmapCache = HashMap.create(Mangle.mangleString)
 
-  fun (parameter : Parameter) (i : int) ->
+  fun (parameter : DnaParameter) (i : int) ->
     match parameter.choices with
 
     | Some(:? Choices<ColorSpace> as choices) ->
@@ -53,7 +53,7 @@ let fadeChoiceVisualizer (width : int) (height : int) =
 
   let pointCache = HashMap.create(Mangle.mangleString)
 
-  fun (parameter : Parameter) (i : int) ->
+  fun (parameter : DnaParameter) (i : int) ->
     match parameter.choices with
     | Some(:? Choices<float32 -> float32> as choices) ->
       let f = choices.value(i)

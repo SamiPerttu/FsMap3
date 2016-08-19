@@ -61,14 +61,19 @@ module Color =
   /// red - green, blue - orange, and yellow - purple are inverses of each other.
   let RYBtoRGB (R : float32) (Y : float32) (B : float32) =
     let R, Y, B = clamp01 R, clamp01 Y, clamp01 B
-    // Values drawn from Gossett, N., Chen, B., Paint Inspired Color Compositing.
-    let r00 = lerp (Vec3f(1.000f, 0.000f, 0.000f)) (Vec3f(1.000f, 1.000f, 1.000f)) R
-    let r01 = lerp (Vec3f(0.500f, 0.000f, 0.500f)) (Vec3f(0.163f, 0.373f, 0.600f)) R
-    let r10 = lerp (Vec3f(1.000f, 0.500f, 0.000f)) (Vec3f(1.000f, 1.000f, 0.000f)) R
-    let r11 = lerp (Vec3f(0.200f, 0.094f, 0.000f)) (Vec3f(0.000f, 0.666f, 0.200f)) R
-    let ry0 = lerp r10 r00 Y
-    let ry1 = lerp r11 r01 Y
-    let ryb = lerp ry1 ry0 B
+    // These are original values from Gossett, N., Chen, B., Paint Inspired Color Compositing.
+    //let r00 = lerp (Vec3f(0.200f, 0.094f, 0.000f)) (Vec3f(0.000f, 0.666f, 0.200f)) R
+    //let r01 = lerp (Vec3f(1.000f, 0.500f, 0.000f)) (Vec3f(1.000f, 1.000f, 0.000f)) R
+    //let r10 = lerp (Vec3f(0.500f, 0.000f, 0.500f)) (Vec3f(0.163f, 0.373f, 0.600f)) R
+    //let r11 = lerp (Vec3f(1.000f, 0.000f, 0.000f)) (Vec3f(1.000f, 1.000f, 1.000f)) R
+    // These are values tweaked for a fuller range.
+    let r00 = lerp (Vec3f(0.050f, 0.025f, 0.000f)) (Vec3f(0.000f, 1.000f, 0.300f)) R
+    let r01 = lerp (Vec3f(1.000f, 0.500f, 0.000f)) (Vec3f(1.000f, 1.000f, 0.000f)) R
+    let r10 = lerp (Vec3f(0.800f, 0.000f, 0.800f)) (Vec3f(0.290f, 0.610f, 1.000f)) R
+    let r11 = lerp (Vec3f(1.000f, 0.000f, 0.000f)) (Vec3f(1.000f, 1.000f, 1.000f)) R
+    let ry1 = lerp r01 r11 Y
+    let ry0 = lerp r00 r10 Y
+    let ryb = lerp ry0 ry1 B
     ryb
 
 
@@ -149,70 +154,3 @@ module ColorSpaceExtensions =
         Color.XYZtoRGB xyz.x xyz.y xyz.z
       | Mugsell ->
         Color.MugsellToRGB a b c
-
-
-
-module ColorDna =
-
-  /// Generates a pseudo-random palette as a Map3. It maps abstract component values to RGB,
-  /// with both inputs and outputs in the range [-1, 1] (as is common with Map3 functions).
-  /// The grid resolution of the color interpolation cube is n, which must be a power of two
-  /// (for example, 32). Note that no gamma conversion is done; it is expected that we want
-  /// to operate in gamma corrected space.
-  let genPalette (n : int) (dna : Dna) =
-
-    // The palette is a linearly interpolated color cube in the chosen color space.
-    enforce (Bits.isPowerOf2 n) "ColorDna.genPalette: Color cube resolution must be a power of two."
-    let shift = Bits.bitNumber32 n
-    let mask = n - 1
-
-    // Choose a color space.
-    let space = dna.category("Color space", C(HSD), C(HSV), C(HSL), C(CIELch), C(Mugsell))
-
-    let hm = dna.float32("Hue origin")
-    let hr = dna.float32("Hue range", squared >> lerp 0.05f 0.8f)
-    let hM = hm + hr
-    let hfade = Fade.skew (dna.float32("Hue skew", lerp -2.0f 2.0f))
-
-    let sr = dna.float32("Saturation range", lerp 0.2f 0.8f)
-    let sm = dna.float32("Saturation minimum", squared >> lerp 0.0f (1.0f - sr))
-    let sM = sm + sr
-    let sfade = Fade.skew (dna.float32("Saturation skew", lerp -2.0f 2.0f))
-
-    let vm = 0.0f
-    let vM = 1.0f
-    let vfade = Fade.skew (dna.float32("Value skew", lerp -2.0f 2.0f))
-
-    let pick x y z =
-      let h = float32 x / float32 (n - 1)
-      let h = fract (lerp hm hM (hfade h))
-      let s = float32 y / float32 (n - 1)
-      let s = lerp sm sM (sfade s)
-      let v = float32 z / float32 (n - 1)
-      let v = lerp vm vM (vfade v)
-      let rgb = space.rgb(h, s, v)
-      // Transform to [-1, 1] range.
-      map01to11 rgb
-
-    let cube = Array.init (cubed n) (fun i -> pick (i >>> (shift * 2)) ((i >>> shift) &&& mask) (i &&& mask))
-
-    let vZ = float32 (n - 1) * 0.5f
-
-    fun (v : Vec3f) ->
-      assert (isFinite v.x && isFinite v.y && isFinite v.z)
-      let u = v.map(fun x -> vZ * (clamp -0.999f 0.999f x + 1.0f))
-      let d = u - u.map(floor)
-      let ix = int u.x <<< (shift * 2)
-      let jx = int u.x + 1 <<< (shift * 2)
-      let iy = int u.y <<< shift
-      let jy = int u.y + 1 <<< shift
-      let iz = int u.z
-      let jz = iz + 1
-      let xii = Vec3f.lerp cube.[ix + iy + iz] cube.[jx + iy + iz] d.x
-      let xij = Vec3f.lerp cube.[ix + iy + jz] cube.[jx + iy + jz] d.x
-      let xji = Vec3f.lerp cube.[ix + jy + iz] cube.[jx + jy + iz] d.x
-      let xjj = Vec3f.lerp cube.[ix + jy + jz] cube.[jx + jy + jz] d.x
-      let yi = Vec3f.lerp xii xji d.y
-      let yj = Vec3f.lerp xij xjj d.y
-      Vec3f.lerp yi yj d.z
- 

@@ -1,4 +1,4 @@
-﻿/// Leopard basis function.
+﻿/// Leopard basis.
 module FsMap3.Leopard
 
 open Common
@@ -19,6 +19,7 @@ let leopard (layout : LayoutFunction)
             fadeWidth
             radius
             seed
+            octave
             frequency =
 
   assert (radius > 0.0f)
@@ -26,7 +27,7 @@ let leopard (layout : LayoutFunction)
   let Ri = 1.0f / radius
   let wi = 1.0f / fadeWidth
 
-  let layoutInstance = layout seed frequency
+  let layoutInstance = layout seed octave frequency
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
@@ -52,10 +53,10 @@ let leopard (layout : LayoutFunction)
 
 /// Default leopard pattern with the standard cell layout and the smooth-2 fade function.
 /// The cell hash seed is derived from the frequency.
-let inline leopardd radius frequency = leopard hifiLayout unityCount Mix.sum anyColor Fade.smooth2 1.0f radius (manglef32 frequency) frequency
+let inline leopardd radius frequency = leopard hifiLayout unityCount Mix.sum anyColor Fade.smooth2 1.0f radius (manglef32 frequency) 0 frequency
 
 
 /// Leopard pattern with the standard cell layout.
 /// The cell hash seed is derived from the frequency.
-let inline leopardf fade radius frequency = leopard hifiLayout unityCount Mix.sum anyColor fade 1.0f radius (manglef32 frequency) frequency
+let inline leopardf fade radius frequency = leopard hifiLayout unityCount Mix.sum anyColor fade 1.0f radius (manglef32 frequency) 0 frequency
 

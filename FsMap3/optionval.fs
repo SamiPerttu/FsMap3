@@ -26,10 +26,10 @@ type Optionval<'T> = struct
   /// Filters option values with a predicate, transforming to Noneval those that fail it.
   member inline this.filter(predicate : 'T -> bool) = if this.isSome && predicate !this then this else Optionval(false, Unchecked.defaultof<'T>)
 
-  /// Returns true iff the option has a value that matches the predicate.
+  /// Returns whether the option has a value that matches the predicate.
   member inline this.isSomeAnd(predicate : 'T -> bool) = this.isSome && predicate !this
 
-  /// Returns true iff the option has no value or if the value matches the predicate.
+  /// Returns true if the option has no value or if the value matches the predicate.
   member inline this.isNoneOr(predicate : 'T -> bool) = this.isNone || predicate !this
 
   override this.ToString() = if this.isSome then sprintf "Someval(%A)" this.value else "Noneval"

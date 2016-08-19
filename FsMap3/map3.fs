@@ -80,7 +80,7 @@ let grayscale (v : Vec3f) = Vec3f(v.sum / 3.0f)
 
 /// Rotates v with u.
 /// Vector direction in u is the rotation axis and vector length times amount is the angle in radians.
-let rotate amount (u : Vec3f) (v : Vec3f) =
+let rotate amount (v : Vec3f) (u : Vec3f) =
   let length = u.length
   if length > 1.0e-9f then
     let axis = u / length
@@ -90,9 +90,9 @@ let rotate amount (u : Vec3f) (v : Vec3f) =
 
 
 /// More complex rotation operator that has similarities with layering.
-/// u and v are compared; if their distance is below width, then v is rotated using the vector (u - v)
+/// v and u are compared; if their distance is below width, then v is rotated using the vector (u - v)
 /// shaped with the fade function.
-let rotatef width amount (fade : float32 -> float32) (u : Vec3f) (v : Vec3f) =
+let rotatef width amount (fade : float32 -> float32) (v : Vec3f) (u : Vec3f) =
   let r = v - u
   let d = r.length
   if d > 1.0e-9f && d < width then
@@ -111,8 +111,8 @@ let softmix (a : float32) (v : Vec3f) (u : Vec3f) =
 /// Mixes inputs with the mix operator.
 let mix (mixOp : MixOp) (v : Vec3f) (u : Vec3f) =
   let mutable value = Mix.start
-  value <- mixOp value 1.0f 1.0f u
   value <- mixOp value 1.0f 1.0f v
+  value <- mixOp value 1.0f 1.0f u
   Mix.result value
 
 
@@ -130,8 +130,8 @@ let shift (wave : float32 -> float32) (offset : Vec3f) =
   fun (v : Vec3f) -> (v * 0.25f + offset).map(wave)
 
 
-/// Displaces map g by samples from map f scaled by a.
-let inline displace a (f : Map3) (g : Map3) (v : Vec3f) = g (v + a * f v)
+/// Displaces map f by samples from map g scaled by a.
+let inline displace a (f : Map3) (g : Map3) (v : Vec3f) = f (v + a * g v)
 
 
 /// Combines two maps with a binary operation.
@@ -139,51 +139,45 @@ let bimap (binop : Vec3f -> Vec3f -> Vec3f) (f : Map3) (g : Map3) (v : Vec3f) =
   binop (f v) (g v)
 
 
-/// Combines two maps with a binary operation while applying wavelength scaled, shaped displacement from f to g.
+/// Combines two maps with a binary operation while applying wavelength scaled, shaped displacement from g to f.
 let bimapd (displaceShape : Map3) (binop : Vec3f -> Vec3f -> Vec3f) (f : Map3) (g : Map3) (v : Vec3f) =
-  let u = f v
-  binop u (g (v + displaceShape u))
+  let u = g v
+  binop (f (v + displaceShape u)) u
 
 
 /// Applies a binary operation to two basis functions.
-let binaryBasis (binop : Vec3f -> Vec3f -> Vec3f) (frequencyFactor : float32) (f : Basis3) (g : Basis3) (frequency : float32) =
-  let f = f (frequency * frequencyFactor)
-  let g = g frequency
+let binaryBasis (binop : Vec3f -> Vec3f -> Vec3f) (frequencyFactor : float32) (f : Basis3) (g : Basis3) octave (frequency : float32) =
+  let f = f octave frequency
+  let g = g octave (frequency * frequencyFactor)
   fun (v : Vec3f) ->
     binop (f v) (g v)
 
 
 /// Applies a binary operation to two basis functions. Before the binary operation, g is displaced by f
 /// with the displacement scaled by wavelength.
-let binaryBasisd (binop : Vec3f -> Vec3f -> Vec3f) (displaceShape : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) (frequency : float32) =
+let binaryBasisd (binop : Vec3f -> Vec3f -> Vec3f) (displaceShape : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) octave (frequency : float32) =
   let frequency' = frequency * frequencyFactor
-  let f = f frequency'
-  let g = g frequency
+  let f = f octave frequency
+  let g = g octave frequency'
   fun (v : Vec3f) ->
-    let u = f v
-    binop u (g (v + displaceShape u / frequency'))
+    let u = g v
+    binop (f (v + displaceShape u / frequency')) u
 
 
-/// Applies a displacement scaled by wavelength from f to g.
-let displaceBasis (response : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) (frequency : float32) =
+/// Applies to basis f a displacement from basis g scaled by wavelength.
+let displaceBasis (response : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) octave (frequency : float32) =
   let frequency' = frequency * frequencyFactor
-  let f = f frequency'
-  let g = g frequency
+  let f = f octave frequency'
+  let g = g octave frequency
   fun (v : Vec3f) ->
-    let d = response (f v)
-    g (v + d / frequency')
+    let d = response (g v)
+    f (v + d / frequency')
 
 
 /// Shapes a basis with a map.
-let shapeBasis (f : Map3) (g : Basis3) frequency =
-  let g = g frequency
+let shapeBasis (f : Map3) (basis : Basis3) octave frequency =
+  let g = basis octave frequency
   fun (v : Vec3f) -> f (g v)
-
-
-/// Layers a ("application") on b ("base") in a manner similar to Mix.layer.
-let layer width (fade : float32 -> float32) (a : Vec3f) (b : Vec3f) =
-  let w = fade (max 0G (1G - (b - a).norm1 * 0.2f / width))
-  (b + a * w) / (1G + w)
 
 
 /// Reflects components by shaping them with a wave function with period unity (e.g., sinr, trir).
@@ -291,10 +285,12 @@ let normalize (f : Map3) =
 /// Clamps values outside the estimated range.
 let normalizeBasis (f : Basis3) : Basis3 =
   // Instantiate the basis with an arbitrary high frequency.
-  let mR, MR = range (f 200.0f)
+  let mR, MR = range (f 0 200.0f)
   let mM = average mR MR
   let mS = Vec3f(2G) / (MR - mR)
-  fun frequency v -> ((f frequency v - mM) * mS).map(clamp11)
+  fun octave frequency ->
+    let f = f octave frequency
+    fun v -> ((f v - mM) * mS).map(clamp11)
 
 
 /// Produces a permutation-reflection of components from a seed value which is wrapped to [0, 48[.
@@ -315,21 +311,6 @@ let inline permute (seed : int) : Map3 =
 let color (seed : int) (f : Map3) =
   normalize f >> permute (mangle32 seed) >> Dna.generate(seed, ColorDna.genPalette 32)
 
-
-/// Variable shapes v with u. Components of u provide parameters for
-/// overdrive (X), monoization (Y) and shift (Z).
-let variableShape overdriveAmount monoizeAmount shiftAmount (u : Vec3f) (v : Vec3f) =
-  let p = u.map(map11to01 >> clamp01)
-  // Monoization.
-  let v = lerp v (Vec3f(v.average)) (monoizeAmount * Fade.smooth3 p.y)
-  // Saturation.
-  let S = 0.01f + cubed p.x * overdriveAmount * 20.0f
-  let Z = 1G / softsign S
-  let v = v.map(fun x -> Z * softsign(x * S))
-  // Shift.
-  let bleed = shiftAmount * squared p.z
-  Vec3f(lerp v.x v.z bleed, lerp v.y v.x bleed, lerp v.z v.y bleed)
-  
 
 /// Returns a single Fourier style basis function direction.
 let fourierDirection (seed : int) (f : int) =
