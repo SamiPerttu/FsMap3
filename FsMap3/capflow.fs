@@ -16,22 +16,19 @@ let capflow (layout : LayoutFunction)
             (mix : MixOp)
             (color : CellColor)
             (fade : float32 -> float32)
-            fadeWidth
             (length : float32)
             (radius : float32)
             (flowBasis : Basis3)
             (flowFrequencyFactor : float32)
             seed
-            octave
             frequency =
 
   let R2 = squared radius
   let Ri = 1G / radius
-  let wi = 1.0f / fadeWidth
 
-  let layoutInstance = layout seed octave frequency
+  let layoutInstance = layout (mangle32 seed) frequency
 
-  let flow = flowBasis octave (frequency * flowFrequencyFactor)
+  let flow = flowBasis seed (frequency * flowFrequencyFactor)
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
@@ -57,7 +54,7 @@ let capflow (layout : LayoutFunction)
             let d2 = S.length2
             if d2 < R2 then
               let d = sqrt d2 * Ri
-              let w = fade (min 1.0f (wi - wi * d))
+              let w = fade (1.0f - d)
               value <- mix value 1.0f w (color h (S * Ri))
     data.release()
     Mix.result value

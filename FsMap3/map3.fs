@@ -13,23 +13,6 @@ type Map3 = Vec3f -> Vec3f
 
 
 
-/// Shapes the components of a vector with a function.
-let shape (f: float32 -> float32) : Map3 = fun v -> v.map(f)
-
-
-/// Shapes the components of a vector with the antisymmetric extension of a fade function.
-/// Inputs are clamped to [-1, 1].
-let shapef (fade : float32 -> float32) : Map3 =
-  let inline g x = Fade.threshold fade x
-  fun v -> Vec3f(g v.x, g v.y, g v.z)
-
-
-/// Shapes the magnitude of a vector with a function.
-let shape3 (f : float32 -> float32) (v : Vec3f) =
-  let length = v.length
-  if length > 0G then f length / length * v else Vec3f.zero
-    
-
 /// The zero map.
 let inline zero (v : Vec3f) = Vec3f.zero
 
@@ -49,6 +32,23 @@ let inline scale u (v : Vec3f) = u * v
 /// Sum of the arguments. Translates v by u.
 let inline translate u (v : Vec3f) = u + v
 
+
+/// Shapes the components of a vector with a function.
+let shape (f: float32 -> float32) : Map3 = fun v -> v.map(f)
+
+
+/// Shapes the components of a vector with the antisymmetric extension of a fade function.
+/// Inputs are clamped to [-1, 1].
+let shapef (fade : float32 -> float32) : Map3 =
+  let inline g x = Fade.threshold fade x
+  fun v -> Vec3f(g v.x, g v.y, g v.z)
+
+
+/// Shapes the magnitude of a vector with a function.
+let shape3 (f : float32 -> float32) (v : Vec3f) =
+  let length = v.length
+  if length > 0G then f length / length * v else Vec3f.zero
+    
 
 /// Flat XY plane unit square pattern that arranges successive depth slices
 /// of the XY unit square in an n-by-n grid.
@@ -146,37 +146,37 @@ let bimapd (displaceShape : Map3) (binop : Vec3f -> Vec3f -> Vec3f) (f : Map3) (
 
 
 /// Applies a binary operation to two basis functions.
-let binaryBasis (binop : Vec3f -> Vec3f -> Vec3f) (frequencyFactor : float32) (f : Basis3) (g : Basis3) octave (frequency : float32) =
-  let f = f octave frequency
-  let g = g octave (frequency * frequencyFactor)
+let binaryBasis (binop : Vec3f -> Vec3f -> Vec3f) (frequencyFactor : float32) (f : Basis3) (g : Basis3) seed (frequency : float32) =
+  let f = f (mangle32 seed) frequency
+  let g = g (mangle32b seed) (frequency * frequencyFactor)
   fun (v : Vec3f) ->
     binop (f v) (g v)
 
 
 /// Applies a binary operation to two basis functions. Before the binary operation, g is displaced by f
 /// with the displacement scaled by wavelength.
-let binaryBasisd (binop : Vec3f -> Vec3f -> Vec3f) (displaceShape : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) octave (frequency : float32) =
+let binaryBasisd (binop : Vec3f -> Vec3f -> Vec3f) (displaceShape : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) seed (frequency : float32) =
   let frequency' = frequency * frequencyFactor
-  let f = f octave frequency
-  let g = g octave frequency'
+  let f = f (mangle32 seed) frequency
+  let g = g (mangle32b seed) frequency'
   fun (v : Vec3f) ->
     let u = g v
     binop (f (v + displaceShape u / frequency')) u
 
 
 /// Applies to basis f a displacement from basis g scaled by wavelength.
-let displaceBasis (response : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) octave (frequency : float32) =
+let displaceBasis (response : Map3) (frequencyFactor : float32) (f : Basis3) (g : Basis3) seed (frequency : float32) =
   let frequency' = frequency * frequencyFactor
-  let f = f octave frequency'
-  let g = g octave frequency
+  let f = f (mangle32 seed) frequency'
+  let g = g (mangle32b seed) frequency
   fun (v : Vec3f) ->
     let d = response (g v)
     f (v + d / frequency')
 
 
 /// Shapes a basis with a map.
-let shapeBasis (f : Map3) (basis : Basis3) octave frequency =
-  let g = basis octave frequency
+let shapeBasis (f : Map3) (basis : Basis3) seed frequency =
+  let g = basis seed frequency
   fun (v : Vec3f) -> f (g v)
 
 

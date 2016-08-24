@@ -214,7 +214,7 @@ type DnaView() =
           let updateIsNeeded =
             valueHasChanged.[i] || Fun.exists 0 visualizerDependencies.last (fun j ->
               visualizerDependencies.[j] dna.[i] |> List.exists (fun (windowSize, parameterName) ->
-                Fun.exists (i - windowSize) (i - 1) (fun k -> k >= 0 && valueHasChanged.[k] && dna.[k].name = parameterName))
+                Fun.exists (max 0 (i - windowSize)) (i - 1) (fun k -> valueHasChanged.[k] && dna.[k].name = parameterName))
               )
                  
           dna.parameterArray.[i] <- dna'.[i]

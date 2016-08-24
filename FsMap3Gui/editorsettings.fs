@@ -5,14 +5,9 @@ open System.Xml
 
 open Common
 
+
 /// FsMap3 editor settings.
 type EditorSettings() =
-
-  member val recentFiles : string[] = Array.empty with get, set
-
-  /// Adds a file to the list of recent files.
-  member this.addRecent(file) =
-    this.recentFiles <- this.recentFiles |> Array.filter ((<>) file) |> Array.append [| file |]
 
   static member directory = 
     let appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
@@ -20,6 +15,18 @@ type EditorSettings() =
 
   static member path =
     System.IO.Path.Combine(EditorSettings.directory, "settings.xml")
+
+
+  member val recentFiles : string[] = Array.empty with get, set
+
+  /// Adds a file to the list of recent files.
+  member this.addRecent(file) =
+    let maxRecentFiles = 20
+    this.recentFiles <- this.recentFiles
+                        |> Array.filter ((<>) file)
+                        |> Array.append [| file |]
+                        |> fun a -> if a.size > maxRecentFiles then a.[a.size - maxRecentFiles .. a.last] else a
+
 
   /// Reads settings.
   static member read() =

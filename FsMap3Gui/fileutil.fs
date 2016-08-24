@@ -11,7 +11,7 @@ open Common
 
 
 /// Retrieves the contents of a directory and its subdirectories, recursively.
-/// Returns a pair of lists of directories and files where each entry is a pair (relative path, absolute path).
+/// Returns a pair (directories, files) of lists where each item is a pair (relative path, absolute path).
 let getDirectoryContents (path : string) =
   let directories = Darray.create()
   let files = Darray.create()

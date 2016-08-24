@@ -232,7 +232,7 @@ type PixmapView(image : System.Windows.Controls.Image, ?renderWidth, ?renderHeig
           match this.render(inbox, source, renderWidth, renderHeight, level, previousPixmap) with
           | Some(levelPixmap) ->
             // Don't bother showing this level if we can expect to finish the next one quickly.
-            let showThisLevel = level = 0 || Common.timeNow() - t0 > Q 1 100 || inbox.CurrentQueueLength > 0
+            let showThisLevel = level <= 1 || Common.timeNow() - t0 > Q 1 100 || inbox.CurrentQueueLength > 0
             let previousPixmap' =
               if level > 0 then
                 if showThisLevel then Some(Pixmap.createCopy(levelPixmap)) else Some(levelPixmap)

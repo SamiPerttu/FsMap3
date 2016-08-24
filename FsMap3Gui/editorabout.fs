@@ -16,7 +16,7 @@ let showAboutWindow() =
   let effect = Effects.DropShadowEffect(BlurRadius = 3.0, Color = Wpf.color(1.0), Opacity = 1.0, ShadowDepth = 0.0)
   let map =
     let data = [|
-      DnaData("-3CVp+ZYJ5p0-1hWS0ZRQ0Z003YCIFHaZbW2-wYQ5Z1v+CIFHa+zFfNJYiIGCMZXyeUz-T4tN7001Y-1M3Q-HlNa0Z5RD903Zp94J0+tmK330YWK6lwZK8Xye6Zl99V901Y2tcEG20-TvynPZvL9+03YdQ77T31ZreVfH+wMH3j2+uHWEi300"B)
+      DnaData("-1Axq0-1R3J+-1hWS0ZRQ0Z004YvwUxbZdFQ3qYQC26PZRRK6o+uzHt3YO42+wZp8rme++++++003-p6HW0+dz3Ah-HOPS001-gb8G0+IItje00-0uHeo+dz3Ah-JLG3sZnCQcKYJNgVu010a1+XzmzO022+A1CIIYV6KTw-8X-K022Yd8t+5+JsvC0-6dx6025YLKMEw0-0uHeo+dz3Ah-HOPS0YE6PeBYJNgVu0103-RgQYG+yuTav-6dx600"B)
       |]
     data.[Common.timeSeed() |> Mangle.mangle32 |> flip emod data.size].generate(Map3Dna.loadEditorMap)
   let w = 600.0
@@ -30,13 +30,13 @@ let showAboutWindow() =
   let title = Label(Content = "FsMap3 Editor", FontSize = 40.0, FontWeight = bold, Effect = effect)
   let alpha = Label(Content = "alpha", FontSize = 20.0, FontWeight = bold, Effect = effect, Foreground = Wpf.brush(0.8, 0.0, 0.0))
   let version = Label(Content = "Version " + Map3Dna.EditorVersion, FontSize = 16.0, FontWeight = bold, Effect = effect)
-  aboutCanvas.add(title, 10.0, 5.0)
+  aboutCanvas.add(title, 10.0, 2.0)
   aboutCanvas.add(alpha, 12.0, 50.0)
   aboutCanvas.add(version, 12.0, 75.0)
   let copyright = Label(Content = "© Copyright 2016 Sami Perttu", FontSize = 20.0, FontWeight = medium, Effect = effect)
   aboutCanvas.add(copyright, 30.0, 120.0)
   let license = Label(Content = "This program is distributed under the MIT license.", FontSize = 16.0, FontWeight = medium, Effect = effect)
-  aboutCanvas.add(license, 33.0, 150.0)
+  aboutCanvas.add(license, 33.0, 147.0)
   //let license2 = Label(Content = "See the file LICENSE.md for more details.", FontSize = 16.0, FontWeight = medium, Effect = effect)
   //aboutCanvas.add(license2, 30.0, 172.0)
   let closeButton = Button(Content = "Close", Width = 100.0, Height = 25.0, Background = Wpf.brush(1.0, 1.0, 1.0, 0.3), withClick = fun _ -> aboutWindow.Close())

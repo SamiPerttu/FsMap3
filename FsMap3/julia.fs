@@ -38,10 +38,9 @@ let julia (layout : LayoutFunction)
           (fade : float32 -> float32)
           (p : FractalParameters)
           seed
-          octave
           frequency =
 
-  let layoutInstance = layout seed octave frequency
+  let layoutInstance = layout seed frequency
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v

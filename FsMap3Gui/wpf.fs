@@ -80,6 +80,22 @@ type Wpf =
     image
 
 
+  /// Creates a collection of N points from an indexed function.
+  static member createPoints(N, f : int -> Vec2f) =
+    let points = new PointCollection()
+    for i = 0 to N - 1 do
+      let v = f i in points.Add(System.Windows.Point(float v.x, float v.y))
+    points
+
+
+  /// Creates a regular polygon with N sides centered at (x, y), with one side pointing toward phase radians.
+  /// It is optionally scaled by elongation along the phase direction.
+  static member regularPolygon(N, x, y, radius : float32, ?phase, ?elongation) =
+    let phase = phase >? 0.0f
+    let elongation = elongation >? 1.0f
+    Wpf.createPoints(N, fun i -> Vec2f(x, y) + radius * (Vec2f.direction (G i * G tau / G N) * Vec2f(elongation, 1.0f)).rotate(phase))
+
+
 
 [<AutoOpen>]
 module WpfExtensions =

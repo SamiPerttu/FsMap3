@@ -11,23 +11,21 @@ open CellColor
 /// Basis function that produces a spotted pattern.
 /// The radius of individual spots is radius (radius > 0).
 /// The shape of the falloff is controlled by the fade function.
+/// Falloff fractional width is fadeWidth (fadeWidth in [0, 1]).
 let leopard (layout : LayoutFunction)
             (count : FeatureCount)
             (mix : MixOp)
             (color : CellColor)
             (fade : float32 -> float32)
-            fadeWidth
             radius
             seed
-            octave
             frequency =
 
   assert (radius > 0.0f)
   let R2 = squared radius
   let Ri = 1.0f / radius
-  let wi = 1.0f / fadeWidth
 
-  let layoutInstance = layout seed octave frequency
+  let layoutInstance = layout seed frequency
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
@@ -45,7 +43,7 @@ let leopard (layout : LayoutFunction)
             let d2 = P.length2
             if d2 < R2 then
               let d = sqrt d2 * Ri
-              let w = fade (min 1.0f (wi - wi * d))
+              let w = fade (1.0f - d)
               value <- mix value 1.0f w (color h (P * Ri))
     data.release()
     Mix.result value
@@ -53,10 +51,10 @@ let leopard (layout : LayoutFunction)
 
 /// Default leopard pattern with the standard cell layout and the smooth-2 fade function.
 /// The cell hash seed is derived from the frequency.
-let inline leopardd radius frequency = leopard hifiLayout unityCount Mix.sum anyColor Fade.smooth2 1.0f radius (manglef32 frequency) 0 frequency
+let inline leopardd radius frequency = leopard hifiLayout unityCount Mix.sum anyColor Fade.smooth2 radius (manglef32 frequency) frequency
 
 
 /// Leopard pattern with the standard cell layout.
 /// The cell hash seed is derived from the frequency.
-let inline leopardf fade radius frequency = leopard hifiLayout unityCount Mix.sum anyColor fade 1.0f radius (manglef32 frequency) 0 frequency
+let inline leopardf fade radius frequency = leopard hifiLayout unityCount Mix.sum anyColor fade radius (manglef32 frequency) frequency
 

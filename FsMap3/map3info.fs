@@ -34,7 +34,7 @@ type Map3Info =
     slope99 : float32 Optionval
     /// Sampled average standard deviation of component values in the normalized map.
     deviation : float32
-    /// Sampling diameter. For tiling maps the optimal value is 1, as then the samples are stratified in the unit cube.
+    /// Sampling cube diameter. For tiling maps the optimal value is 1, as then the samples are stratified in the unit cube.
     sampleDiameter : float32
     /// Sample set of values from pseudo-random points in the normalized map. Can be used for fingerprinting.
     sampleArray : Vec3f[]
@@ -182,7 +182,7 @@ type Map3Info with
           gradientArray = if retainSamples then gradientArray else Array.createEmpty
         }
 
-      // Insert or replace the info. The new info is always a superset of any existing info.
+      // Insert or replace the info. The new info is always a superset of the old info.
       fingerprint.apply(fun fingerprint -> lock cache (fun _ -> cache.[fingerprint] <- info))
       info
 
@@ -212,6 +212,13 @@ let normalizeWithId extraId (generator : Dna -> Map3) (dna : Dna) =
 /// Normalizes the map from the generator. Cache aware.
 let normalize generator dna =
   normalizeWithId 0 generator dna
+
+
+
+/// Obtains range of the map from the generator. Cache aware. Returns pair (map, info).
+let range (generator : Dna -> Map3) (dna : Dna) =
+  let info = Map3Info.create(generator, dna)
+  info.original, info
 
 
 

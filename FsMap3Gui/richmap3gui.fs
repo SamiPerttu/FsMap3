@@ -11,90 +11,146 @@ open Common
 
 
 [<NoComparison; NoEquality>]
+type AxisInfo =
+  {
+    label : string
+    header : Label
+    circle : Ellipse
+    arrow : Polygon
+    center : Label
+    radius : Label
+    isZ : bool
+    headerColor : Brush
+    tileColor : Brush
+  }
+
+  member this.reset() =
+    this.header.Foreground <- this.headerColor
+    this.circle.Visibility <- Visibility.Hidden
+    this.arrow.Visibility <- Visibility.Hidden
+    this.center.Visibility <- Visibility.Hidden
+    this.radius.Visibility <- Visibility.Hidden
+
+  member this.update(tiles, center : float32, zoom, length : float32) =
+    let zoomEpsilon = 1.0e-5f
+    let zoomIsRight = this.isZ || (zoom <= 1.0f + zoomEpsilon && zoom >= 1.0f - zoomEpsilon)
+    match tiles, zoomIsRight with
+    | true, true ->
+      this.header.Foreground <- this.tileColor
+      this.header.ToolTip <- if this.isZ then "Z axis tiles." else this.label + " axis tiles in this view."
+      this.circle.Visibility <- Visibility.Visible
+      this.arrow.Visibility <- Visibility.Visible
+    | true, false ->
+      this.header.Foreground <- this.tileColor
+      this.header.ToolTip <- this.label + " does not tile at this magnification."
+      this.circle.Visibility <- Visibility.Hidden
+      this.arrow.Visibility <- Visibility.Hidden
+    | false, _ ->
+      this.header.Foreground <- this.headerColor
+      this.header.ToolTip <- this.label + " axis does not tile."
+      this.circle.Visibility <- Visibility.Hidden
+      this.arrow.Visibility <- Visibility.Hidden
+    this.center.Visibility <- Visibility.Visible
+    this.center.Content <- Pretty.string center
+    if not this.isZ then
+      this.radius.Visibility <- Visibility.Visible
+      this.radius.Content <- sprintf "±%s" (Pretty.string (length * 0.5f))
+
+  static member create(canvas : Canvas, label, fontSize, x0, x1, x2, y, size, headerColor, tileColor) =
+    let header = Label(Padding = Thickness(0.0), FontSize = fontSize, Content = label)
+    canvas.add(header, x0, y)
+    let circle = Ellipse(Width = size, Height = size, Stroke = tileColor, StrokeThickness = 0.8, Fill = Brushes.Transparent, IsHitTestVisible = false)
+    canvas.add(circle, 1.0, y - 0.5)
+    let arrow = Polygon(Points = Wpf.regularPolygon(3, 1.0f, float32 size * 0.5f, 2.0f, G tau * Q 3 4, 2.0f), Fill = tileColor, IsHitTestVisible = false)
+    canvas.add(arrow, 0.5, y)
+    let center = Label(Padding = Thickness(0.0), FontSize = fontSize)
+    canvas.add(center, x1, y)
+    let radius = Label(Padding = Thickness(0.0), FontSize = fontSize)
+    canvas.add(radius, x2, y)
+    {
+      label = label
+      header = header
+      circle = circle
+      arrow = arrow
+      center = center
+      radius = radius
+      isZ = label = "Z"
+      headerColor = headerColor
+      tileColor = tileColor
+    }
+      
+
+
+[<NoComparison; NoEquality>]
 type RichMap3InfoBox =
   {
-    panel : StackPanel
+    canvas : Canvas
     detailLevel : Label
-    xCenter : Label
-    xRadius : Label
-    yCenter : Label
-    yRadius : Label
-    zText : Label
+    xInfo : AxisInfo
+    yInfo : AxisInfo
+    zInfo : AxisInfo
+    headerColor : Brush
+    tileColor : Brush
   }
 
   static member create(width) =
-    let headerFontSize = 12.0
-    let textFontSize = 12.0
-    let itemMargin = Thickness(0.0, -3.0, 0.0, -3.0)
-    let textMargin = Thickness(-4.0, -3.0, 0.0, -3.0)
-    let headerColor = Wpf.brush(0.1, 0.35, 0.6)
+    let fontSize = 12.0
+    let tileColor = Wpf.brush(0.2, 0.65, 0.2)
+    let headerColor = Wpf.brush(0.1, 0.35, 0.7)
+    let bgColor = Wpf.brush(0.92)
+    let lineHeight = 18.0
 
-    let makeHeader content =
-      Label(Margin = Thickness(0.0), FontSize = headerFontSize, Content = content, Foreground = headerColor)
-    let makeText() =
-      Label(Margin = textMargin, FontSize = textFontSize, VerticalAlignment = VerticalAlignment.Center)
-    let makePanel() =
-      StackPanel(Margin = itemMargin, Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left)
+    let canvas = Canvas(Width = width, Height = 98.0, Margin = Thickness(0.0))
 
-    let panel = StackPanel(Width = width, Margin = Thickness(0.0), Orientation = Orientation.Vertical, HorizontalAlignment = HorizontalAlignment.Center)
-    let detailPanel = makePanel()
-    let detailLabel = makeHeader "Detail Level"
+    let makeHeader content x y =
+      let header = Label(Padding = Thickness(0.0), FontSize = fontSize, Foreground = headerColor, Content = content)
+      canvas.add(header, x, y)
+      header
+    let makeText x y =
+      let text = Label(Padding = Thickness(0.0), FontSize = fontSize)
+      canvas.add(text, x, y)
+      text
+
+    let x0 = 6.5
+    let x1 = 25.0
+    let x2 = 88.0
+
+    let detailLabel = makeHeader "Detail Level" x0 5.0
     detailLabel.ToolTip <- "Estimated resolution at which most of the detail is discernible."
-    detailPanel.add(detailLabel)
-    let detailLevel = makeText()
-    detailPanel.add(detailLevel)
-    let xPanel = makePanel()
-    xPanel.add(makeHeader "X")
-    let xCenter = makeText()
-    xCenter.Width <- width * 0.45
-    xPanel.add(xCenter)
-    let xRadius = makeText()
-    xPanel.add(xRadius)
-    let yPanel = makePanel()
-    yPanel.add(makeHeader "Y")
-    let yCenter = makeText()
-    yCenter.Width <- width * 0.45
-    yPanel.add(yCenter)
-    let yRadius = makeText()
-    yPanel.add(yRadius)
-    let zPanel = makePanel()
-    zPanel.add(makeHeader "Z")
-    let zText = makeText()
-    zPanel.add(zText)
-    panel.add(Separator(Margin = Thickness(0.0, 0.0, 0.0, 0.0)))
-    panel.add(detailPanel)
-    panel.add(xPanel)
-    panel.add(yPanel)
-    panel.add(zPanel)
+    let detailLevel = makeText x2 5.0
+
+    let yx = 30.0
+    canvas.add(Rectangle(Width = width, Height = lineHeight + 2.0, Fill = bgColor), 0.0, yx - 1.0)
+    let xInfo = AxisInfo.create(canvas, "X", fontSize, x0, x1, x2, yx, lineHeight, headerColor, tileColor)
+
+    let yy = 52.0
+    let yInfo = AxisInfo.create(canvas, "Y", fontSize, x0, x1, x2, yy, lineHeight, headerColor, tileColor)
+
+    let yz = 74.0
+    canvas.add(Rectangle(Width = width, Height = lineHeight + 2.0, Fill = bgColor), 0.0, yz - 1.0)
+    let zInfo = AxisInfo.create(canvas, "Z", fontSize, x0, x1, x2, yz, lineHeight, headerColor, tileColor)
 
     {
-      panel = panel
+      canvas = canvas
       detailLevel = detailLevel
-      xCenter = xCenter
-      xRadius = xRadius
-      yCenter = yCenter
-      yRadius = yRadius
-      zText = zText
+      xInfo = xInfo
+      yInfo = yInfo
+      zInfo = zInfo
+      headerColor = headerColor
+      tileColor = tileColor
     }
 
   member this.reset() =
     this.detailLevel.Visibility <- Visibility.Hidden
-    this.xCenter.Visibility <- Visibility.Hidden
-    this.xRadius.Visibility <- Visibility.Hidden
-    this.yCenter.Visibility <- Visibility.Hidden
-    this.yRadius.Visibility <- Visibility.Hidden
-    this.zText.Visibility <- Visibility.Hidden
+    this.xInfo.reset()
+    this.yInfo.reset()
+    this.zInfo.reset()
 
   member this.update(map : RichMap3) =
+    let tileX, tileY, tileZ = Map3Dna.doesItTile map.dna
     this.detailLevel.Content <- sprintf "%d px" (int map.detailLevel)
-    this.xCenter.Content <- Pretty.string map.center.x
-    this.xRadius.Content <- sprintf "±%s" (Pretty.string (map.viewWidth * 0.5f))
-    this.yCenter.Content <- Pretty.string map.center.y
-    this.yRadius.Content <- sprintf "±%s" (Pretty.string (map.viewHeight * 0.5f))
-    this.zText.Content <- sprintf "%s" (Pretty.string map.center.z)
+    this.xInfo.update(tileX, map.center.x, map.zoom, map.viewWidth)
+    this.yInfo.update(tileY, map.center.y, map.zoom, map.viewHeight)
+    this.zInfo.update(tileZ, map.center.z, map.zoom, 0.0f)
     this.detailLevel.Visibility <- Visibility.Visible
-    this.xCenter.Visibility <- Visibility.Visible
-    this.xRadius.Visibility <- Visibility.Visible
-    this.yCenter.Visibility <- Visibility.Visible
-    this.yRadius.Visibility <- Visibility.Visible
-    this.zText.Visibility <- Visibility.Visible
+

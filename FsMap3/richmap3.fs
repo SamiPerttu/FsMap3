@@ -12,9 +12,10 @@ open Map3Cache
 [<NoEquality; NoComparison>]
 type RichMap3 =
   {
+    dna : Dna
     /// The uncolored map with the view window transformed to the XY unit square at Z = 0.
-    uncolored : Map3
-    /// Palette transform.
+    raw : Map3
+    /// Palette transform for the uncolored map.
     palette : Map3
     /// Map view center.
     center : Vec3f
@@ -25,7 +26,7 @@ type RichMap3 =
   }
 
   /// The colored, transformed map.
-  member this.map = this.uncolored >> this.palette
+  member this.map = this.raw >> this.palette
 
   member inline this.viewWidth = 1.0f / this.zoom
 
@@ -59,7 +60,7 @@ type RichMap3 =
           | Someval(v) ->
             rich.palette v * 0.5f + Vec3f(0.5f)
           | Noneval ->
-            let v = rich.uncolored (RichMap3.pixmapCamera(w, h, x, y))
+            let v = rich.raw (RichMap3.pixmapCamera(w, h, x, y))
             cache.set(x, y, v)
             rich.palette v * 0.5f + Vec3f(0.5f)
         member __.finish() =
@@ -70,7 +71,7 @@ type RichMap3 =
 
   /// Generates a RichMap3. The palette and 2-window are generated and applied separately here.
   /// The map generator is supplied as an argument.
-  static member generate (prepareToFilter : bool) (mapGenerator : Dna -> Map3) = fun (dna : Dna) ->
+  static member generate (prepareToFilter : bool) (mapGenerator : Dna -> Map3) (dna : Dna) =
     let clerp = lerp -50.0f 50.0f
     let centerX = dna.float32("View Center X", clerp)
     let centerY = dna.float32("View Center Y", clerp)
@@ -82,10 +83,25 @@ type RichMap3 =
     let palette = dna.descend("Palette", ColorDna.genPalette 33)
     let info = Map3Info.create(mapGenerator, dna, retainSamples = true, computeSlopes = true)
     {
-      RichMap3.uncolored = viewTransform >> info.map
+      dna = dna
+      raw = viewTransform >> info.map
       palette = palette
       center = center
       zoom = zoom
       info = info
     }
+
+
+  /// An empty RichMap3.
+  static member zero =
+    let raw = Map3.zero
+    {
+      RichMap3.dna = Dna.create()
+      raw = raw
+      palette = Map3.identity
+      center = Vec3f(0.5f)
+      zoom = 1.0f
+      info = Map3Info.create(raw)
+    }
+
 

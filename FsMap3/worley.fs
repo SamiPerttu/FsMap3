@@ -222,8 +222,8 @@ let worleyBasis (cell : BasisData) (count : FeatureCount) maxDistance (distance 
 
 
 /// Worley basis. Components contain Worley patterns p0, p1 and p2.
-let worley (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance : CellDistance) (fade : float32 -> float32) seed octave (frequency : float32) =
-  let layoutInstance = layout seed octave frequency
+let worley (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance : CellDistance) (fade : float32 -> float32) seed (frequency : float32) =
+  let layoutInstance = layout seed frequency
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
     worleyBasis data count (2.0f / distance.normalizationFactor) distance v
@@ -236,7 +236,7 @@ let worley (layout : LayoutFunction) (count : FeatureCount) p0 p1 p2 (distance :
 /// Default Worley basis with the default layout function and unity Poisson feature distribution.
 /// The cell hash seed is derived from the frequency.
 let inline worleyd p distance fade frequency =
-  worley hifiLayout unityPoisson p ((p + 1) % worleyPattern.size) ((p + 2) % worleyPattern.size) distance fade (manglef32 frequency) 0 frequency
+  worley hifiLayout unityPoisson p ((p + 1) % worleyPattern.size) ((p + 2) % worleyPattern.size) distance fade (manglef32 frequency) frequency
 
 
 
@@ -353,8 +353,8 @@ let worleyColor (layout : LayoutFunction)
                 (color : CellColor)
                 (fade : float32 -> float32)
                 colorFadeDistance
-                seed octave frequency =
-  let layoutInstance = layout seed octave frequency
+                seed frequency =
+  let layoutInstance = layout seed frequency
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
     worleyColorBasis data count 2.0f distance color (3.0f / colorFadeDistance) v
@@ -374,8 +374,8 @@ let tiles (layout : LayoutFunction)
          shading
          (color : CellColor)
          colorFadeDistance
-         seed octave frequency =
-  let layoutInstance = layout seed octave frequency
+         seed frequency =
+  let layoutInstance = layout seed frequency
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
     worleyColorBasis data count 2.0f distance color (3.0f / colorFadeDistance) v

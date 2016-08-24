@@ -1,4 +1,4 @@
-﻿// Dna view parameter visualizers.
+﻿/// DnaView parameter visualizers.
 module FsMap3.DnaVisualizer
 
 open System.Windows
@@ -51,21 +51,16 @@ let fadeChoiceVisualizer (width : int) (height : int) =
   let width = float width
   let height = float height
 
-  let pointCache = HashMap.create(Mangle.mangleString)
-
   fun (parameter : DnaParameter) (i : int) ->
+
     match parameter.choices with
+
     | Some(:? Choices<float32 -> float32> as choices) ->
       let f = choices.value(i)
 
       let polygon = Polygon(Fill = Wpf.brush(0.25, 0.35, 0.6), StrokeThickness = 0.0)
 
-      let pointKey = parameter.name + choices.name(i)
-      let cached = pointCache.find(pointKey)
-      
-      if cached.isSome then
-        polygon.Points <- !cached
-      elif parameter.name.EndsWith("wave") then
+      if parameter.name.EndsWith("wave") then
         let points = PointCollection()
         points.Add(Point(width, height))
         points.Add(Point(0.0, height))
@@ -73,7 +68,6 @@ let fadeChoiceVisualizer (width : int) (height : int) =
         for i = 0 to n do
           points.Add(Point(1.0 + (width - 2.0) * float i / float n, height * 0.5 - (height - 2.0) * 0.5 * float (f (float32 i / float32 n))))
         polygon.Points <- points
-        pointCache.[pointKey] <- points
       else
         let points = PointCollection()
         points.Add(Point(width, 0.0))
@@ -83,9 +77,6 @@ let fadeChoiceVisualizer (width : int) (height : int) =
         for i = 0 to n do
           points.Add(Point(1.0 + (width - 2.0) * float i / float n, height - 1.0 - (height - 2.0) * float (f (float32 i / float32 n))))
         polygon.Points <- points
-        // Extra hack: don't cache Weave fades because another parameter has an effect on them.
-        if parameter.name <> "Weave" then
-          pointCache.[pointKey] <- points
 
       let canvas = Canvas(Width = width, Height = height, Background = Brushes.Transparent)
       canvas.add(Rectangle(Width = width, Height = height, StrokeThickness = 1.0, Stroke = Wpf.brush(0.0)), 0.0, 0.0)

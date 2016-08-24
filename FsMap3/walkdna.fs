@@ -12,7 +12,7 @@ let genDisplaceResponse minAmount maxAmount (dna : Dna) =
       ),
     C("smooth line", fun _ ->
       let amount = dna.float32("Displace amount", squared >> lerp minAmount maxAmount)
-      let acceleration = dna.float32("Response smoothness")
+      let acceleration = dna.float32("Displace smoothness")
       let A = max 0.001f (1.0f - sqrt acceleration)
       fun x -> let z = x / A in amount * A * (if z < 1.0f then squared z * (1G - Q 1 3 * z) else z - Q 1 3)
       ),

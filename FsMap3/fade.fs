@@ -84,9 +84,6 @@ let inline skew (bias : 'a) : 'a -> 'a =
   else
     let p = exp2 -bias in fun x -> x ** p
 
-/// Saturated linear fade that reaches 1 at 0 <= 1 - a <= 1.
-let inline saturate (a : 'a) (x : 'a) : 'a = let b = 1G - a in if x < b then x / b else 1G
-
 /// A number of sine waves as a fade (cycles > 0), oscillating between 0 and 1.
 /// As a peculiarity, Fade.wave _ 0.5 = 0.5. Fade.wave 1 is equivalent to Fade.sine.
 let inline wave (cycles : int) (x : 'a) : 'a = sinr0(x * (G cycles - Q 1 2) - Q 1 4)
@@ -104,6 +101,10 @@ let inline worm (cycles : int) (x : 'a) : 'a =
 /// Reverses the shape of a fade function.
 let inline reverse (f : 'a -> 'a) (x : 'a) =
   1G - (f (1G - x))
+
+/// Saturates a fade function so that it reaches unity value at x = 1 - a (a in [0, 1]).
+/// The fade is unmodified when a = 0. The fade is squished away completely when a = 1.
+let inline saturate (a : 'a) (f : 'a -> 'a) (x : 'a) : 'a = let b = 1G - a in if x < b then f (x / b) else 1G
 
 /// Creates a fade from an arbitrary function with argument range [x0, x1]. Function values are translated such
 /// that the endpoint values become 0 and 1. Any values outside the range are clamped.

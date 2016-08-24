@@ -5,8 +5,8 @@ open Common
 
 
 /// Generates sigmoidal fades of varying hardness.
-let genSigmoidFade (parameterName : string) (dna : Dna) : float32 -> float32 = 
-  dna.ordered(parameterName,
+let genSigmoidFade hardnessLabel (dna : Dna) : float32 -> float32 = 
+  dna.ordered(hardnessLabel,
     C(0.30, "0", Fade.sine),
     C(0.30, "1", Fade.smooth2),
     C(0.30, "2", Fade.smooth3),
@@ -23,7 +23,7 @@ let genSigmoidFade (parameterName : string) (dna : Dna) : float32 -> float32 =
 
 /// Generates a fade for the layering mix operator.
 let genLayerFade (dna : Dna) =
-  dna.branch("Falloff shape",
+  dna.branch("Layer shape",
     C("reverse power-3", fun _ -> Fade.reverse Fade.power3),
     C("reverse power-2", fun _ -> Fade.reverse Fade.power2),
     C("line", fun _ -> Fade.line),
@@ -34,15 +34,16 @@ let genLayerFade (dna : Dna) =
 
 /// Generates a fade for potential functions.
 let genPotentialFade (dna : Dna) : float32 -> float32 =
+  let a = dna.float32("Falloff saturation", lerp 0.0f 0.9f)
   dna.category("Falloff shape",
-    C("downward arc", Fade.downarc),
-    C("reverse power-3", Fade.reverse Fade.power3),
-    C("reverse power-2", Fade.reverse Fade.power2),
-    C("line", Fade.line),
-    C("smooth line", Fade.smoothLine),
-    C("sine", Fade.sine),
-    C("smooth-2", Fade.smooth2),
-    C("power-2", Fade.power2)
+    C("downward arc", Fade.saturate a Fade.downarc),
+    C("reverse power-3", Fade.saturate a (Fade.reverse Fade.power3)),
+    C("reverse power-2", Fade.saturate a (Fade.reverse Fade.power2)),
+    C("line", Fade.saturate a Fade.line),
+    C("smooth line", Fade.saturate a Fade.smoothLine),
+    C("sine", Fade.saturate a Fade.sine),
+    C("smooth-2", Fade.saturate a Fade.smooth2),
+    C("power-2", Fade.saturate a Fade.power2)
     )
 
 
@@ -82,7 +83,7 @@ let genTrapFade (dna : Dna) : float32 -> float32 =
     C("downward arc", Fade.downarc),
     C("reverse power-3", Fade.reverse Fade.power3),
     C("reverse power-2", Fade.reverse Fade.power2),
-    C("saturated smooth", Fade.saturate 0.3f >> Fade.smooth2),
+    C("saturated smooth", Fade.saturate 0.3f Fade.smooth2),
     C("line", Fade.line),
     C("smooth line", Fade.smoothLine),
     C("sine", Fade.sine),

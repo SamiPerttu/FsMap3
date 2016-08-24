@@ -1,4 +1,5 @@
-﻿module FsMap3.Fractalizer
+﻿/// Fractalizers are map combinators that compute an output by repeated sampling of maps.
+module FsMap3.Fractalizer
 
 open Common
 open Mangle
@@ -39,12 +40,13 @@ let iterate n c (f : Map3) (v0 : Vec3f) =
 
 
 
-/// Basic fractalizer. Samples many octaves of the basis.
+/// Basic fractalizer. Samples many octaves of a basis.
 /// Roughness is the attenuation for each doubling of frequency (typically < 1).
 /// Lacunarity (lacunarity > 0) is the wavelength scaling of successive octaves.
 let fractal (roughness : float32)
             (lacunarity : float32)
             (mix : MixOp)
+            (initialSeed : int)
             (initialFrequency : float32)
             (octaves : int)
             (basis : Basis3) =
@@ -52,7 +54,7 @@ let fractal (roughness : float32)
   // Get roughness per octave from roughness.
   let r = roughness ** (-log2 lacunarity)
   // Instantiate bases.
-  let basis = Array.init octaves (fun i -> basis i (initialFrequency / pow lacunarity i))
+  let basis = Array.init octaves (fun i -> basis (initialSeed + i) (initialFrequency / pow lacunarity i))
 
   fun (v : Vec3f) ->
     let mutable value = Mix.start
@@ -72,6 +74,7 @@ let fractald (roughness : float32)
              (highpass : float32)
              (mix : MixOp)
              (walk : WalkOp)
+             (initialSeed : int)
              (initialFrequency : float32)
              (octaves : int)
              (basis : Basis3) =
@@ -82,7 +85,7 @@ let fractald (roughness : float32)
   let r = roughness ** (-log2 lacunarity)
   // Set the initial weight so the most important octave has unity weight.
   let w0 = if r <= 1.0f then 1.0f else 1.0f / pow r (octaves - 1)
-  let basis = Array.init octaves (fun i -> basis i (initialFrequency / pow lacunarity i))
+  let basis = Array.init octaves (fun i -> basis (initialSeed + i) (initialFrequency / pow lacunarity i))
 
   fun (v : Vec3f) ->
     let mutable F     = initialFrequency
@@ -105,8 +108,8 @@ let fractald (roughness : float32)
 
 /// Fractalizes basis g. Displacement is applied starting from the most detailed octave.
 /// This tends to produce a billowy appearance, as opposed to creases.
-let fractaldi roughness lacunarity lowpass mix walk initialFrequency octaves g =
-  fractald roughness (1.0f / lacunarity) lowpass mix walk (initialFrequency / pow lacunarity (octaves - 1)) octaves g
+let fractaldi roughness lacunarity lowpass mix walk initialSeed initialFrequency octaves g =
+  fractald roughness (1.0f / lacunarity) lowpass mix walk initialSeed (initialFrequency / pow lacunarity (octaves - 1)) octaves g
 
 
 
@@ -122,11 +125,12 @@ let fractalv roughness
              maxOctaves
              firstOctave
              octaveDirection
+             initialSeed
              initialFrequency
              (variable : Map3)
              (basis : Basis3) =
 
-  let basis = Array.init (int maxOctaves) (fun i -> basis i (initialFrequency / pow lacunarity i))
+  let basis = Array.init (int maxOctaves) (fun i -> basis (initialSeed + i) (initialFrequency / pow lacunarity i))
   let r     = roughness ** (-log2 lacunarity)
 
   fun (v : Vec3f) ->
@@ -160,3 +164,4 @@ let fractalv roughness
           d <- walk d F alpha (alpha * displace * y * R)
 
     Mix.result value
+

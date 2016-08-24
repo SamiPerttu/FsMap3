@@ -39,13 +39,13 @@ let genBleed (dna : Dna) =
 
 /// Generates a vector posterizer map.
 let genVectorPosterize (dna : Dna) =
-  let levels = dna.float32("Posterize levels", xerp 1.0f 20.0f)
+  let levels = 1.0f / dna.float32("Posterize step size", xerp 0.01f 10.0f)
   posterize3 (genSigmoidFade "Posterize hardness" dna) levels
 
 
 /// Generates a component posterizer map.
 let genComponentPosterize (dna : Dna) =
-  let levels = dna.float32("Posterize levels", xerp 1.0f 20.0f)
+  let levels = 1.0f / dna.float32("Posterize step size", xerp 0.01f 10.0f)
   posterize (genSigmoidFade "Posterize hardness" dna) levels
 
 
@@ -59,7 +59,7 @@ let genVectorReflect (dna : Dna) =
                                           C("worm", Fade.worm 2),
                                           C(0.5, "power-2", Fade.power2)
                                           )
-  let amount = dna.float32("Reflect amount", lerp 2.0f 8.0f)
+  let amount = dna.float32("Reflect amount", squared >> lerp 0.1f 10.0f)
   reflect3f fade amount
 
 
@@ -71,26 +71,26 @@ let genComponentReflect (dna : Dna) =
                                           C("smooth-2", fun x -> Fade.cosifyr Fade.smooth2 (x - Q 1 4)),
                                           C("power-2", Fade.sinefyr Fade.power2)
                                           )
-  let amount = dna.float32("Reflect amount", lerp 2.0f 8.0f)
+  let amount = dna.float32("Reflect amount", squared >> lerp 0.1f 10.0f)
   let offset = Vec3f.fromSeed(dna.data("Reflect offset"), -0.125f, 0.125f)
   translate offset >> reflect wave amount
 
 
 /// Generates a component overdrive map.
 let genOverdrive (dna : Dna) =
-  overdrive (dna.float32("Overdrive amount", xerp 2.0f 10.0f))
+  overdrive (dna.float32("Overdrive amount") |> xerp 0.5f 50.0f)
 
 
 /// Generates a vector overdrive map.
 let genVectorOverdrive (dna : Dna) =
-  let amount = dna.float32("Overdrive amount", xerp 2.0f 10.0f)
-  overdrive3 amount
+  overdrive3 (dna.float32("Overdrive amount") |> xerp 0.5f 50.0f)
 
 
 /// Generates a wave packet map.
 let genWavePacket (dna : Dna) =
-  let seed = dna.data("Packet seed")
-  packet (1.0f + float32 (Convert.float01 Interval.LeftClosed seed))
+  let range = 1 <<< 23
+  let seed = dna.data("Packet seed", range)
+  packet (1.0f + float32 seed / float32 range)
 
 
 /// Generates a shaping function (or nothing).
@@ -108,4 +108,5 @@ let genShape (dna : Dna) =
     C(0.25, "component reflect", genComponentReflect),
     C(0.25, "vector reflect", genVectorReflect)
     )
+
 

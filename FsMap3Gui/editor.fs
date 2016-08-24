@@ -104,8 +104,8 @@ type Editor =
     canvas.RowDefinitions.Add(RowDefinition())
 
     let mapInfoBox = RichMap3InfoBox.create(toolPanelWidth)
-    mapInfoBox.panel.HorizontalAlignment <- HorizontalAlignment.Center
-    mapInfoBox.panel.VerticalAlignment <- VerticalAlignment.Bottom
+    mapInfoBox.canvas.HorizontalAlignment <- HorizontalAlignment.Center
+    mapInfoBox.canvas.VerticalAlignment <- VerticalAlignment.Bottom
     mapInfoBox.reset()
 
     let isTextureFile (file : string) =
@@ -122,7 +122,7 @@ type Editor =
         member this.finish() = ()
         member this.postFx(_) = ()
       }
-    let richSeed = { RichMap3.uncolored = mapSeed; palette = Map3.identity; center = Vec3f(0.5f); zoom = 1.0f; info = Map3Info.create(mapSeed) }
+    let richSeed = RichMap3.zero
 
     let deepGenerator = fun (dna : Dna) -> Map3Dna.generateEditorMap (!mapFiltering) dna
     let pixmapGenerator = RichMap3.pixmapSource
@@ -307,7 +307,8 @@ type Editor =
     dnaView.treeView.Background <- dnaBg
     dnaView.addChoiceVisualizer(DnaVisualizer.fadeChoiceVisualizer 50 20)
     dnaView.addChoiceVisualizer(DnaVisualizer.colorSpaceChoiceVisualizer (int dnaView.valueBoxWidth - 8) 30)
-    dnaView.addVisualizerDependency(fun parameter -> if parameter.name = "Weave" then [(1, "Weave period")] else List.empty)
+    dnaView.addVisualizerDependency(fun parameter -> match parameter.name with | "Weave" -> [(1, "Weave period")] | _ -> [])
+    dnaView.addVisualizerDependency(fun parameter -> match parameter.name with | "Falloff shape" -> [(1, "Falloff saturation")] | _ -> [])
 
     /// Updates the Dna view. This can be called from any thread.
     let updateDna() =
@@ -1170,7 +1171,7 @@ type Editor =
     toolPanel.add(Separator(Margin = Thickness(0.0, 6.0, 0.0, 6.0)), Dock.Top)
     toolPanel.add(toolBar, Dock.Top)
 
-    toolPanel.add(mapInfoBox.panel, Dock.Bottom)
+    toolPanel.add(mapInfoBox.canvas, Dock.Bottom)
 
     let splitter = GridSplitter(Width = 4.0, Margin = Thickness(0.0), Padding = Thickness(0.0), Background = splitterBg, VerticalAlignment = VerticalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Center)
 

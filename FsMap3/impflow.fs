@@ -19,23 +19,20 @@ let impflow (layout : LayoutFunction)
             (gradient : float32)
             (color : CellColor)
             (fade : float32 -> float32)
-            fadeWidth
             (radius : float32)
             (flowBasis : Basis3)
             (flowFrequencyFactor : float32)
             seed
-            octave
             frequency =
 
   assert (radius > 0G)
 
   let R2 = squared radius
   let Ri = 1G / radius
-  let wi = 1.0f / fadeWidth
 
-  let layoutInstance = layout seed octave frequency
+  let layoutInstance = layout seed frequency
 
-  let flow = flowBasis octave (frequency * flowFrequencyFactor)
+  let flow = flowBasis (mangle32 seed) (frequency * flowFrequencyFactor)
 
   fun (v : Vec3f) ->
     let data = layoutInstance.run v
@@ -61,10 +58,10 @@ let impflow (layout : LayoutFunction)
               let L = P * Ri * pose
               let p = potential L
               if p < 1G then
-                let w = fade (min 1.0f (wi - wi * p))
-                let g = Potential.gradient potential L
+                let w  = fade (1.0f - p)
+                let g  = Potential.gradient potential L
                 let gN = g.length
-                let g = gN / (squared gN + 1.0f) * g
+                let g  = gN / (squared gN + 1.0f) * g
                 value <- mix value 1.0f w (color h (lerp L g gradient))
     data.release()
     Mix.result value
@@ -73,5 +70,5 @@ let impflow (layout : LayoutFunction)
 /// Default implicit flow basis with the standard layout, count, mixing and color functions.
 /// The cell hash seed is derived from the frequency.
 let inline impflowd fade potential radius flow flowFactor frequency =
-  impflow hifiLayout unityCount potential Mix.sum 0.5f anyColor fade 1.0f radius flow flowFactor (manglef32 frequency) 0 frequency
+  impflow hifiLayout unityCount potential Mix.sum 0.5f anyColor fade radius flow flowFactor (manglef32 frequency) frequency
 
