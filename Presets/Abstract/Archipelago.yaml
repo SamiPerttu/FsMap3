@@ -5,12 +5,13 @@ View Zoom: 1
 Palette:
   Color space: CIELch
   Hue origin: 0.011627906933426
-  Hue range: 0.145758599042892
-  Hue skew: -0.647162973880767
+  Hue range: 0.257706880569458
+  Hue concentration: 0.011627906933426
+  Hue damping: 0.180232554674148
   Saturation range: 0.800000011920929
   Saturation minimum: 0
   Saturation skew: -1.48837208747864
-  Value skew: 0.418604612350463
+  Value skew: 0.418604373931884
 FsMap3 Editor Version 0.3.0:
 Layout: Tile All
 Node: Unary
@@ -34,19 +35,19 @@ Node: Unary
             Displace amount: 0.46572470664978
             Response smoothness: 0.46572470664978
           Displace damping: 0.162790700793266
+        Basis seed: 4083160947
         Basis: leopard
-          Cell seed: 3672678985
           Leopard radius: 0.607742607593536
           Features per cell: rounded
             Mean: 0.5001468204
-          Falloff width: 0.251744180917739
+          Falloff saturation: 0.601744174957275
           Falloff shape: reverse power-2
           Mix operator: soft
             Bias: -0.209302306175231
           Cell color: unit
             Color variation: gradient
-              Amount: 0.885882675647735
+              Amount: 0.773255825042724
               Angle seed: 2157871631
       Shape: component posterize
-        Posterize levels: 5.77908372879028
+        Posterize step size: 0.187609866261482
         Posterize hardness: 4

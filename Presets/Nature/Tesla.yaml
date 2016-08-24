@@ -1,6 +1,6 @@
 View Center X: -3.6149959564209
 View Center Y: -2.28796195983887
-View Center Z: 0.489997863769531
+View Center Z: 0.48147964477539
 View Zoom: 1.17392933368683
 Palette:
   Color space: HSL
@@ -11,7 +11,7 @@ Palette:
   Saturation range: 0.600000023841857
   Saturation minimum: 0.399999976158142
   Saturation skew: 0.35409665107727
-  Value skew: -1.92000007629395
+  Value skew: -1.5
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -30,12 +30,12 @@ Node: Fractalizer
       Displace response: power-1/2
         Displace amount: 0.720524609088897
       Displace damping: 0.604651153087616
+    Basis seed: 3530248650
     Basis: Worley
-      Cell seed: 4060900266
       Features per cell: geometric
         Mean: 0.946041806
       Cell distance norm: 2-norm
       Worley pattern: 1941
       Worley fade: upward arc
   Shape: vector overdrive
-    Overdrive amount: 10
+    Overdrive amount: 0.650697648525238

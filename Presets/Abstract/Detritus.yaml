@@ -6,11 +6,12 @@ Palette:
   Color space: CIELch
   Hue origin: 0.534883737564086
   Hue range: 0.247467279434204
-  Hue skew: -0.005918979644775
+  Hue concentration: 0.534883737564086
+  Hue damping: 0.247467279434204
   Saturation range: 0.688372135162353
   Saturation minimum: 0
   Saturation skew: 0.063632249832153
-  Value skew: 0.837209224700927
+  Value skew: 0.313953638076782
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -22,19 +23,19 @@ Node: Fractalizer
   Roughness: 0.583264887332916
   Fractalizer: inverted mix and displace
     Lacunarity: 0.488917857408523
-    Lowpass filter: 0.488917827606201
+    Lowpass filter: 0.413372099399566
     Mix operator: soft
-      Bias: -0.5
+      Bias: -0.45348834991455
     Walk operator: twist
       Displace response: line
-        Displace amount: 0.803993642330169
+        Displace amount: 0.662520229816436
       Twist amount: 0.007682202849537
       Displace damping: 0.803993642330169
+    Basis seed: 906767567
     Basis: leopard
-      Cell seed: 4126209448
       Leopard radius: 0.702109217643737
       Features per cell: one
-      Falloff width: 1
+      Falloff saturation: 0
       Falloff shape: downward arc
       Mix operator: min
       Cell color: palette
@@ -42,4 +43,4 @@ Node: Fractalizer
         Color 0 seed: 16916910
         Color variation: none
   Shape: component overdrive
-    Overdrive amount: 6.94244813919067
+    Overdrive amount: 0.558139562606811

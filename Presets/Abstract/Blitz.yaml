@@ -4,9 +4,10 @@ View Center Z: 0.470714569091796
 View Zoom: 0.683013379573822
 Palette:
   Color space: HSL
-  Hue origin: 0.809761583805084
+  Hue origin: 0.895348846912384
   Hue range: 0.233091250061988
-  Hue skew: 0.156120300292968
+  Hue concentration: 0.174418598413467
+  Hue damping: 0.284883707761764
   Saturation range: 0.800000011920929
   Saturation minimum: 0.162307187914848
   Saturation skew: 2
@@ -30,12 +31,12 @@ Node: Fractalizer
         Displace amount: 0.058243513107299
       Twist amount: 0.098837211728096
       Displace damping: 0.125981748104095
+    Basis seed: 238256179
     Basis: potential flow
-      Cell seed: 1458272282
       Potential: rounded cone
         Cone radius: 0.454058229923248
       Potential radius: 1
-      Falloff width: 0.755317032337188
+      Falloff saturation: 0.69069766998291
       Falloff shape: reverse power-2
       Gradient: 0
       Cell color: palette
@@ -44,15 +45,14 @@ Node: Fractalizer
         Color 1 seed: 4241198359
         Color 2 seed: 1052394340
         Color variation: position
-          Amount: 0.668604671955108
+          Amount: 0.284883707761764
       Mix operator: product
       Features per cell: Poisson
         Mean: 4
-      Flow frequency: 0.072650797665119
+      Flow frequency: 0.072471603751182
       Flow:
         Basis: Perlin noise
-          Cell seed: 2942405905
           Perlin fade: smooth-2
         Shape: component overdrive
-          Overdrive amount: 2.55086970329285
+          Overdrive amount: 0.447674423456192
   Shape: none
