@@ -20,7 +20,7 @@ At the time of this writing **FsMap3** is considered to be in alpha, which means
 
 Procedural textures are images created by an algorithm from a simple description. The textures in **FsMap3** are *3-dimensional*. 3-textures are also called *solid textures* because they can be likened to solid slabs of material.
 
-Because solid textures have a color everywhere in *3-space*, they can texture any object, no matter how complicated its surface. For example, a statue sculpted from marble shows a marble texture in its surface. As the sculptor chips away at the stone, the texture always maintains its general marble-like form, as the visible part is just the surface of something that is solid.
+Because solid textures associate a color with every point in *3-space*, they can texture any object, no matter how complicated its surface.
 
 Technically, a **3-texture** is a box that accepts 3 numbers (**X**, **Y** and **Z**), processes them somehow, and cranks out another 3 numbers. The numbers that come out of the box can be interpreted as a color (for instance, in RGB format) and displayed, or they can be interpreted as another set of coordinates and forwarded to some other box for further processing.
 
@@ -66,6 +66,19 @@ The parameter panel contains all **parameters** of the texture under view. Toget
 
 The parameter panel can be resized by dragging the faintly gray vertical divider at the left of the control panel. If you are not interested in parameters, you can minimize the parameter panel by moving the divider all the way to the left.
 
+### Keyboard Shortcuts
+
+|    |    |
+|---:|:---|
+| **+** | zoom in  |
+| **-** | zoom out |
+| **arrow keys** | pan view |
+| **Ctrl-R** | randomize all views |
+| **Ctrl-Z** | undo |
+| **Ctrl-Y** | redo |
+| **Ctrl-S** | save |
+| **Ctrl-Q** | quit |
+
 ### Control Panel
 
 From top to bottom:
@@ -91,9 +104,11 @@ From top to bottom:
 
   * **Big View**: There is one big view. The mutate tool is not available in this mode.
 
-  * **Quad View**: There is a 2-by-2 grid of small views. Each view can be edited independently. The main attraction of this mode is *interactive evolution*: With the mutate tool, choose your favorite texture. The other 3 are then created as its variations. If one of them looks nicer than the original, choose it.
+  * **Quad View**: There is a 2-by-2 grid of small views. Each view can be edited independently.
 
-  * **Mosaic View**: The mosaic view is **experimental**. Its goal is to convey information about a large number of parameter settings at once. There is a 4-by-4 grid of small views. The views are independently editable but they are also *offset* from each other so that if the textures are identical, they form one big picture. The mutate tool works differently in this mode: besides making a few categorical changes, it attempts to mutate continuous parameters in *gradients* running from the top left to the bottom right view.
+  * **Nono View**: There is a 3-by-3 grid of small views. Each view can be edited independently.
+
+ The main attraction of quad and nono modes is *interactive evolution*: With the mutate tool, select your favorite texture and click on it. The other views are then created as its variations. If one of them looks nicer than the original, select it for the next round.
 
 * **Tools** are for working with texture views. Inside views the left mouse button operates tools, while the right mouse button opens a context menu.
 
@@ -103,11 +118,15 @@ From top to bottom:
 
   * **Zoom Tool**. Select the center of the area you want to zoom into and drag to choose the size of the area. Mouse wheel controls the **Z** coordinate.
 
-  * **Mutate Tool**. The mutate tool can be used in *quad* and *mosaic* views. Clicking on a view, mutated copies of it appear in the other views. Keep clicking on your favorite and it will (hopefully) evolve into something super impressive.
+  * **Mutate Tool**. The mutate tool can be used in *quad* and *nono* view modes. Clicking on a view, mutated copies of it appear in the other views. Keep clicking on your favorite and it will (hopefully) evolve into something super impressive.
 
-  * **Jolt Tool**. Click on a view to mutate it according to the current mutation mode.
+  * **Jolt Tool**. Click on a view to mutate it according to the current mutation mode. The jolt tool is nearly useless.
 
-* **View Coordinates**. At the bottom of the control panel is the view info box where the coordinates of the view in focus are displayed. A view always shows a square slice of the texture in the XY plane, with positive **X** pointing right, positive **Y** pointing down, and **Z** being constant. The **Z** axis is depth and increases toward the screen.
+* **View Info Box**. At the bottom of the control panel is the view info box where the coordinates of the view in focus are displayed. A view always shows a square slice of the texture in the XY plane, with positive **X** pointing right, positive **Y** pointing down, and **Z** being constant. The **Z** axis is depth and increases toward the screen.
+
+  Axis labels are colored green for axes that tile. In addition, if an axis tiles exactly in the current view, a loop is drawn around the corresponding axis label.
+  
+  View info box also contains a *detail level* estimate, which is based on sampling. The detail level is expressed in pixels. It is an estimate of the minimum (horizontal or vertical) resolution where most of the detail becomes discernible.
 
 ### Texture View
 
@@ -115,10 +134,10 @@ The textures are displayed here. Any change to the parameters of a texture trigg
 
 * **Maximize**: Take the texture to the big view mode.
 * **Go to Quad View**: Take the texture to the quad view mode.
-* **Go to Mosaic View**: Take the texture to the mosaic view mode.
+* **Go to None View**: Take the texture to the nono view mode.
 * **Zoom In**: Increase zoom level by 100%.
 * **Zoom Out**: Reduce zoom level by 50%.
-* **Reset Zoom**: Reset zoom to default, which is a view area of 1x1 units.
+* **Reset Zoom**: Reset zoom to default, which is a view area of 1x1 units. Note that tiling textures tile perfectly at the default zoom level.
 * **Reset View**: Reset zoom and view area to the 1x1 square between 0 and 1 on **X** and **Y** axes. Reset **Z** to *0.5*.
 * **Randomize**: Create a new random texture in this view.
 * **Open in New Window**: Open the texture in a new editor window.
@@ -135,13 +154,14 @@ The textures are displayed here. Any change to the parameters of a texture trigg
 |---:|:---|:---|
 |![Perlin noise](bases/perlin.png) | Perlin noise | [Perlin noise](http://en.wikipedia.org/wiki/Perlin_noise), as many other noise bases, emulates band-limited noise. This version has unconstrainted gradients and a selectable interpolation fade.|
 |![cubex noise](bases/cubex.png) | cubex noise | *Cubex noise* is similar to Perlin noise. It is slower to calculate but has more options. |
-|![weave](bases/weave.png) | weave | *Weave* is special in that, fow now, it is the only 3-basis designed to look 2-dimensional, specifically, a woven or threaded pattern. |
+|![weave](bases/weave.png) | weave | *Weave* is special in that, for now, it is the only 3-basis designed to look 2-dimensional, specifically, a woven or threaded pattern. |
 |![radial value noise](bases/radial.png) | radial value noise | *Radial value noise* is yet another noise-like basis. Unlike the others, its features are points, not gradients. The points are distance weighted. |
 |![leopard](bases/leopard.png) | leopard | The *leopard* basis is a bunch of spots mixed together. |
 |![Worley](bases/worley.png) | Worley | The [Worley basis](http://en.wikipedia.org/wiki/Worley_noise) outputs processed distances to nearest feature points. This version is specially adapted to produce 3-dimensional results. The distance metric is selectable. |
-|![colored Worley](bases/jigsaw.png) | colored Worley | A colored version of the Worley basis. The output is colored according to the nearest cell. |
+|![colored Worley](bases/coloredWorley.png) | colored Worley | A colored version of the Worley basis. The output is colored according to the nearest cell. |
+|![tiles](bases/jigsaw.png) | tiles | Another colored Worley basis resembling tiles with more straightforward parameters.
 |![peacock](bases/peacock.png) | peacock | The *peacock* basis is like the leopard basis except the spots are now randomly oriented shapes called *potentials*. |
-|![Julia](bases/julia.png) | Julia | The *Julia* basis turns some well-known [fractal iteration formulas](http://en.wikipedia.org/wiki/Julia_set) into a tileable 3-texture form. |
-|![Julia orbit trap](bases/orbit.png) | Julia orbit trap | *Julia orbit trap* basis. Like the Julia basis but the coloring is done with the orbit trap technique, utilizing a separate orbit texture that we call *atlas*. |
-|![capsule flow](bases/capsuleFlow.png) | capsule flow | *Capsule flow*. The flow bases distributes oriented potentials like the Peacock basis. However, in the flow bases the orientation is sampled from a separate *flow basis*. The capsule flow basis consists of oriented capsules. |
+|![Julia](bases/julia.png) | Julia | The *Julia* basis turns some well-known [fractal iteration formulas](http://en.wikipedia.org/wiki/Julia_set) into a tileable 3-texture form. Fractal parameters are interpolated between feature points. |
+|![Julia orbit trap](bases/orbit.png) | Julia orbit trap | *Julia orbit trap* basis. Like the Julia basis but the coloring is done with the orbit trap technique. |
+|![capsule flow](bases/capsuleFlow.png) | capsule flow | *Capsule flow*. The flow bases distributes oriented potentials like the Peacock basis. However, in the flow bases the orientation at each point is sampled from a separate *flow texture*. The capsule flow basis consists of oriented capsules. |
 |![potential flow](bases/potentialFlow.png) | potential flow | The *potential flow* basis consists of shapes oriented according to the flow basis. |
