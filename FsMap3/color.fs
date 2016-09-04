@@ -41,7 +41,7 @@ module Color =
   /// Each component is in unit range.
   let HSLtoRGB H S L =
     // Compared to the bog standard conversion, we smooth out the slope discontinuity at L = 1/2.
-    let C  = Fade.smoothLine (1.0f - abs(2.0f * L - 1G)) * S
+    let C  = Fade.smoothLine 0.25f (1.0f - abs(2.0f * L - 1G)) * S
     let H' = H * 6.0f
     let X  = C * (1.0f - abs((emodf H' 2.0f) - 1.0f))
     let R, G, B =

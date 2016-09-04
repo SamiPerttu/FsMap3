@@ -22,6 +22,7 @@ type AxisInfo =
     isZ : bool
     headerColor : Brush
     tileColor : Brush
+    zoomColor : Brush
   }
 
   member this.reset() =
@@ -40,11 +41,15 @@ type AxisInfo =
       this.header.ToolTip <- if this.isZ then "Z axis tiles." else this.label + " axis tiles in this view."
       this.circle.Visibility <- Visibility.Visible
       this.arrow.Visibility <- Visibility.Visible
+      this.circle.Stroke <- this.tileColor
+      this.arrow.Fill <- this.tileColor
     | true, false ->
       this.header.Foreground <- this.tileColor
-      this.header.ToolTip <- this.label + " does not tile at this magnification."
-      this.circle.Visibility <- Visibility.Hidden
-      this.arrow.Visibility <- Visibility.Hidden
+      this.header.ToolTip <- this.label + " axis tiles at the default zoom level."
+      this.circle.Visibility <- Visibility.Visible
+      this.arrow.Visibility <- Visibility.Visible
+      this.circle.Stroke <- this.zoomColor
+      this.arrow.Fill <- this.zoomColor
     | false, _ ->
       this.header.Foreground <- this.headerColor
       this.header.ToolTip <- this.label + " axis does not tile."
@@ -56,12 +61,12 @@ type AxisInfo =
       this.radius.Visibility <- Visibility.Visible
       this.radius.Content <- sprintf "±%s" (Pretty.string (length * 0.5f))
 
-  static member create(canvas : Canvas, label, fontSize, x0, x1, x2, y, size, headerColor, tileColor) =
+  static member create(canvas : Canvas, label, fontSize, x0, x1, x2, y, size, headerColor, tileColor, zoomColor) =
     let header = Label(Padding = Thickness(0.0), FontSize = fontSize, Content = label)
     canvas.add(header, x0, y)
-    let circle = Ellipse(Width = size, Height = size, Stroke = tileColor, StrokeThickness = 0.8, Fill = Brushes.Transparent, IsHitTestVisible = false)
+    let circle = Ellipse(Width = size, Height = size, StrokeThickness = 0.8, Fill = Brushes.Transparent, IsHitTestVisible = false)
     canvas.add(circle, 1.0, y - 0.5)
-    let arrow = Polygon(Points = Wpf.regularPolygon(3, 1.0f, float32 size * 0.5f, 2.0f, G tau * Q 3 4, 2.0f), Fill = tileColor, IsHitTestVisible = false)
+    let arrow = Polygon(Points = Wpf.regularPolygon(3, 1.0f, float32 size * 0.5f, 2.0f, G tau * Q 3 4, 2.0f), IsHitTestVisible = false)
     canvas.add(arrow, 0.5, y)
     let center = Label(Padding = Thickness(0.0), FontSize = fontSize)
     canvas.add(center, x1, y)
@@ -77,6 +82,7 @@ type AxisInfo =
       isZ = label = "Z"
       headerColor = headerColor
       tileColor = tileColor
+      zoomColor = zoomColor
     }
       
 
@@ -94,11 +100,12 @@ type RichMap3InfoBox =
   }
 
   static member create(width) =
-    let fontSize = 12.0
-    let tileColor = Wpf.brush(0.2, 0.65, 0.2)
+    let fontSize    = 12.0
+    let tileColor   = Wpf.brush(0.2, 0.65, 0.2)
     let headerColor = Wpf.brush(0.1, 0.35, 0.7)
-    let bgColor = Wpf.brush(0.92)
-    let lineHeight = 18.0
+    let zoomColor   = Wpf.brush(0.7, 0.9, 0.7)
+    let bgColor     = Wpf.brush(0.92)
+    let lineHeight  = 18.0
 
     let canvas = Canvas(Width = width, Height = 98.0, Margin = Thickness(0.0))
 
@@ -121,14 +128,14 @@ type RichMap3InfoBox =
 
     let yx = 30.0
     canvas.add(Rectangle(Width = width, Height = lineHeight + 2.0, Fill = bgColor), 0.0, yx - 1.0)
-    let xInfo = AxisInfo.create(canvas, "X", fontSize, x0, x1, x2, yx, lineHeight, headerColor, tileColor)
+    let xInfo = AxisInfo.create(canvas, "X", fontSize, x0, x1, x2, yx, lineHeight, headerColor, tileColor, zoomColor)
 
     let yy = 52.0
-    let yInfo = AxisInfo.create(canvas, "Y", fontSize, x0, x1, x2, yy, lineHeight, headerColor, tileColor)
+    let yInfo = AxisInfo.create(canvas, "Y", fontSize, x0, x1, x2, yy, lineHeight, headerColor, tileColor, zoomColor)
 
     let yz = 74.0
     canvas.add(Rectangle(Width = width, Height = lineHeight + 2.0, Fill = bgColor), 0.0, yz - 1.0)
-    let zInfo = AxisInfo.create(canvas, "Z", fontSize, x0, x1, x2, yz, lineHeight, headerColor, tileColor)
+    let zInfo = AxisInfo.create(canvas, "Z", fontSize, x0, x1, x2, yz, lineHeight, headerColor, tileColor, zoomColor)
 
     {
       canvas = canvas

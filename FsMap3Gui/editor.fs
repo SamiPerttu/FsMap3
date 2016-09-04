@@ -24,6 +24,17 @@ type EditorUserState =
 
 
 
+[<NoComparison; NoEquality>]
+type ClipboardItem =
+  {
+    dna : Dna
+    map : RichMap3
+    filename : string
+    presetFilename : string
+  }
+
+
+
 /// Interactive Map3 editor.
 type Editor =
 
@@ -82,6 +93,9 @@ type Editor =
 
     /// Whether map filtering is enabled.
     let mapFiltering = ref true
+
+    /// Current copy buffer contents.
+    let copyBuffer = ref none<ClipboardItem>
 
     let window = Window(Title = "FsMap3 Editor",
                         ResizeMode = ResizeMode.CanResize,
@@ -642,6 +656,23 @@ type Editor =
     let redoItem = MenuItem(Header = "Redo")
     setMenuItemShortcut redoItem Key.Y ModifierKeys.Control (fun _ -> controller.postRedo())
     editMenu.add(redoItem)
+    let copyItem = MenuItem(Header = "Copy")
+    setMenuItemShortcut copyItem Key.C ModifierKeys.Control (fun _ ->
+      match !focusView with
+      | Some(view) ->
+        // Copy is (by purpose) not an undoable action. Technically, we should still synchronize here
+        // but I haven't gotten round to implementing it.
+        copyBuffer := Some { dna = !view.controller.dna; map = !view.controller.deep; filename = view.filename; presetFilename = view.presetFilename }
+      | None -> ()
+      )
+    editMenu.add(copyItem)
+    let pasteItem = MenuItem(Header = "Paste")
+    setMenuItemShortcut pasteItem Key.V ModifierKeys.Control (fun _ ->
+      match !focusView, !copyBuffer with
+      | Some(view), Some(item) ->
+        controller.post(ApplyMapPaste(view, "Paste", item.filename, item.presetFilename, item.dna, item.map))
+      | _ -> ()
+      )
 
     // Set edit menu item states appropriately.
     editMenu.SubmenuOpened.Add(fun (args : RoutedEventArgs) ->
@@ -660,6 +691,13 @@ type Editor =
       | None ->
         redoItem.Header <- "Redo"
         redoItem.IsEnabled <- false
+      match !focusView with
+      | Some(view) ->
+        copyItem.IsEnabled <- not view.isEmpty
+        pasteItem.IsEnabled <- (!copyBuffer).isSome
+      | None ->
+        copyItem.IsEnabled <- false
+        pasteItem.IsEnabled <- false
       )
 
     menu.add(editMenu)
@@ -1277,15 +1315,3 @@ TODO
 
 *)
 
-
-(*
-0.4.0 Release TODO
-
--Should we get rid of normalization once and for all? Replace with brightness & contrast sliders in palette,
- extra shaping.
--Templates?
--Dna view filters?
--Then, more Basic presets.
--Update documentation.
--Installer.
-*)

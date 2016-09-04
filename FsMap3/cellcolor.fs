@@ -16,6 +16,10 @@ type CellColor = int -> Vec3f -> Vec3f
 let anyColor h (_ : Vec3f) =
   Vec3f.fromSeed(mangle32c h, -1.0f, 1.0f)
 
+/// Picks a color from n possible choices with uniformly picked components.
+let anyColors n seed h (_ : Vec3f) =
+  Vec3f.fromSeed(mangle32c (seed + ((h &&& 0x7fffffff) % n)), -1.0f, 1.0f)
+
 /// Picks a unit length color.
 let unitColor h (_ : Vec3f) =
   mangle12UnitVec3 <| mangle32c h
@@ -28,33 +32,21 @@ let unitColors n seed h (_ : Vec3f) =
 let monoColor (_ : int) (_ : Vec3f) =
   Vec3f.one
 
-/// Picks a color from n possible choices with uniformly picked components.
-let anyColors n seed h (_ : Vec3f) =
-  Vec3f.fromSeed(mangle32c (seed + ((h &&& 0x7fffffff) % n)), -1.0f, 1.0f)
-
-/// Picks a color where every component is -1 or 1.
+/// Picks a color where every component is -1, 0 or 1.
 let fullColor h (_ : Vec3f) =
+  let bitsToValue x = if x < 341 then 0.0f else float32 (x &&& 1) * 2.0f - 1.0f
   let h = mangle32c h
-  Vec3f(float32 (h &&& 1) * 2.0f - 1.0f, float32 (h &&& 2) - 1.0f, float32 (h &&& 4) * 0.5f - 1.0f)
+  Vec3f(bitsToValue (h &&& 0x3ff), bitsToValue ((h >>> 10) &&& 0x3ff), bitsToValue ((h >>> 20) &&& 0x3ff))
 
-/// Picks a color where every component is -1, 0 or 1. There is at most one zero component.
+/// Picks a color with components biased toward high absolute values.
 let bigColor h (_ : Vec3f) =
-  let h = mangle32c h
-  let v =
-    match (h >>> 3) &&& 3 with
-    | 0 -> Vec3f(1.0f, 1.0f, 1.0f)
-    | 1 -> Vec3f(0.0f, 1.0f, 1.0f)
-    | 2 -> Vec3f(1.0f, 0.0f, 1.0f)
-    | _ -> Vec3f(1.0f, 1.0f, 0.0f)
-  v * Vec3f(float32 (h &&& 1) * 2.0f - 1.0f, float32 (h &&& 2) - 1.0f, float32 (h &&& 4) * 0.5f - 1.0f)
+  let v = Vec3f.fromSeed(mangle32c h, -1.0f, 1.0f)
+  (Vec3f.one - v * v) * v.sign
 
-/// Picks a color where the absolute value of each component is at least d.
-let highColor d h (_ : Vec3f) =
-  Vec3f.fromSeed(mangle32c h, d - 1.0f, 1.0f - d).map(fun x -> if x < 0.0f then x - d else x + d)
-
-/// Picks a color from n choices where the absolute value of each component is at least d.
-let highColors n seed d h (_ : Vec3f) =
-  Vec3f.fromSeed(mangle32c (seed + ((h &&& 0x7fffffff) % n)), d - 1.0f, 1.0f - d).map(fun x -> if x < 0.0f then x - d else x + d)
+/// Picks a color with components biased toward low absolute values.
+let smallColor h (_ : Vec3f) =
+  let v = Vec3f.fromSeed(mangle32c h, -1.0f, 1.0f)
+  v * abs v
 
 /// Picks a color from the palette.
 let paletteColor (palette : Vec3f[]) h (_ : Vec3f) =

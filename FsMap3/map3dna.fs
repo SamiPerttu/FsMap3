@@ -11,6 +11,7 @@ open Perlin
 open Cubex
 open Radial
 open Leopard
+open Isonoise
 open Peacock
 open Worley
 open Capflow
@@ -59,23 +60,30 @@ let genCellColor (dna : Dna) =
     dna.branch("Color variation",
       C(2.0, "none", fun _ ->
         baseColor),
-      C(1.0, "gradient", fun _ ->
-        let amount = 2.0f * dna.float32("Amount", lerp 0.0f 1.0f)
+      C(1.0, "position", fun _ ->
+        let amount = 2.0f * dna.float32("Amount")
+        fun x (v : Vec3f) ->
+          baseColor x v * (Vec3f.one + amount * v)
+        ),
+      C(0.5, "random gradient", fun _ ->
+        let amount = 2.0f * dna.float32("Amount")
+        fun x (v : Vec3f) ->
+          baseColor x v * (1.0f + v *. mangle12UnitVec3(mangle32d x) * amount)
+        ),
+      C(0.5, "fixed gradient", fun _ ->
+        let amount = 2.0f * dna.float32("Amount")
         let rnd = Rnd(dna.data("Angle seed"))
         let gradient = Convert.unitVec3 rnd.tick rnd.tick
         fun x (v : Vec3f) ->
           baseColor x v * (1.0f + v *. gradient * amount)
-        ),
-      C(1.0, "position", fun _ ->
-        let amount = 2.0f * dna.float32("Amount", lerp 0.0f 1.0f)
-        fun x (v : Vec3f) ->
-          baseColor x v * (Vec3f.one + amount * v)
         )
       )
   dna.branch("Cell color",
     C(2.0, "any", genColorOptions anyColor),
     C("unit", genColorOptions unitColor),
+    C("small", genColorOptions smallColor),
     C("big", genColorOptions bigColor),
+    C("full", genColorOptions fullColor),
     C(1.0, "palette", fun _ ->
       let n = dna.int("Choices", 1, 8)
       let palette = Array.init n (fun i -> Vec3f.fromSeed(dna.data(sprintf "Color %d seed" i) |> mangle32, -1.0f, 1.0f))
@@ -136,14 +144,14 @@ let genPotentialAndRadius (dna : Dna) =
 let genFeatureCount (dna : Dna) =
   dna.branch("Features per cell",
     C(1.0, "one", fun _ -> unityCount),
-    C(1.0, "rounded", fun _ -> flipCount (dna.float("Mean", xerp 0.2 4.0))),
+    C(1.0, "rounded", fun _ -> roundCount (dna.float("Mean", xerp 0.2 4.0))),
     C(1.0, "geometric", fun _ -> geometricCount (dna.float("Mean", xerp 0.2 4.0))),
     C(2.5, "Poisson", fun _ -> poissonCount (dna.float("Mean", xerp 0.2 4.0)))
     )
 
 
 /// Generates a mixing operator for octave or map mixing. The binary argument indicates whether
-/// there are only two maps to mix (as "persistence" parameters will not be used in that case).
+/// there are only two maps to mix (as "persistence" parameters will not be needed in that case).
 let genMapMixOp (isBinary : bool) (dna : Dna) =
   dna.branch("Mix operator",
     C(4.0, "sum", fun _ ->
@@ -165,14 +173,21 @@ let genMapMixOp (isBinary : bool) (dna : Dna) =
       Mix.norm (dna.float32("Hardness"))
       ),
     C(3.0, "layer", fun _ ->
-      let width   = dna.float32("Layer width", squared >> lerp 0.05f 1.0f)
-      let fade    = genLayerFade dna
+      let combineOp =
+        dna.branch("Layer combiner",
+          C(6.0, "sum",    fun _ -> Mix.layerSum),
+          C(2.0, "rotate", fun _ -> Mix.layerRotate <| dna.float32("Rotate amount") * 6.0f),
+          C(1.0, "min",    fun _ -> Mix.layerMin),
+          C(1.0, "max",    fun _ -> Mix.layerMax)
+          )
+      let width     = 5.0f * dna.float32("Layer width", squared >> lerp 0.05f 1.0f)
+      let fade      = genLayerFade dna
       // The norm multipliers below equalize distances assuming independent component values.
-      let norm    = dna.category("Layer norm", C(1.5, "1-norm", fun (v : Vec3f) -> v.norm1),
-                                               C(3.0, "2-norm", fun (v : Vec3f) -> 1.633f * v.length),
-                                               C(1.5, "max", fun (v : Vec3f) -> 2.0f * v.maxNorm))
+      let multiplier, norm = dna.category("Layer norm", C(1.5, "1-norm", (1.000f, fun (v : Vec3f) -> v.norm1)),
+                                                        C(5.0, "2-norm", (1.633f, fun (v : Vec3f) -> v.length)),
+                                                        C(1.5, "max",    (2.000f, fun (v : Vec3f) -> v.maxNorm)))
       let persist = match isBinary with | true -> 0.0f | false -> dna.float32("Layer persist", lerp 0.0f 1.0f)
-      Mix.layer width fade norm persist
+      Mix.layer (width / multiplier) fade combineOp norm persist
       ),
     C(1.0, "rotate", fun _ ->
       Mix.rotate (dna.float32("Rotate amount", lerp 0.1f 1.0f))
@@ -217,7 +232,7 @@ let genCellDistance (dna : Dna) =
     )
 
 
-/// Generates a unary operation.
+/// Generates a unary node.
 let genUnary (subGen : Dna -> Map3) (dna : Dna) =
 
   let unaryShape (shapeGen : Dna -> Map3) (dna : Dna) =
@@ -238,17 +253,8 @@ let genUnary (subGen : Dna -> Map3) (dna : Dna) =
     )
 
 
-/// Generates a component softmix shaper.
-let genSoftmix (dna : Dna) =
-  softmix (6.0f * dna.float32("Mix bias", lerp -1.0f 1.0f))
-
-
-/// Generates a vector softmix shaper.
-let genSoftmix3 (dna : Dna) =
-  softmix3 (6.0f * dna.float32("Mix bias", lerp -1.0f 1.0f))
-
-
-/// Generates a basis function.
+/// Generates a basis function. There exist combinator bases; maxDepth is the maximum depth
+/// of the basis tree that is generated here.
 let rec genBasis maxDepth (dna : Dna) =
   let dualWeight = if maxDepth > 1 then 1.0 else 0.0
   let maxDepth'  = maxDepth - 1
@@ -265,8 +271,13 @@ let rec genBasis maxDepth (dna : Dna) =
 
   dna.branch("Basis",
     C(2.0, "Perlin noise", fun _ ->
-      let fade = dna.category("Perlin fade", C("smooth-1", Fade.smooth1), C("smooth-2", Fade.smooth2), C("smooth-3", Fade.smooth3))
+      let fade = dna.category("Perlin fade", C("smooth-1", Fade.smooth1), C("sine", Fade.sine), C("smooth-2", Fade.smooth2), C(0.5, "smooth-3", Fade.smooth3))
       perlin (genLayout dna |> layoutFunction) fade
+      ),
+    C(1.0, "isotropic noise", fun _ ->
+      let fade = dna.category("Noise fade", C("smooth-1", Fade.smooth1), C("sine", Fade.sine), C("smooth-2", Fade.smooth2), C(0.5, "smooth-3", Fade.smooth3))
+      // Isotropic noise does not need a rotating layout.
+      isonoise (genFixedLayout dna |> layoutFunction) fade
       ),
     C(1.0, "cubex noise", fun _ ->
       let color = genCellColor dna
@@ -301,9 +312,9 @@ let rec genBasis maxDepth (dna : Dna) =
       let P        = worleyPattern.size
       let p        = dna.data("Worley pattern", cubed P)
       let fade     = genWorleyFade dna
-      worley (genLayout dna |> layoutFunction) count (p % P) (p / P % P) (p / P / P % P) distance fade
+      worley (genLayout dna |> layoutFunction) count distance (p % P) (p / P % P) (p / P / P) fade
       ),
-    C(1.0, "colored Worley", fun _ ->
+    C(0.5, "colored Worley", fun _ ->
       let count    = genFeatureCount dna
       let distance = genCellDistance dna
       let P        = worleyPattern.size
@@ -311,15 +322,19 @@ let rec genBasis maxDepth (dna : Dna) =
       let fade     = genWorleyFade dna
       let line     = dna.float32("Cell fade distance", xerp 0.025f 0.25f)
       let color    = genCellColor dna
-      worleyColor (genLayout dna |> layoutFunction) count (p % P) (p / P % P) (p / P / P % P) distance color fade line
+      worleyColor (genLayout dna |> layoutFunction) count distance (p % P) (p / P % P) (p / P / P) color fade line
       ),
-    C(1.0, "tiles", fun _ ->
+    C(0.5, "tiles", fun _ ->
       let count    = genFeatureCount dna
       let distance = genCellDistance dna
-      let line     = dna.float32("Cell fade distance", xerp 0.025f 0.25f)
+      let P        = worleyPattern.size
+      let p        = dna.data("Worley pattern", cubed P)
+      let border   = dna.float32("Border width", xerp 0.025f 0.3f)
+      let line     = dna.float32("Cell fade distance", xerp 0.02f 0.4f)
       let shading  = dna.float32("Shading")
+      let fade     = genWorleyFade dna
       let color    = genCellColor dna
-      tiles (genLayout dna |> layoutFunction) count distance shading color line
+      tiles (genLayout dna |> layoutFunction) count distance (p % P) (p / P % P) (p / P / P) border shading color fade line
       ),
     C(1.0, "peacock", fun _ ->
       let count             = genFeatureCount dna
@@ -404,7 +419,7 @@ let rec genBasis maxDepth (dna : Dna) =
       ),
     C(dualWeight, "mix", fun _ ->
       let factor   = genFactor()
-      let mixOp    = genMixOp dna
+      let mixOp    = genBinaryMixOp dna
       let basis1   = dna.descend("Base", recurseBasis)
       let basis2   = dna.descend("Modifier", recurseShapedBasis)
       binaryBasis (mix mixOp) factor basis1 basis2
@@ -418,7 +433,7 @@ let rec genBasis maxDepth (dna : Dna) =
       ),
     C(dualWeight, "displace and mix", fun _ ->
       let factor   = genFactor()
-      let mixOp    = genMixOp dna
+      let mixOp    = genBinaryMixOp dna
       let displace = shape3 (genDisplaceResponse 0.0f 1.5f dna)
       let basis1   = dna.descend("Base", recurseBasis)
       let basis2   = dna.descend("Modifier", recurseShapedBasis)
@@ -433,7 +448,7 @@ let genShapedBasis maxDepth (dna : Dna) =
   shapeBasis (genShape dna) basis
 
 
-/// Generates a fractalizer map.
+/// Generates a fractalizer node.
 let genFractalizer (subGen : Dna -> Map3) (dna : Dna) =
   let offset          = genOffset dna
   let octaves         = dna.int("Octaves", 2, 12)
@@ -442,7 +457,7 @@ let genFractalizer (subGen : Dna -> Map3) (dna : Dna) =
   let minLacunarity   = 0.5f / G sqrt2
   let maxLacunarity   = 0.5f * G sqrt2
   let genLacunarity() = dna.float32("Lacunarity", xerp minLacunarity maxLacunarity)
-  let basis()         = genBasis 2 dna
+  let basis()         = genShapedBasis 2 dna
   let genSeed()       = dna.data("Basis seed")
   let fractalizer =
     dna.branch("Fractalizer",
@@ -489,7 +504,7 @@ let genFractalizer (subGen : Dna -> Map3) (dna : Dna) =
   offset >> fractalizer >> genShape dna
 
 
-/// Generates a binary operator.
+/// Generates a binary node.
 let genBinop (subGen1 : Dna -> Map3) (subGen2 : Dna -> Map3) (dna : Dna) =
   let offset         = genOffset dna
   let displacement() = shape3 (genDisplaceResponse 0.0f 0.5f dna)
@@ -514,7 +529,7 @@ let genBinop (subGen1 : Dna -> Map3) (subGen2 : Dna -> Map3) (dna : Dna) =
 
 
 /// Generates a node tree recursively. E is the "energy" left in this node.
-/// It limits tree complexity probabilistically in random generation but does not hinder user editing.
+/// It limits tree complexity probabilistically but does not hinder user editing.
 let rec genNode (E : float) (dna : Dna) =
 
   let nodeWeight complexity =
@@ -544,7 +559,6 @@ let rec genNode (E : float) (dna : Dna) =
     )
 
 
-
 /// Extracts tiling information from Dna. Returns which axes (X, Y, Z) tile.
 let doesItTile (dna : Dna) =
   let mutable tileX = true
@@ -570,7 +584,6 @@ let doesItTile (dna : Dna) =
         tileX <- false
         tileY <- false
   tileX, tileY, tileZ
-
 
 
 let EditorVersion = "0.3.0"

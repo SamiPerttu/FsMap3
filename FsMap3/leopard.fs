@@ -11,7 +11,6 @@ open CellColor
 /// Basis function that produces a spotted pattern.
 /// The radius of individual spots is radius (radius > 0).
 /// The shape of the falloff is controlled by the fade function.
-/// Falloff fractional width is fadeWidth (fadeWidth in [0, 1]).
 let leopard (layout : LayoutFunction)
             (count : FeatureCount)
             (mix : MixOp)

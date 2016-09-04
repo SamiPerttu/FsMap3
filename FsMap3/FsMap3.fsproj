@@ -105,6 +105,7 @@
     <Compile Include="cubex.fs" />
     <Compile Include="radial.fs" />
     <Compile Include="leopard.fs" />
+    <Compile Include="isonoise.fs" />
     <Compile Include="peacock.fs" />
     <Compile Include="worley.fs" />
     <Compile Include="capflow.fs" />

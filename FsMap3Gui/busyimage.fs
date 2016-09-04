@@ -19,11 +19,11 @@ let busyBitmaps =
 
   let r0b  = r0 + border
   let r1b  = r1 - border
-  let size = r1 * 2.0f |> ceil |> int
+  let size = r1 * 2G |> ceil |> int
 
   let bitmaps = Darray.create()
 
-  let origin = Vec2f(float32 size * 0.5f, float32 size * 0.5f)
+  let origin = Vec2f(Q size 2)
 
   for i = 0 to n - 1 do
 
@@ -36,7 +36,9 @@ let busyBitmaps =
       let angle = p.angle / G tau
 
       if d > r0 && d < r1 then
+        // Get alpha.
         let a = delerp01 r0 (r0 + A) d * delerp01 r1 (r1 - A) d
+        // Get color.
         let c = fract (angle - phi)
         let c = c * delerp01 r0b (r0b + A) d * delerp01 r1b (r1b - A) d
         Vec3f(a, c, 0.0f)

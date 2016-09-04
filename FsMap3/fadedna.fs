@@ -27,7 +27,7 @@ let genLayerFade (dna : Dna) =
     C("reverse power-3", fun _ -> Fade.reverse Fade.power3),
     C("reverse power-2", fun _ -> Fade.reverse Fade.power2),
     C("line", fun _ -> Fade.line),
-    C("smooth line", fun _ -> Fade.smoothLine),
+    C("smooth line", fun _ -> Fade.smoothLine <| dna.float32("Line smoothness")),
     C("sigmoid", genSigmoidFade "Sigmoid hardness")
     )
 
@@ -40,7 +40,7 @@ let genPotentialFade (dna : Dna) : float32 -> float32 =
     C("reverse power-3", Fade.saturate a (Fade.reverse Fade.power3)),
     C("reverse power-2", Fade.saturate a (Fade.reverse Fade.power2)),
     C("line", Fade.saturate a Fade.line),
-    C("smooth line", Fade.saturate a Fade.smoothLine),
+    C("smooth line", Fade.saturate a (Fade.smoothLine 0.3f)),
     C("sine", Fade.saturate a Fade.sine),
     C("smooth-2", Fade.saturate a Fade.smooth2),
     C("power-2", Fade.saturate a Fade.power2)
@@ -54,7 +54,7 @@ let genWorleyFade (dna : Dna) : float32 -> float32 =
     C("reverse power-3", Fade.reverse Fade.power3),
     C("reverse power-2", Fade.reverse Fade.power2),
     C("line", Fade.line),
-    C("smooth line", Fade.smoothLine),
+    C("smooth line", Fade.smoothLine 0.3f),
     C("sine", Fade.sine),
     C("smooth-2", Fade.smooth2),
     C("smooth-3", Fade.smooth3),
@@ -68,7 +68,7 @@ let genWorleyFade (dna : Dna) : float32 -> float32 =
 let genJuliaFade (dna : Dna) : float32 -> float32 =
   dna.category("Feature fade",
     C("saturated sine", Fade.skew 1.0f >> Fade.sine),
-    C("smooth line", Fade.smoothLine),
+    C("smooth line", Fade.smoothLine 0.3f),
     C("sine", Fade.sine),
     C("smooth-2", Fade.smooth2),
     C("smooth-3", Fade.smooth3),
@@ -85,7 +85,7 @@ let genTrapFade (dna : Dna) : float32 -> float32 =
     C("reverse power-2", Fade.reverse Fade.power2),
     C("saturated smooth", Fade.saturate 0.3f Fade.smooth2),
     C("line", Fade.line),
-    C("smooth line", Fade.smoothLine),
+    C("smooth line", Fade.smoothLine 0.3f),
     C("sine", Fade.sine),
     C("smooth-2", Fade.smooth2),
     C("power-2", Fade.power2),

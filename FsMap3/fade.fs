@@ -5,11 +5,13 @@ module FsMap3.Fade
 
 open Common
 
-(*
-Note. The continuity property talked about in some comments here applies when
-a fade is used piecewise, e.g., as a bump, staircase or threshold function.
-*)
 
+(*
+Note. The continuity property mentioned in some comments here applies when
+a fade is used piecewise, e.g., as a bump, staircase or threshold function.
+For the property to hold, in addition to being continuous, the corresponding
+derivative(s) must vanish at the endpoints.
+*)
 
 /// Linear fade.
 let inline line x = x
@@ -34,13 +36,6 @@ let inline power (p : 'a) (x : 'a) : 'a = abs x ** p
 
 /// Discontinuous step fade. Value jumps from zero to one halfway through.
 let inline step (x : 'a) : 'a = if x < Q 1 2 then 0G else 1G
-
-/// First order continuous fade that is linear except near the endpoints.
-/// The slope of the linear part is 4/3.
-let inline smoothLine (x : 'a) : 'a =
-  if x < Q 1 5 then squared x * (Q 50 6 * x + Q 5 6)
-  elif x < Q 4 5 then x * Q 4 3 - Q 1 6
-  else let x = 1G - x in 1G - squared x * (Q 50 6 * x + Q 5 6)
 
 /// Sine fade based on a Taylor series approximation.
 let inline sine (x : 'a) : 'a = sinTaylor ((x - Q 1 2) * G 3.13981162410392) * G 0.5000782624053935 + Q 1 2
@@ -130,12 +125,28 @@ let inline clone (n : int) (f : 'a -> 'a) (x : 'a) : 'a =
   let fx = f(x - ix)
   (fx + ix) / G n
 
-/// Concatenates two smaller instances of the given fades.
-let inline cat (f : 'a -> 'a) (g : 'a -> 'a) (x : 'a) : 'a =
+/// Concatenates a fade with a mirrored copy of itself.
+let inline mirror (f : 'a -> 'a) (x : 'a) : 'a =
   if x < Q 1 2 then
     Q 1 2 * f (x * 2G)
   else
-    Q 1 2 * (1G + g (x * 2G - 1G))
+    1G - Q 1 2 * f (2G - x * 2G)
+
+
+
+/// Ramp fade that starts smoothly from a slope of zero and ends linearly.
+/// The width of the ramp-up is w (w in [0, 1]). This becomes a linear fade when w = 0.
+let inline ramp (w : 'a) (x : 'a) : 'a =
+  if w = 0G then
+    x
+  else
+    let x' = x / w
+    let y' = if x' < 1G then cubed x' * (1G - Q 1 2 * x') else x' - Q 1 2
+    y' / (Q 1 2 + (1G - w) / w)
+
+/// Smooth line fade where the curves at endpoints have total width w.
+/// Becomes a linear fade when w = 0. Second order continuous when w > 0.
+let inline smoothLine (w : 'a) (x : 'a) : 'a = mirror (ramp w) x
 
 
 
@@ -163,7 +174,7 @@ let inline cosifyr (f : 'a -> 'a) (x : 'a) : 'a =
 /// Stitches together the wave from 2 copies of the fade.
 let inline cosify (f : 'a -> 'a) (x : 'a) = cosifyr f (x * Q 1 tau)
 
-/// Mirrors a fade into a bump centered at 0, with a radius of support and height of 1.
+/// Turns a fade into a bump centered at 0, with a radius of support and height of 1.
 let inline bump (f : 'a -> 'a) (x : 'a) : 'a = f (max 0G (1G - abs x))
 
 /// Creates, from a fade, a staircase function with an overall slope of unity and one step per unit.

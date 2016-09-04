@@ -49,8 +49,9 @@ Transparent proportion    : (1 - A) * (1 - a)
 Unmodified V contribution : (1 - a) * V
 Unmodified v contribution : (1 - A) * v
 
-The mix proportion is processed by mixing functions f and g, which receive weighted inputs and their influences
-and return, respectively, total weighted value and total influence. The complete formula is:
+The mix proportion is processed by mixing functions f and g, which receive influence weighted inputs
+and their corresponding influences and return total weighted output and total influence. 
+The complete formula is:
 
 i' = (1 - a) * I + (1 - a) * I + A * a * g(I, V, i, v)
 a' = 1 - (1 - A) * (1 - a)
@@ -81,6 +82,10 @@ module Mix =
   /// The result of mixing is stored in MixState.v.
   let inline result (state : MixState) = state.v
 
+  /// The result of mixing over a background value.
+  let inline resultWithBackground (state : MixState) (background : Vec3f) =
+    state.v + (1.0f - state.a) * background
+
   /// Smooth mixing helper.
   let inline alphaProcess (state : MixState) (w : float32) (a : float32) (u : Vec3f) (f : float32 -> Vec3f -> float32 -> Vec3f -> Pair<float32, Vec3f>) =
     let i = w * a
@@ -107,15 +112,27 @@ module Mix =
   /// is diminished by normed distance to the comparand in a curve defined by the width and fade parameters.
   /// The comparand itself is influenced according to the persist parameter (persist in [0, 1]).
   /// Layering can produce effects that resemble painting with a brush or pen.
-  let layer (width : float32) (fade : float32 -> float32) (norm : Vec3f -> float32) (persist : float32) (state : MixState) (w : float32) (a : float32) (u : Vec3f) =
+  let layer (width : float32) (fade : float32 -> float32) (combine : Vec3f -> Vec3f -> Vec3f) (norm : Vec3f -> float32) (persist : float32) (state : MixState) (w : float32) (a : float32) (u : Vec3f) =
     let state' =
       alphaProcess state w a u (fun I V i v ->
-        let Lw = fade (max 0G (1G - norm (u - state.c) * 0.2f / width))
-        Pair(I + Lw * i, V + Lw * v)
+        let Lw = 1G - norm (u - state.c) / width |> max 0G |> fade
+        let u' = combine state.c u
+        Pair(I + Lw * i, V + Lw * i * u')
         )
-    let Pw = (1G - persist) * a
+    let Pw = (1G - persist * state.a) * a
     let c' = lerp state.c u Pw
     MixState(state'.i, state'.a, state'.v, c')
+
+  // Combine functions for layering.
+  let layerSum (v : Vec3f) (u : Vec3f) = u
+  let layerMin (v : Vec3f) (u : Vec3f) = Vec3f.minimize v u
+  let layerMax (v : Vec3f) (u : Vec3f) = Vec3f.maximize v u
+  let layerRotate amount (v : Vec3f) (u : Vec3f) =
+    let r = u - v
+    let L = r.length
+    if L > 1.0e-6f then
+      v * Quaternionf(r / L, amount * L)
+    else v
 
   /// Weighted sum.   
   let sum (state : MixState) (w : float32) (a : float32) (u : Vec3f) =

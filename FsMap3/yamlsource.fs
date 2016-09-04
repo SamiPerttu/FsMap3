@@ -8,14 +8,15 @@ open Common
 type SerializerSource(genotype : Dna) =
   inherit DnaSource()
 
-  let data = Array.init genotype.size (fun i -> genotype.[i].value)
+  let data    = Array.init genotype.size (fun i -> genotype.[i].value)
   let builder = System.Text.StringBuilder()
-  let mutable yaml = ""
 
   let indent (dna : Dna) = dna.level * 2
 
+  member val yamlString = "" with get, set
+
   override this.ready(dna) =
-    yaml <- builder.ToString()
+    this.yamlString <- builder.ToString()
     builder.Clear() |> ignore
 
   override this.choose(dna, i, choices) =
@@ -43,7 +44,7 @@ type SerializerSource(genotype : Dna) =
     let x0 = if v = 0u then infinity else transform (v - 1u)
     let x1 = if v = dna.[i].maxValue then infinity else transform (v + 1u)
     let retainDecimals digits x = let p = pow 10.0 digits in truncate (x * p) / p
-    // We want to serialize floats with sufficient precision that the raw parameter value
+    // We want to serialize floats with enough precision that the raw parameter value
     // can be recovered.
     let isAdmissiblePrecision digits =
       let a = retainDecimals digits x
@@ -54,8 +55,6 @@ type SerializerSource(genotype : Dna) =
       precision <- precision + 1
     builder.AppendLine(sprintf "%*s%s: %.*g" (indent dna) "" dna.[i].name precision (retainDecimals precision x)) |> ignore
     v
-
-  member this.yamlString = yaml
 
 
 
@@ -68,6 +67,7 @@ type YamlRecord =
     uintValue : uint option
     intValue : int option
     floatValue : float option
+    mutable used : bool
   }
 
 
@@ -77,14 +77,17 @@ type YamlRecord =
 type DeserializerSource(readLine : unit -> string option) =
   inherit DnaSource()
 
-  /// Returns a longest common subsequence similarity score between two strings.
-  /// The score is in unit range.
+  /// Computes a similarity score (in unit range) between two strings.
+  /// It is a mix of longest common subsequence and edit distance scores.
   let similarity (x : string) (y : string) =
     if x = y then 1.0 else
-      1.0 - Fun.editDistance x.size (fun i -> x.[i]) y.size (fun i -> y.[i]) 1.0 1.0 (fun a b -> if a = b then 0.0 else infinity) / (float x.size + float y.size)
+      1.0 - 0.5 * Fun.editDistance x.size (fun i -> x.[i]) y.size (fun i -> y.[i]) 1.0 1.0 (fun a b -> if a = b then 0.0 else infinity) / (x.size + y.size |> float)
+          - 0.5 * Fun.editDistance x.size (fun i -> x.[i]) y.size (fun i -> y.[i]) 1.0 1.0 (fun a b -> if a = b then 0.0 else 1.0) / (max x.size y.size |> float)
 
+  /// Which record, if any, was selected for each Dna parameter in the current generation.
   let selection = Darray.create()
 
+  /// Sets no record selected up to, but not including, Dna parameter i.
   let fillSelection i = while selection.size < i do selection.add(Noneval)
 
   let record =
@@ -95,12 +98,21 @@ type DeserializerSource(readLine : unit -> string option) =
         match line with
         | Regex("^( *)(.*\S) *: *([^#]*[^ #])? *(?:#.*)?$") [ indent; name; value ] ->
           let indent = indent.size
-          let uintValue = match value, System.UInt32.TryParse(value) with | _, (true, x) -> Some(x) | "", _ -> Some(0u) | _ -> None
-          let intValue = match System.Int32.TryParse(value) with | true, x -> Some(x) | _ -> None
+          let uintValue  = match value, System.UInt32.TryParse(value) with | _, (true, x) -> Some(x) | "", _ -> Some(0u) | _ -> None
+          let intValue   = match System.Int32.TryParse(value) with | true, x -> Some(x) | _ -> None
           let floatValue = match System.Double.TryParse(value) with | true, x -> Some(x) | _ -> None
           while indent < indentStack.lastItem do indentStack.pop()
           if indent > indentStack.lastItem then indentStack.push(indent)
-          yield { YamlRecord.level = indentStack.last; name = name; value = value; uintValue = uintValue; intValue = intValue; floatValue = floatValue }
+          yield
+            {
+              level      = indentStack.last
+              name       = name
+              value      = value
+              uintValue  = uintValue
+              intValue   = intValue
+              floatValue = floatValue
+              used       = false 
+            }
         | _ -> ()
         yield! loop()
       | _ -> ()
@@ -132,6 +144,7 @@ type DeserializerSource(readLine : unit -> string option) =
       else score
     let mutable score = 0.0
     score <- score + 4.0 * similarity record.[j].name dna.[i].name
+    if record.[j].used = false then score <- score + 1.0
     if record.[j].level = dna.[i].level then score <- score + 0.5
     score <- score + parentScore i j 1 0.0
     score
@@ -157,9 +170,11 @@ type DeserializerSource(readLine : unit -> string option) =
       if score > bestScore then
         bestChoice <- uint choice
         bestRecord <- Someval(j)
-        bestScore <- score
+        bestScore  <- score
 
     selection.add(bestRecord)
+    bestRecord.apply(fun i -> record.[i].used <- true)
+
     bestChoice
 
   override this.choose(dna, i) =
@@ -176,7 +191,7 @@ type DeserializerSource(readLine : unit -> string option) =
           if score > bestScore then
             bestChoice <- !record.[j].uintValue
             bestRecord <- Someval(j)
-            bestScore <- score
+            bestScore  <- score
 
     selection.add(bestRecord)
     bestChoice
@@ -195,9 +210,9 @@ type DeserializerSource(readLine : unit -> string option) =
         let v' = Fun.binarySearchClosest 0u dna.[i].maxValue transform v
         score <- score + 2.0 / (1.0 + float (abs (transform v' - v)))
         if score > bestScore then
-          bestValue <- v'
+          bestValue  <- v'
           bestRecord <- Someval(j)
-          bestScore <- score
+          bestScore  <- score
       | _ -> ()
 
     selection.add(bestRecord)
@@ -217,9 +232,9 @@ type DeserializerSource(readLine : unit -> string option) =
         let v' = Fun.binarySearchClosest 0u dna.[i].maxValue transform v
         score <- score + 2.0 / (1.0 + abs (transform v' - v))
         if score > bestScore then
-          bestValue <- v'
+          bestValue  <- v'
           bestRecord <- Someval(j)
-          bestScore <- score
+          bestScore  <- score
       | _ -> ()
 
     selection.add(bestRecord)

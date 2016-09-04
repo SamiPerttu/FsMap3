@@ -343,11 +343,9 @@ type PixmapController<'a> =
     this.editSource.parameterPredicate <- predicate
     this.generate(true)
 
-  /// Copies the contents of another controller here.
-  member this.copyFrom(source : PixmapController<_>) =
-    let dna = !source.dna
+  /// Sets outright the Dna and the associated deep phenotype.
+  member this.set(dna, deep) =
     this.dna.set(dna)
-    let deep = !source.deep
     this.deep.set(deep)
     // The pixmap generator may differ in this controller, so we rerun it here.
     let pixmapSource = this.pixmapGenerator deep

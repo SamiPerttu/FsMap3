@@ -21,6 +21,7 @@ type EditorMessage =
   | ApplyMapRestart of views : EditorView<RichMap3>[] * title : string * predicate : ParameterPredicate
   | ApplyMapMutation of views : EditorView<RichMap3>[] * source : EditorView<RichMap3> * title : string * predicatef : (Rnd -> ParameterPredicate)
   | ApplyMapCopy of view : EditorView<RichMap3> * source : EditorView<RichMap3> * title : string
+  | ApplyMapPaste of view : EditorView<RichMap3> * title : string * filename : string * presetFilename : string * dna : Dna * deep : RichMap3
   | ApplyMapLoad of view : EditorView<RichMap3> * title : string * filename : string * isPreset : bool
   | Undo
   | Redo
@@ -190,13 +191,29 @@ type EditorController =
           view.filename <- source.filename
           view.presetFilename <- source.presetFilename
           view.pixmapView.reset()
-          view.controller.copyFrom(source.controller)
+          view.controller.set(!source.controller.dna, !source.controller.deep)
           let edit =
             {
               EditorEditBundle.time = Common.timeNow()
               title = title
               closed = true
               edits = [| SetMap(view, beforeState, view.editState); SetViewMode(source.mainMode, view.mainMode); SetFocus(source, view) |]
+            }
+          this.undoStack.add(edit)
+          this.updateGui()
+
+        | ApplyMapPaste(view, title, filename, presetFilename, dna, deep) ->
+          applyActions()
+          let beforeState = view.editState
+          view.filename <- filename
+          view.presetFilename <- presetFilename
+          view.controller.set(dna, deep)
+          let edit =
+            {
+              time   = Common.timeNow()
+              title  = title
+              closed = true
+              edits  = [| SetMap(view, beforeState, view.editState); SetFocus(view, view) |]
             }
           this.undoStack.add(edit)
           this.updateGui()
@@ -217,7 +234,7 @@ type EditorController =
                 EditorEditBundle.time = Common.timeNow()
                 title = title
                 closed = true
-                edits = [| SetMap(view, beforeState, view.editState) |]
+                edits = [| SetMap(view, beforeState, view.editState); SetFocus(view, view) |]
               }
             this.undoStack.add(edit)
             this.updateGui()

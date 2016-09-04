@@ -11,7 +11,7 @@ let genShift (dna : Dna) =
   let dy = dna.float32("Y shift", lerp -0.5f 0.5f)
   let dz = dna.float32("Z shift", lerp -0.5f 0.5f)
   let wave = dna.category("Shift wave", C("triangle", trir),
-                                        C("smooth triangle", fun x -> Fade.cosifyr Fade.smoothLine (x - Q 1 4)),
+                                        C("smooth triangle", fun x -> Fade.cosifyr (Fade.smoothLine 0.3f) (x - Q 1 4)),
                                         C("sine", sinrFast)
                                         )
   shift wave (Vec3f(dx, dy, dz))
@@ -32,28 +32,30 @@ let genScatter (dna : Dna) =
 
 /// Generates a bleed map.
 let genBleed (dna : Dna) =
-  let b1 = dna.float32("Bleed 1", lerp -1.0f 1.0f)
-  let b2 = dna.float32("Bleed 2", lerp -1.0f 1.0f)
-  fun (v : Vec3f) -> Vec3f(v.x + b1 * v.z + b2 * v.y, v.y + b1 * v.x + b2 * v.z, v.z + b1 * v.y + b2 * v.x)
+  // This formulation retains the sum of the components.
+  let a = dna.float32("Bleed amount", lerp -1.0f 1.0f)
+  fun (v : Vec3f) -> Vec3f(v.x + a * v.z - a * v.y, v.y + a * v.x - a * v.z, v.z + a * v.y - a * v.x)
 
 
 /// Generates a vector posterizer map.
 let genVectorPosterize (dna : Dna) =
-  let levels = 1.0f / dna.float32("Posterize step size", xerp 0.01f 10.0f)
-  posterize3 (genSigmoidFade "Posterize hardness" dna) levels
+  let levels = dna.float32("Posterize levels", xerp 0.5f 20.0f)
+  let phase = dna.float32("Posterize offset")
+  posterize3 (genSigmoidFade "Posterize hardness" dna) phase levels
 
 
 /// Generates a component posterizer map.
 let genComponentPosterize (dna : Dna) =
-  let levels = 1.0f / dna.float32("Posterize step size", xerp 0.01f 10.0f)
-  posterize (genSigmoidFade "Posterize hardness" dna) levels
+  let levels = dna.float32("Posterize levels", xerp 0.5f 20.0f)
+  let phase = dna.float32("Posterize offset")
+  posterize (genSigmoidFade "Posterize hardness" dna) phase levels
 
 
 /// Generates a vector reflection map.
 let genVectorReflect (dna : Dna) =
   let fade = dna.category("Reflect fade", C(0.5, "reverse power-2", Fade.reverse Fade.power2),
                                           C("line", Fade.line),
-                                          C("smooth line", Fade.smoothLine),
+                                          C("smooth line", Fade.smoothLine 0.3f),
                                           C("smooth-2", Fade.smooth2),
                                           C("smooth-3", Fade.smooth3),
                                           C("worm", Fade.worm 2),
@@ -66,13 +68,13 @@ let genVectorReflect (dna : Dna) =
 /// Generates a component reflection map.
 let genComponentReflect (dna : Dna) =
   let wave = dna.category("Reflect wave", C(1.5, "line", trir),
-                                          C("smooth line", fun x -> Fade.cosifyr Fade.smoothLine (x - Q 1 4)),
+                                          C("smooth line", fun x -> Fade.cosifyr (Fade.smoothLine 0.3f) (x - Q 1 4)),
                                           C("sine", sinrFast),
                                           C("smooth-2", fun x -> Fade.cosifyr Fade.smooth2 (x - Q 1 4)),
                                           C("power-2", Fade.sinefyr Fade.power2)
                                           )
   let amount = dna.float32("Reflect amount", squared >> lerp 0.1f 10.0f)
-  let offset = Vec3f.fromSeed(dna.data("Reflect offset"), -0.125f, 0.125f)
+  let offset = Vec3f(dna.float32("Reflect offset", lerp -1.0f 1.0f) |> (/) 8.0f)
   translate offset >> reflect wave amount
 
 
@@ -108,5 +110,3 @@ let genShape (dna : Dna) =
     C(0.25, "component reflect", genComponentReflect),
     C(0.25, "vector reflect", genVectorReflect)
     )
-
-

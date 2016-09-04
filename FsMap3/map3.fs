@@ -220,17 +220,19 @@ let overdrive3 (a : float32) (v : Vec3f) =
 
 
 /// Posterizes components with the specified number of levels per unit,
-/// using the fade function to transition between levels.
-let posterize (fade : float32 -> float32) (levels : float32) =
-  shape (fun x -> Fade.staircase fade (x * levels) / levels)
+/// using the fade function to transition between levels. Staircase position
+/// is controlled by the phase parameter in [0, 1].
+let posterize (fade : float32 -> float32) (phase : float32) (levels : float32) =
+  shape (fun x -> (Fade.staircase fade (x * levels + phase) - phase) / levels)
 
 
-/// Posterizes components proportional to the maximum component with the specified number of levels per unit,
-/// using the fade function to transition between levels.
-let posterize3 (fade : float32 -> float32) (levels : float32) (v : Vec3f) =
+/// Posterizes components proportional to the maximum component with the specified number
+/// of levels per unit, using the fade function to transition between levels.
+/// Staircase position is controlled by the phase parameter in [0, 1].
+let posterize3 (fade : float32 -> float32) (phase : float32) (levels : float32) (v : Vec3f) =
   let m = levels * v.maxNorm
   if m > 0.0f then
-    let c = (Fade.staircase fade m) / m
+    let c = (Fade.staircase fade (m + phase) - phase) / m
     v * c
   else
     Vec3f.zero

@@ -45,4 +45,3 @@ let perlind frequency = perlin hifiLayout Fade.smooth2 (manglef32 frequency) fre
 /// The cell hash seed is derived from the frequency.
 let perlinf fade frequency = perlin hifiLayout fade (manglef32 frequency) frequency
 
-

@@ -29,6 +29,15 @@ type Vec2f = struct
   /// The length of the vector.
   member inline v.length = sqrt v.length2
 
+  /// Transforms the components of the vector with a function.
+  member inline v.map(f : float32 -> float32) = Vec2f(f v.x, f v.y)
+
+  /// The sum of the components.
+  member inline v.sum = v.x + v.y
+
+  /// The average of the components.
+  member inline v.average = (v.x + v.y) * 0.5f
+
   /// L1-norm aka Manhattan norm.
   member inline v.norm1 = abs v.x + abs v.y
 
@@ -37,6 +46,12 @@ type Vec2f = struct
 
   /// The L-norm of the vector.
   member inline v.norm(L : float32) = (abs v.x ** L + abs v.y ** L) ** (1.0f / L)
+
+  /// 4-norm of the vector.
+  member inline v.norm4 = v.map(fun x -> squared (squared x)).sum |> sqrt |> sqrt
+
+  /// 8-norm of the vector.
+  member inline v.norm8 = v.map(fun x -> squared (squared (squared x))).sum |> sqrt |> sqrt |> sqrt
 
   /// The vector as a tuple.
   member inline v.tuple = (v.x, v.y)
@@ -51,9 +66,6 @@ type Vec2f = struct
 
   /// Returns whether the vector is non-zero.
   member inline v.isNonZero = v.length2 > 0.0f
-
-  /// Transforms the components of the vector with a function.
-  member inline v.map(f : float32 -> float32) = Vec2f(f v.x, f v.y)
 
   /// Returns the vector rotated angle radians.
   member inline v.rotate(angle) =
