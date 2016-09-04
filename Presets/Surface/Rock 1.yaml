@@ -3,14 +3,17 @@ View Center Y: 0.5
 View Center Z: 0.490005493164062
 View Zoom: 1
 Palette:
+  Palette style: simple Cartesian
   Color space: Mugsell
   Hue origin: 0.338235288858413
-  Hue range: 0.712572991847992
-  Hue skew: 1.7716805934906
+  Hue range: 0.712573051452636
+  Hue concentration: 0
+  Hue damping: 0.31395348906517
   Saturation range: 0.210952058434486
   Saturation minimum: 0.007636830676347
-  Saturation skew: 0.965036153793335
-  Value skew: 0.581395387649536
+  Saturation bias: 0.965036153793335
+  Brightness: 0.348837375640869
+  Contrast: 0
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -28,8 +31,8 @@ Node: Fractalizer
       Displace response: line
         Displace amount: 0.081158727407455
       Displace damping: 0.523255825042724
+    Basis seed: 1327795668
     Basis: colored Worley
-      Cell seed: 11132
       Features per cell: Poisson
         Mean: 1.858824
       Cell distance norm: 2-norm
@@ -38,6 +41,10 @@ Node: Fractalizer
       Cell fade distance: 0.046902477741241
       Cell color: unit
         Color variation: none
+    Shape: scatter
+      Scatter seed: 2860338684
+      Scatter amount: 0.720930218696594
+      Scatter tuning: 0
   Shape: scatter
     Scatter seed: 2860338684
     Scatter amount: 0.845588207244873

@@ -3,50 +3,57 @@ View Center Y: 0.5
 View Center Z: 0.5
 View Zoom: 1
 Palette:
+  Palette style: simple Cartesian
   Color space: CIELch
   Hue origin: 0.156976744532585
-  Hue range: 0.228769958019256
-  Hue concentration: 0.156976744532585
-  Hue damping: 0.228769958019256
+  Hue range: 0.153664141893386
+  Hue concentration: 0.25
+  Hue damping: 0
   Saturation range: 0.511066257953643
   Saturation minimum: 0.308767795562744
-  Saturation skew: -0.976744174957275
-  Value skew: 0.444023132324218
+  Saturation bias: -0.651162683963775
+  Brightness: 0.209302425384521
+  Contrast: 1.30232548713684
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Unary
   Unary op: component posterize
-    Posterize step size: 0.118834301829338
-    Posterize hardness: 4
+    Posterize levels: 3.16227769851684
+    Posterize offset: 0
+    Posterize hardness: 8
     Node: Unary
       Unary op: vector posterize
-        Posterize step size: 0.217054963111877
-        Posterize hardness: 4
+        Posterize levels: 2.60718178749084
+        Posterize offset: 0.226744189858436
+        Posterize hardness: 6
         Node: Fractalizer
           X offset: 1.02912902832031
           Y offset: 1.34927272796631
           Z offset: -2.04900503158569
           Octaves: 5
-          Frequency: 4.08341932296753
+          Frequency: 2.90935158729553
           Roughness: 0.541964530944824
           Fractalizer: mix and displace
             Lacunarity: 0.42624145746231
-            Highpass filter: 0.617197275161743
+            Highpass filter: 0.366279035806655
             Mix operator: norm
-              Hardness: 0.729949712753295
+              Hardness: 1
             Walk operator: cross
               Displace response: smooth line
-                Displace amount: 0.58006465435028
-                Response smoothness: 0.59596163034439
-              Displace damping: 0.540697693824768
-            Basis seed: 3881403651
+                Displace amount: 1.32504045963287
+                Displace smoothness: 0.686046540737152
+              Displace damping: 0.808139562606811
+            Basis seed: 1
             Basis: leopard
               Leopard radius: 0.607742607593536
               Features per cell: one
               Falloff saturation: 0
               Falloff shape: smooth line
               Mix operator: norm
-                Hardness: 0.59596163034439
+                Hardness: 0
               Cell color: any
                 Color variation: none
-          Shape: none
+            Shape: bleed
+              Bleed amount: 0.280930161476135
+          Shape: bleed
+            Bleed amount: 0.679999947547912

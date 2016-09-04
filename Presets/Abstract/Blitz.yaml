@@ -3,15 +3,17 @@ View Center Y: 0.5
 View Center Z: 0.470714569091796
 View Zoom: 0.683013379573822
 Palette:
+  Palette style: simple Cartesian
   Color space: HSL
   Hue origin: 0.895348846912384
   Hue range: 0.233091250061988
   Hue concentration: 0.174418598413467
-  Hue damping: 0.284883707761764
+  Hue damping: 0
   Saturation range: 0.800000011920929
-  Saturation minimum: 0.162307187914848
-  Saturation skew: 2
-  Value skew: -1
+  Saturation minimum: 0.199999988079071
+  Saturation bias: 2
+  Brightness: -0.69767427444458
+  Contrast: 0.279069662094116
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -36,9 +38,9 @@ Node: Fractalizer
       Potential: rounded cone
         Cone radius: 0.454058229923248
       Potential radius: 1
-      Falloff saturation: 0.69069766998291
+      Falloff saturation: 0.303488373756408
       Falloff shape: reverse power-2
-      Gradient: 0
+      Gradient: 0.31395348906517
       Cell color: palette
         Choices: 3
         Color 0 seed: 3996400629
@@ -55,4 +57,5 @@ Node: Fractalizer
           Perlin fade: smooth-2
         Shape: component overdrive
           Overdrive amount: 0.447674423456192
+    Shape: none
   Shape: none

@@ -1,0 +1,39 @@
+View Center X: 0.374835968017578
+View Center Y: 0.5
+View Center Z: 0.5
+View Zoom: 1
+Palette:
+  Palette style: simple Cartesian
+  Color space: CIELch
+  Hue origin: 0.87790697813034
+  Hue range: 0.213199704885482
+  Hue concentration: 0
+  Hue damping: 0
+  Saturation range: 0.790697693824768
+  Saturation minimum: 0.209302306175231
+  Saturation bias: 0
+  Brightness: -0.279069781303405
+  Contrast: 0.441860437393188
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Fractalizer
+  X offset: 0
+  Y offset: 0
+  Z offset: 0
+  Octaves: 10
+  Frequency: 2
+  Roughness: 0.499224543571472
+  Fractalizer: mix and displace
+    Lacunarity: 0.5
+    Highpass filter: 0
+    Mix operator: sum
+    Walk operator: cross
+      Displace response: smooth line
+        Displace amount: 0.68962949514389
+        Displace smoothness: 0.354651153087615
+      Displace damping: 0.389534890651702
+    Basis seed: 4
+    Basis: isotropic noise
+      Noise fade: sine
+    Shape: none
+  Shape: none

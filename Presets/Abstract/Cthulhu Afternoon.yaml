@@ -1,0 +1,59 @@
+View Center X: 0.339675903320312
+View Center Y: 0.083160400390625
+View Center Z: 0.5
+View Zoom: 1.56250047683716
+Palette:
+  Palette style: simple polar
+  Color space: CIELch
+  Hue origin: 0.970930218696594
+  Hue range: 0.355056583881378
+  Hue concentration: 0.406976729631423
+  Hue damping: 0.511370956897735
+  Saturation range: 0.939107477664947
+  Saturation minimum: 0.007936527021229
+  Saturation bias: 1.36877632141113
+  Brightness: 0.872093200683593
+  Contrast: -0.023255825042724
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Basis
+  X offset: 1.59421014785767
+  Y offset: 4.85622310638428
+  Z offset: 2.6436882019043
+  Basis seed: 4281561384
+  Frequency: 12.5992164611816
+  Basis: potential flow
+    Potential: rounded cone
+      Cone radius: 0.951548397541046
+    Potential radius: 0.964644432067871
+    Falloff saturation: 0.57558137178421
+    Falloff shape: smooth line
+    Gradient: 0.503805756568908
+    Cell color: small
+      Color variation: random gradient
+        Amount: 0.281764864921569
+    Mix operator: min
+    Features per cell: Poisson
+      Mean: 0.5888516878
+    Flow frequency: 1.24554145336151
+    Flow:
+      Basis: mix
+        Frequency factor: 0.279360204935073
+        Mix operator: rotate
+          Rotate amount: 0.875800609588623
+        Base:
+          Basis: radial value noise
+            Cell color: unit
+              Color variation: position
+                Amount: 0.556212961673736
+            Radial fade: power-2
+        Modifier:
+          Basis: radial value noise
+            Cell color: full
+              Color variation: position
+                Amount: 0.556212961673736
+            Radial fade: smooth-1
+          Shape: none
+      Shape: wave packet
+        Packet seed: 7690030
+  Shape: none

@@ -1,8 +1,9 @@
 View Center X: 0.5
 View Center Y: 0.5
 View Center Z: -0.039993286132812
-View Zoom: 1.00000047683716
+View Zoom: 0.640000283718109
 Palette:
+  Palette style: simple Cartesian
   Color space: CIELch
   Hue origin: 0.674418628215789
   Hue range: 0.100000001490116
@@ -10,8 +11,9 @@ Palette:
   Hue damping: 0
   Saturation range: 0.465116262435913
   Saturation minimum: 0.534883737564086
-  Saturation skew: 2
-  Value skew: -0.209302306175231
+  Saturation bias: 2
+  Brightness: -1.25581383705139
+  Contrast: 0
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -19,15 +21,18 @@ Node: Fractalizer
   Y offset: 2.7187442779541
   Z offset: -0.349665641784668
   Octaves: 5
-  Frequency: 14.1921396255493
-  Roughness: 0.515975356101989
+  Frequency: 16
+  Roughness: 0.535808384418487
   Fractalizer: walk
-    Displace amount: 1.20373904705048
-    Twist amount: 0.575581431388855
+    Displace amount: 1.36531937122345
+    Twist amount: 0
+    Basis seed: 2829481981
     Basis: Worley
       Features per cell: geometric
         Mean: 0.549223881
       Cell distance norm: 2-norm
       Worley pattern: 1669
       Worley fade: upward arc
-  Shape: none
+    Shape: none
+  Shape: wave packet
+    Packet seed: 517732

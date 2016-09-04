@@ -1,0 +1,57 @@
+View Center X: 0.5
+View Center Y: 0.5
+View Center Z: 0.5
+View Zoom: 1.25000035762787
+Palette:
+  Palette style: simple Cartesian
+  Color space: Mugsell
+  Hue origin: 0.899999976158142
+  Hue range: 0.447674423456192
+  Hue concentration: 0.219999998807907
+  Hue damping: 0.400000005960464
+  Saturation range: 0.494186043739318
+  Saturation minimum: 0.293411076068878
+  Saturation bias: 0.441860437393188
+  Brightness: 0.050232410430908
+  Contrast: 0.079999923706054
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Fractalizer
+  X offset: 0
+  Y offset: 0
+  Z offset: 0
+  Octaves: 9
+  Frequency: 2
+  Roughness: 0.602835536003112
+  Fractalizer: mix and displace
+    Lacunarity: 0.5
+    Highpass filter: 0.272092998027801
+    Mix operator: layer
+      Layer combiner: rotate
+        Rotate amount: 0.593023240566253
+      Layer width: 0.753380179405212
+      Layer shape: sigmoid
+        Sigmoid hardness: 5
+      Layer norm: max
+      Layer persist: 1
+    Walk operator: twist
+      Displace response: smooth line
+        Displace amount: 0.16231745481491
+        Displace smoothness: 0.354651153087615
+      Twist amount: 0.563953459262847
+      Displace damping: 0.180232554674148
+    Basis seed: 2
+    Basis: leopard
+      Leopard radius: 0.886982023715972
+      Features per cell: rounded
+        Mean: 1.299331285
+      Falloff saturation: 0.140651166439056
+      Falloff shape: smooth-2
+      Mix operator: norm
+        Hardness: 1
+      Cell color: any
+        Color variation: position
+          Amount: 0.284883707761764
+    Shape: none
+  Shape: wave packet
+    Packet seed: 5484426

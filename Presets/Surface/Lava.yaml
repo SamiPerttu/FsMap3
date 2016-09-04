@@ -1,0 +1,64 @@
+View Center X: 0.5
+View Center Y: 0.5
+View Center Z: 0.5
+View Zoom: 0.385543167591095
+Palette:
+  Palette style: simple Cartesian
+  Color space: HSL
+  Hue origin: 0.956046521663665
+  Hue range: 0.06395348906517
+  Hue concentration: 0
+  Hue damping: 0
+  Saturation range: 0
+  Saturation minimum: 1
+  Saturation bias: -0.418604612350463
+  Brightness: 0
+  Contrast: 0.697674512863159
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Fractalizer
+  X offset: 3.16117572784424
+  Y offset: -1.98596358299255
+  Z offset: -3.12724876403809
+  Octaves: 5
+  Frequency: 4.71180248260498
+  Roughness: 0.401890367269516
+  Fractalizer: inverted mix and displace
+    Lacunarity: 0.642343878746032
+    Lowpass filter: 0.020930232480168
+    Mix operator: norm
+      Hardness: 0.831395328044891
+    Walk operator: shuffle
+      Displace response: sigmoid
+        Displace maximum: 0.571254730224609
+        Displace slope: 0.465116292238235
+      Displace damping: 0.62790697813034
+    Basis seed: 0
+    Basis: mix
+      Frequency factor: 0.469481468200683
+      Mix operator: layer
+        Layer width: 1
+        Layer shape: sigmoid
+          Sigmoid hardness: 3
+        Layer combiner: sum
+        Layer norm: 4-norm
+        Layer persist: 0
+      Base:
+        Basis: Worley
+          Features per cell: Poisson
+            Mean: 0.4456356006
+          Cell distance norm: 2-norm
+          Worley pattern: 6265
+          Worley fade: smooth-3
+      Modifier:
+        Basis: Worley
+          Features per cell: Poisson
+            Mean: 1.121705001
+          Cell distance norm: 2-norm
+          Worley pattern: 6265
+          Worley fade: smooth-3
+        Shape: none
+    Shape: vector overdrive
+      Overdrive amount: 0.430232554674148
+  Shape: vector overdrive
+    Overdrive amount: 0.430232554674148

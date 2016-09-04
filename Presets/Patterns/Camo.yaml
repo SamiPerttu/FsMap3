@@ -1,0 +1,63 @@
+View Center X: 0.5
+View Center Y: 0.5
+View Center Z: 0.5
+View Zoom: 1
+Palette:
+  Palette style: simple Cartesian
+  Color space: CIELch
+  Hue origin: 0.290697664022445
+  Hue range: 0.334845155477523
+  Hue concentration: 0
+  Hue damping: 0.720930218696594
+  Saturation range: 0.890860497951507
+  Saturation minimum: 0.036872863769531
+  Saturation bias: -0.755073070526123
+  Brightness: -0.755073070526123
+  Contrast: 0
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Binary
+  X offset: -4.07899379730225
+  Y offset: -4.25495910644531
+  Z offset: 2.13648557662964
+  Operator: displace
+    Displace response: smooth line
+      Displace amount: 0.176943331956863
+      Displace smoothness: 0.581395328044891
+  Base:
+    Node: Unary
+      Unary op: component overdrive
+        Overdrive amount: 0.398604661226272
+        Node: Unary
+          Unary op: component overdrive
+            Overdrive amount: 0.370670229196548
+            Node: Basis
+              X offset: 0.269305229187011
+              Y offset: -0.056145668029785
+              Z offset: 1.77612888813019
+              Basis seed: 114803153
+              Frequency: 16.928653717041
+              Basis: Perlin noise
+                Perlin fade: smooth-3
+              Shape: none
+  Modifier:
+    Node: Basis
+      X offset: -4.07899379730225
+      Y offset: 2.62519311904907
+      Z offset: 3.42757415771484
+      Basis seed: 114803153
+      Frequency: 4.04865264892578
+      Basis: radial value noise
+        Cell color: small
+          Color variation: random gradient
+            Amount: 0.715116262435913
+        Radial fade: power-2
+      Shape: shift
+        X shift: -0.441860437393188
+        Y shift: 0
+        Z shift: -0.011627912521362
+        Shift wave: smooth triangle
+  Shape: scatter
+    Scatter seed: 3429371106
+    Scatter amount: 1
+    Scatter tuning: 0.604651153087616

@@ -1,16 +1,19 @@
-View Center X: 0.61703872680664
-View Center Y: 5.18099594116211
-View Center Z: 0.388736724853515
-View Zoom: 0.780899167060852
+View Center X: 4.10598373413086
+View Center Y: 2.01425552368164
+View Center Z: 1.11064910888672
+View Zoom: 1.03359138965607
 Palette:
+  Palette style: simple Cartesian
   Color space: CIELch
-  Hue origin: 0.348837196826934
-  Hue range: 0.153839915990829
-  Hue skew: 0.163155078887939
+  Hue origin: 0.303023248910903
+  Hue range: 0.194820240139961
+  Hue concentration: 0
+  Hue damping: 0.31395348906517
   Saturation range: 0.538448333740234
   Saturation minimum: 0.44510805606842
-  Saturation skew: -1.57453370094299
-  Value skew: 0.73980164527893
+  Saturation bias: -0.162790715694427
+  Brightness: 0.767441749572753
+  Contrast: -0.069767475128173
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -18,25 +21,25 @@ Node: Fractalizer
   Y offset: -4.31220054626465
   Z offset: 2.70749855041504
   Octaves: 7
-  Frequency: 6.54005241394043
-  Roughness: 0.561550259590148
+  Frequency: 6.61960077285767
+  Roughness: 0.569675981998443
   Fractalizer: inverted mix and displace
     Lacunarity: 0.366078555583953
-    Lowpass filter: 0.808721244335174
+    Lowpass filter: 0.1255813986063
     Mix operator: soft
       Bias: 0.116279125213623
     Walk operator: march
       Displace response: sigmoid
-        Displace maximum: 0.499999970197677
-        Displace slope: 0.511627912521362
+        Displace maximum: 0.653089523315429
+        Displace slope: 0.540697693824768
       Displace damping: 0.305876672267913
+    Basis seed: 1566974701
     Basis: mix
       Frequency factor: 0.385606944561004
       Mix operator: soft
         Bias: -0.65116286277771
       Base:
         Basis: Worley
-          Cell seed: 3074464846
           Features per cell: Poisson
             Mean: 1.245269706
           Cell distance norm: 2-norm
@@ -44,7 +47,6 @@ Node: Fractalizer
           Worley fade: power-2
       Modifier:
         Basis: colored Worley
-          Cell seed: 1335462654
           Features per cell: Poisson
             Mean: 1.442462936
           Cell distance norm: 2-norm
@@ -54,4 +56,5 @@ Node: Fractalizer
           Cell color: big
             Color variation: none
         Shape: none
+    Shape: none
   Shape: none

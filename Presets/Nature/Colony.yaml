@@ -1,16 +1,19 @@
-View Center X: 14.1469287872314
-View Center Y: -24.9544830322266
-View Center Z: 0.35123062133789
-View Zoom: 0.751314759254455
+View Center X: 0.187183380126953
+View Center Y: 0.187183380126953
+View Center Z: 0.5
+View Zoom: 0.800000190734863
 Palette:
+  Palette style: simple Cartesian
   Color space: Mugsell
-  Hue origin: 0.227941170334815
-  Hue range: 0.438986748456954
-  Hue skew: 0.378823518753051
-  Saturation range: 0.800000011920929
-  Saturation minimum: 0.0389273352921
-  Saturation skew: 1.29411768913269
-  Value skew: 0.647058725357055
+  Hue origin: 0.296046495437622
+  Hue range: 0.77600872516632
+  Hue concentration: 0
+  Hue damping: 0
+  Saturation range: 0.80232560634613
+  Saturation minimum: 0.0868366882205
+  Saturation bias: 0.162790775299072
+  Brightness: 0.906976699829101
+  Contrast: -0.196279048919677
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -18,41 +21,41 @@ Node: Fractalizer
   Y offset: -0.31147027015686
   Z offset: 2.78318786621094
   Octaves: 8
-  Frequency: 2.40278196334839
-  Roughness: 0.668721675872802
+  Frequency: 2.60940527915955
+  Roughness: 0.626007318496704
   Fractalizer: mix and displace
     Lacunarity: 0.502123415470123
-    Highpass filter: 0.467307269573211
+    Highpass filter: 0.323790699243545
     Mix operator: layer
-      Layer width: 0.287499994039535
-      Falloff shape: sigmoid
-        Sigmoid hardness: 6
-      Layer norm: 1-norm
-      Layer persist: 1
-    Walk operator: twist
+      Layer combiner: sum
+      Layer width: 0.42455381155014
+      Layer shape: sigmoid
+        Sigmoid hardness: 5
+      Layer norm: max
+      Layer persist: 0.889534890651702
+    Walk operator: shuffle
       Displace response: line
-        Displace amount: 0.395015805959701
-      Twist amount: 0.401162803173065
-      Displace damping: 0.308139532804489
+        Displace amount: 1.52109253406525
+      Displace damping: 0.360465109348297
+    Basis seed: 883211509
     Basis: leopard
-      Cell seed: 3573493429
-      Leopard radius: 0.868941128253936
-      Features per cell: Poisson
-        Mean: 0.6768913236
-      Falloff width: 1
-      Falloff shape: smooth line
+      Leopard radius: 0.847291409969329
+      Features per cell: one
+      Falloff saturation: 0.06279069930315
+      Falloff shape: sine
       Mix operator: sum
       Cell color: palette
         Choices: 5
-        Color 0 seed: 574430207
+        Color 0 seed: 574430212
         Color 1 seed: 2223475644
-        Color 2 seed: 660080263
-        Color 3 seed: 3239934728
+        Color 2 seed: 356058942
+        Color 3 seed: 3239934735
         Color 4 seed: 973864870
-        Color variation: gradient
+        Color variation: fixed gradient
           Amount: 0.463067591190338
           Angle seed: 3573493429
+    Shape: none
   Shape: scatter
     Scatter seed: 3573493427
     Scatter amount: 0.911764681339263
-    Scatter tuning: 0.700465142726898
+    Scatter tuning: 0.645348846912384

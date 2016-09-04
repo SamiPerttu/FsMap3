@@ -3,28 +3,31 @@ View Center Y: 0.5
 View Center Z: 0.5
 View Zoom: 1
 Palette:
+  Palette style: simple Cartesian
   Color space: HSD
-  Hue origin: 0.123119339346885
-  Hue range: 0.649814546108245
-  Hue skew: 0.267082691192626
-  Saturation range: 0.800000011920929
+  Hue origin: 0.488372087478637
+  Hue range: 0.348837196826934
+  Hue concentration: 0
+  Hue damping: 0
+  Saturation range: 1
   Saturation minimum: 0
-  Saturation skew: 0.647058725357055
-  Value skew: 0.157010793685913
+  Saturation bias: 0
+  Brightness: 1.39534866809845
+  Contrast: 0.744186162948608
 FsMap3 Editor Version 0.3.0:
 Layout: Tile All
 Node: Unary
   Unary op: wave packet
-    Packet seed: 1057578999
+    Packet seed: 3
     Node: Basis
       X offset: 4.25005626678467
       Y offset: 2.54380321502686
       Z offset: -1.21991872787476
+      Basis seed: 1057578999
       Frequency: 3.11920070648193
       Basis: weave
-        Cell seed: 3
         Weave period: 3
         Weave: threaded
       Shape: vector reflect
         Reflect fade: worm
-        Reflect amount: 2.72000002861023
+        Reflect amount: 2.93239617347717

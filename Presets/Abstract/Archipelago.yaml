@@ -1,23 +1,24 @@
 View Center X: 0.5
 View Center Y: 0.5
-View Center Z: 0.5
+View Center Z: 0.500003814697265
 View Zoom: 1
 Palette:
-  Color space: CIELch
+  Palette style: simple Cartesian
+  Color space: Mugsell
   Hue origin: 0.011627906933426
   Hue range: 0.257706880569458
   Hue concentration: 0.011627906933426
-  Hue damping: 0.180232554674148
+  Hue damping: 0.418604642152786
   Saturation range: 0.800000011920929
-  Saturation minimum: 0
-  Saturation skew: -1.48837208747864
-  Value skew: 0.418604373931884
+  Saturation minimum: 0.015575987286865
+  Saturation bias: -0.765581369400024
+  Brightness: 1.01162815093994
+  Contrast: 0.488372087478637
 FsMap3 Editor Version 0.3.0:
 Layout: Tile All
 Node: Unary
   Unary op: bleed
-    Bleed 1: 0.347393870353698
-    Bleed 2: 0.851029634475708
+    Bleed amount: 0.546511650085449
     Node: Fractalizer
       X offset: 1.02912902832031
       Y offset: 0.428826808929443
@@ -33,21 +34,23 @@ Node: Unary
         Walk operator: cross
           Displace response: smooth line
             Displace amount: 0.46572470664978
-            Response smoothness: 0.46572470664978
+            Displace smoothness: 0.46572470664978
           Displace damping: 0.162790700793266
         Basis seed: 4083160947
         Basis: leopard
           Leopard radius: 0.607742607593536
           Features per cell: rounded
             Mean: 0.5001468204
-          Falloff saturation: 0.601744174957275
+          Falloff saturation: 0.680232524871826
           Falloff shape: reverse power-2
           Mix operator: soft
             Bias: -0.209302306175231
           Cell color: unit
-            Color variation: gradient
+            Color variation: fixed gradient
               Amount: 0.773255825042724
-              Angle seed: 2157871631
+              Angle seed: 2197195507
+        Shape: none
       Shape: component posterize
-        Posterize step size: 0.187609866261482
+        Posterize levels: 6.55671405792236
+        Posterize offset: 0.104651160538196
         Posterize hardness: 4

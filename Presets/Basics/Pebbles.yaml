@@ -3,33 +3,39 @@ View Center Y: 0.5
 View Center Z: 0.569992065429687
 View Zoom: 1
 Palette:
+  Palette style: simple Cartesian
   Color space: HSL
   Hue origin: 0.186046510934829
   Hue range: 0.354311227798461
-  Hue skew: 0
+  Hue concentration: 0.186046510934829
+  Hue damping: 0.354311227798461
   Saturation range: 0.800000011920929
   Saturation minimum: 0
-  Saturation skew: 0
-  Value skew: 0
+  Saturation bias: 0
+  Brightness: 0.186046600341796
+  Contrast: 0
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Basis
   X offset: -2.16133832931519
   Y offset: -0.932822227478027
   Z offset: -2.06774520874023
+  Basis seed: 0
   Frequency: 8.33292865753174
   Basis: tiles
-    Cell seed: 3454189202
     Features per cell: one
     Cell distance norm: 4-norm
-    Cell fade distance: 0.042138997465372
-    Shading: 0.5
+    Worley pattern: 16365
+    Border width: 0.055338460952043
+    Cell fade distance: 0.019999999552965
+    Shading: 0.656976759433746
+    Worley fade: reverse power-3
     Cell color: palette
       Choices: 3
       Color 0 seed: 2464241010
       Color 1 seed: 1550722651
       Color 2 seed: 4005917943
-      Color variation: gradient
+      Color variation: fixed gradient
         Amount: 0.798548519611358
         Angle seed: 3454189202
   Shape: none

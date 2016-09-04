@@ -3,27 +3,32 @@ View Center Y: 0.5
 View Center Z: 0.5
 View Zoom: 1
 Palette:
-  Color space: HSV
-  Hue origin: 0.49794116616249
-  Hue range: 0.254409074783325
-  Hue skew: -0.205882310867309
-  Saturation range: 0.800000011920929
-  Saturation minimum: 0.00730968825519
-  Saturation skew: 0
-  Value skew: 0.323529481887817
+  Palette style: simple polar
+  Color space: HSD
+  Hue origin: 0.593023240566253
+  Hue range: 0.170091956853866
+  Hue concentration: 0.135317742824554
+  Hue damping: 0
+  Saturation range: 0.588381946086883
+  Saturation minimum: 0
+  Saturation bias: 1.7787914276123
+  Brightness: -0.769892215728759
+  Contrast: 0.381596326828002
 FsMap3 Editor Version 0.3.0:
 Layout: Tile All
 Node: Basis
-  X offset: -2.12890338897705
-  Y offset: -0.932822227478027
-  Z offset: -2.33462333679199
-  Frequency: 12.8511304855347
+  X offset: 1.99009048938751
+  Y offset: -3.72490692138672
+  Z offset: -0.930232763290405
+  Basis seed: 1269575789
+  Frequency: 8.76281929016113
   Basis: Worley
-    Cell seed: 3072753888
-    Features per cell: Poisson
-      Mean: 1.0208064
+    Features per cell: geometric
+      Mean: 1.4867344
     Cell distance norm: max-norm
-    Worley pattern: 6934
-    Worley fade: smooth-3
-  Shape: wave packet
-    Packet seed: 3072753888
+    Worley pattern: 1430
+    Worley fade: reverse power-2
+  Shape: scatter
+    Scatter seed: 1578394890
+    Scatter amount: 0.645726442337036
+    Scatter tuning: 0.776976764202117

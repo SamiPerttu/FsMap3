@@ -12,7 +12,7 @@ Palette:
   Saturation range: 0.800000011920929
   Saturation minimum: 0
   Saturation bias: 0
-  Brightness: 0.383720874786376
+  Brightness: 0
   Contrast: 0
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
@@ -21,7 +21,7 @@ Node: Fractalizer
   Y offset: 0
   Z offset: 0
   Octaves: 10
-  Frequency: 2.47739434242248
+  Frequency: 2
   Roughness: 0.5
   Fractalizer: mix and displace
     Lacunarity: 0.5
@@ -31,8 +31,8 @@ Node: Fractalizer
       Displace response: line
         Displace amount: 0
       Displace damping: 0
-    Basis seed: 3487490295
-    Basis: Perlin noise
-      Perlin fade: smooth-2
+    Basis seed: 0
+    Basis: isotropic noise
+      Noise fade: sine
     Shape: none
   Shape: none

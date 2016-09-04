@@ -1,0 +1,59 @@
+View Center X: 4.25238800048828
+View Center Y: -5.4670352935791
+View Center Z: 0.55499267578125
+View Zoom: 1.00000023841858
+Palette:
+  Palette style: simple Cartesian
+  Color space: CIELch
+  Hue origin: 0.645348846912384
+  Hue range: 0.776813864707946
+  Hue concentration: 0.14530935883522
+  Hue damping: 0.726357579231262
+  Saturation range: 0.268108069896698
+  Saturation minimum: 0.061037696897983
+  Saturation bias: -0.933907449245452
+  Brightness: 1.43023252487183
+  Contrast: 0.162790775299072
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Fractalizer
+  X offset: 3.71623706817627
+  Y offset: 2.62961435317993
+  Z offset: -4.61577701568604
+  Octaves: 6
+  Frequency: 2.33522701263428
+  Roughness: 0.83854991197586
+  Fractalizer: variable
+    Lacunarity: 0.448451310396194
+    Minimum octaves: 4
+    Octave direction: inverse
+    First octave: 3
+    Displace variation: 0.23259000480175
+    Twist variation: 0.168604657053947
+    Mix operator: norm
+      Hardness: 0.87790697813034
+    Walk operator: lurch
+      Displace response: smooth line
+        Displace amount: 0.242961257696151
+        Displace smoothness: 0.236343801021575
+      Displace damping: 0.108628742396831
+    Basis seed: 3106145858
+    Basis: Worley
+      Features per cell: one
+      Cell distance norm: 4-norm
+      Worley pattern: 11040
+      Worley fade: sine
+    Shape: none
+    Variable map:
+      Node: Basis
+        X offset: 2.27245998382568
+        Y offset: 4.43599891662598
+        Z offset: 4.27115345001221
+        Basis seed: 3277575247
+        Frequency: 2.5516471862793
+        Basis: Perlin noise
+          Perlin fade: smooth-2
+        Shape: wave packet
+          Packet seed: 1477186
+  Shape: wave packet
+    Packet seed: 1477186

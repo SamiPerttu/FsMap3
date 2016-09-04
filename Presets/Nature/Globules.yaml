@@ -1,0 +1,46 @@
+View Center X: 0.841278076171875
+View Center Y: -0.649768829345703
+View Center Z: 0.5
+View Zoom: 0.424097895622253
+Palette:
+  Palette style: simple Cartesian
+  Color space: HSV
+  Hue origin: 0.308139532804489
+  Hue range: 0.435400873422622
+  Hue concentration: 0
+  Hue damping: 0.348837196826934
+  Saturation range: 0.81860464811325
+  Saturation minimum: 0
+  Saturation bias: -2
+  Brightness: 0
+  Contrast: 0.116279125213623
+FsMap3 Editor Version 0.3.0:
+Layout: No Tiling
+Node: Fractalizer
+  X offset: 0.039653301239013
+  Y offset: -4.88014459609985
+  Z offset: 0.380389213562011
+  Octaves: 9
+  Frequency: 2.49050283432007
+  Roughness: 0.568635165691375
+  Fractalizer: inverted mix and displace
+    Lacunarity: 0.502018988132476
+    Lowpass filter: 0.816279053688049
+    Mix operator: sum
+    Walk operator: twist
+      Displace response: power-1/2
+        Displace amount: 0.222213566303253
+      Twist amount: 0.341162800788879
+      Displace damping: 0.813953459262847
+    Basis seed: 1182453426
+    Basis: Worley
+      Features per cell: one
+      Cell distance norm: 4-norm
+      Worley pattern: 5333
+      Worley fade: reverse power-3
+    Shape: none
+  Shape: shift
+    X shift: -0.093023285269737
+    Y shift: -0.30744183063507
+    Z shift: 0.029069781303405
+    Shift wave: smooth triangle

@@ -3,14 +3,17 @@ View Center Y: -4.86114501953125
 View Center Z: 0.55499267578125
 View Zoom: 1.00000023841858
 Palette:
+  Palette style: simple Cartesian
   Color space: CIELch
-  Hue origin: 0.454624772071838
+  Hue origin: 0.639534890651702
   Hue range: 0.644562125205993
-  Hue skew: -0.401156425476074
+  Hue concentration: 0.511627912521362
+  Hue damping: 0.011627906933426
   Saturation range: 0.268108069896698
   Saturation minimum: 0.061037696897983
-  Saturation skew: -0.430790185928344
-  Value skew: -0.179495275020599
+  Saturation bias: -0.430790185928344
+  Brightness: 0.593023300170898
+  Contrast: 0.116279125213623
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -22,15 +25,15 @@ Node: Fractalizer
   Roughness: 0.695953905582428
   Fractalizer: inverted mix and displace
     Lacunarity: 0.417343646287918
-    Lowpass filter: 0.036305885761976
+    Lowpass filter: 0
     Mix operator: sum
     Walk operator: twist
       Displace response: line
         Displace amount: 0.19696706533432
       Twist amount: 0.599222660064697
       Displace damping: 0.803655862808227
+    Basis seed: 1140380128
     Basis: Julia
-      Cell seed: 4111504155
       Iterations: 3
       Formula: Julia
       Features per cell: rounded
@@ -46,5 +49,6 @@ Node: Fractalizer
       Q-range: 1.57796847820282
       C-scale: 0.463909864425659
       Q-scale: 0.0041933595
+    Shape: none
   Shape: wave packet
-    Packet seed: 1140380128
+    Packet seed: 5950023

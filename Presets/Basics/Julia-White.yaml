@@ -3,27 +3,30 @@ View Center Y: 0.119316101074218
 View Center Z: 0.5
 View Zoom: 1.46410048007965
 Palette:
+  Palette style: simple polar
   Color space: HSL
   Hue origin: 0.412941187620162
-  Hue range: 0.385788828134536
-  Hue skew: 0
+  Hue range: 0.385788798332214
+  Hue concentration: 0.412941187620162
+  Hue damping: 0.385788828134536
   Saturation range: 0.787325263023376
   Saturation minimum: 0.212674736976623
-  Saturation skew: 0.923971652984619
-  Value skew: 0.050588130950927
+  Saturation bias: 0.923971652984619
+  Brightness: 1.32558143138886
+  Contrast: 0
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Basis
   X offset: -4.94268703460693
   Y offset: 1.50157403945923
   Z offset: -2.65551376342773
+  Basis seed: 1779836764
   Frequency: 7.11762237548828
   Basis: Julia
-    Cell seed: 1779836788
     Iterations: 10
     Formula: White
     Features per cell: rounded
-      Mean: 1.5539
+      Mean: 1.554
     Feature radius: 1.16661763191223
     Roughness: 0.811133086681366
     Feature fade: upward arc
@@ -38,4 +41,4 @@ Node: Basis
     C-scale: 1.40843570232391
     Q-scale: 1.1599999666214
   Shape: wave packet
-    Packet seed: 1779836764
+    Packet seed: 2730477

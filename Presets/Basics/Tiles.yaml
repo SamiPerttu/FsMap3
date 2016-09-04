@@ -3,30 +3,36 @@ View Center Y: 0.5
 View Center Z: 0.5
 View Zoom: 1
 Palette:
+  Palette style: simple polar
   Color space: Mugsell
   Hue origin: 0
-  Hue range: 0.228880479931831
-  Hue skew: 0
+  Hue range: 0.22888046503067
+  Hue concentration: 0
+  Hue damping: 0.228880479931831
   Saturation range: 0.800000011920929
   Saturation minimum: 0
-  Saturation skew: 0
-  Value skew: 0
+  Saturation bias: 0
+  Brightness: 0
+  Contrast: 0
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Basis
   X offset: -2.12890338897705
   Y offset: -0.932822227478027
   Z offset: -2.33462333679199
+  Basis seed: 2270464731
   Frequency: 8.03230476379395
   Basis: tiles
-    Cell seed: 4
     Features per cell: one
     Cell distance norm: 2-norm
+    Worley pattern: 4
+    Border width: 0.061227593570947
     Cell fade distance: 0.034472666680812
     Shading: 0
+    Worley fade: line
     Cell color: any
       Color variation: position
-        Amount: 0.610465109348297
+        Amount: 0.267441868782043
   Shape: scatter
     Scatter seed: 2270464731
     Scatter amount: 0.82558137178421

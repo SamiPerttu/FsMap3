@@ -3,15 +3,17 @@ View Center Y: 0.5
 View Center Z: 0.5
 View Zoom: 1
 Palette:
-  Color space: HSV
-  Hue origin: 0.604651153087616
-  Hue range: 0.12217753380537
-  Hue concentration: 0.715116262435913
-  Hue damping: 0.546511650085449
-  Saturation range: 0.879069745540618
-  Saturation minimum: 0.120930254459381
-  Saturation skew: 0.235294103622436
-  Value skew: 1.56976747512817
+  Palette style: simple Cartesian
+  Color space: HSL
+  Hue origin: 0.638837158679962
+  Hue range: 0
+  Hue concentration: 0
+  Hue damping: 0
+  Saturation range: 0.662790715694427
+  Saturation minimum: 0.337209284305572
+  Saturation bias: -1.53488373756409
+  Brightness: 1.74000024795532
+  Contrast: 0.05674409866333
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -20,30 +22,31 @@ Node: Fractalizer
   Z offset: 0
   Octaves: 10
   Frequency: 2
-  Roughness: 0.704806387424469
+  Roughness: 0.682311236858367
   Fractalizer: variable
     Lacunarity: 0.5
     Minimum octaves: 10
     Octave direction: forward
     First octave: 0
-    Displace variation: 0
+    Displace variation: 0.116279073059558
     Twist variation: 0.534883737564086
     Mix operator: sum
     Walk operator: march
       Displace response: line
         Displace amount: 0.606949746608734
-      Displace damping: 0.215116277337074
+      Displace damping: 0.098837211728096
+    Basis seed: 1
     Basis: Perlin noise
-      Cell seed: 3551107634
       Perlin fade: smooth-1
+    Shape: none
     Variable map:
       Node: Basis
         X offset: 2.82388162612915
         Y offset: -4.4970440864563
         Z offset: 2.25290727615356
-        Frequency: 4.47780227661133
+        Basis seed: 1036332212
+        Frequency: 3.37716794013977
         Basis: Julia
-          Cell seed: 1629702709
           Iterations: 4
           Formula: Julia
           Features per cell: Poisson
@@ -60,5 +63,7 @@ Node: Fractalizer
           C-scale: 0.991715908050537
           Q-scale: 0.425608247518539
         Shape: none
-  Shape: wave packet
-    Packet seed: 1260196345
+  Shape: scatter
+    Scatter seed: 1083960120
+    Scatter amount: 1
+    Scatter tuning: 0.54465115070343
