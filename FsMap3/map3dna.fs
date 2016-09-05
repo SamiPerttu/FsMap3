@@ -274,37 +274,20 @@ let rec genBasis maxDepth (dna : Dna) =
       let fade = dna.category("Perlin fade", C("smooth-1", Fade.smooth1), C("sine", Fade.sine), C("smooth-2", Fade.smooth2), C(0.5, "smooth-3", Fade.smooth3))
       perlin (genLayout dna |> layoutFunction) fade
       ),
-    C(1.0, "isotropic noise", fun _ ->
-      let fade = dna.category("Noise fade", C("smooth-1", Fade.smooth1), C("sine", Fade.sine), C("smooth-2", Fade.smooth2), C(0.5, "smooth-3", Fade.smooth3))
-      // Isotropic noise does not need a rotating layout.
-      isonoise (genFixedLayout dna |> layoutFunction) fade
-      ),
     C(1.0, "cubex noise", fun _ ->
       let color = genCellColor dna
       let fade  = dna.category("Cubex fade", C("sine", Fade.sine), C("smooth-2", Fade.smooth2), C("upward arc", Fade.uparc))
       cubex (genLayout dna |> layoutFunction) color fade
       ),
-    C(0.5, "weave", fun _ ->
-      let period = dna.int("Weave period", 2, 4)
-      let fade   = dna.category("Weave", C("threaded", Fade.wave period), 
-                                         C("quilted", Fade.wave period >> Fade.smooth2),
-                                         C("wired", Fade.wave period >> Fade.shelf),
-                                         C("tiled", Fade.clone period Fade.power4))
-      // The wave fade increases the range so scale down a little.
-      shapeBasis (scale 0.4f) (perlin (genFixedLayout dna |> layoutFunction) fade)
+    C(1.0, "isotropic noise", fun _ ->
+      let fade = dna.category("Noise fade", C("smooth-1", Fade.smooth1), C("sine", Fade.sine), C("smooth-2", Fade.smooth2), C(0.5, "smooth-3", Fade.smooth3))
+      // Isotropic noise does not need a rotating layout.
+      isonoise (genFixedLayout dna |> layoutFunction) fade
       ),
     C(1.0, "radial value noise", fun _ ->
       let color = genCellColor dna
       let fade  = dna.category("Radial fade", C(0.4, "smooth-1", Fade.smooth1), C(0.3, "smooth-2", Fade.smooth2), C(0.2, "smooth-3", Fade.smooth3), C(0.2, "power-2", Fade.power2))
       radial (genLayout dna |> layoutFunction) color fade
-      ),
-    C(1.0, "leopard", fun _ ->
-      let radius    = dna.float32("Leopard radius", xerp 0.25f 1.0f)
-      let count     = genFeatureCount dna
-      let fade      = genPotentialFade dna
-      let mix       = genBasisMixOp dna
-      let color     = genCellColor dna
-      leopard (genLayout dna |> layoutFunction) count mix color fade radius
       ),
     C(1.0, "Worley", fun _ ->
       let count    = genFeatureCount dna
@@ -335,6 +318,14 @@ let rec genBasis maxDepth (dna : Dna) =
       let fade     = genWorleyFade dna
       let color    = genCellColor dna
       tiles (genLayout dna |> layoutFunction) count distance (p % P) (p / P % P) (p / P / P) border shading color fade line
+      ),
+    C(1.0, "leopard", fun _ ->
+      let radius    = dna.float32("Leopard radius", xerp 0.25f 1.0f)
+      let count     = genFeatureCount dna
+      let fade      = genPotentialFade dna
+      let mix       = genBasisMixOp dna
+      let color     = genCellColor dna
+      leopard (genLayout dna |> layoutFunction) count mix color fade radius
       ),
     C(1.0, "peacock", fun _ ->
       let count             = genFeatureCount dna
@@ -416,6 +407,15 @@ let rec genBasis maxDepth (dna : Dna) =
       let flowFrequency     = dna.float32("Flow frequency", squared >> lerp 0.02f 2.0f, suffix = "x")
       let basis1            = dna.descend("Flow", recurseShapedBasis)
       impflow (layoutFunction <| genLayout dna) featureCount potential mixOp gradient cellColor fade radius basis1 flowFrequency
+      ),
+    C(0.5, "weave", fun _ ->
+      let period = dna.int("Weave period", 2, 4)
+      let fade   = dna.category("Weave", C("threaded", Fade.wave period), 
+                                         C("quilted", Fade.wave period >> Fade.smooth2),
+                                         C("wired", Fade.wave period >> Fade.shelf),
+                                         C("tiled", Fade.clone period Fade.power4))
+      // The wave fade increases the range so scale down a little.
+      shapeBasis (scale 0.4f) (perlin (genFixedLayout dna |> layoutFunction) fade)
       ),
     C(dualWeight, "mix", fun _ ->
       let factor   = genFactor()

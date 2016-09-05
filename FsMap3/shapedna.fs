@@ -91,8 +91,10 @@ let genVectorOverdrive (dna : Dna) =
 /// Generates a wave packet map.
 let genWavePacket (dna : Dna) =
   let range = 1 <<< 23
-  let seed = dna.data("Packet seed", range)
-  packet (1.0f + float32 seed / float32 range)
+  let seed  = dna.data("Packet seed", range)
+  let mix   = dna.float32("Mix amount")
+  let map   = packet (1.0f + float32 seed / float32 range)
+  fun (v : Vec3f) -> lerp v (map v) mix
 
 
 /// Generates a shaping function (or nothing).
