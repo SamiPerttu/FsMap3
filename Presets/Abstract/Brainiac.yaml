@@ -12,8 +12,8 @@ Palette:
   Saturation range: 0.494186043739318
   Saturation minimum: 0.293411076068878
   Saturation bias: 0.441860437393188
-  Brightness: 0.050232410430908
-  Contrast: 0.079999923706054
+  Brightness: 0.128371953964233
+  Contrast: 0
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -55,3 +55,4 @@ Node: Fractalizer
     Shape: none
   Shape: wave packet
     Packet seed: 5484426
+    Mix amount: 0.691860437393188

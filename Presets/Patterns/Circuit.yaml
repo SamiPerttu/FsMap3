@@ -24,7 +24,7 @@ Node: Basis
   Frequency: 8.76281929016113
   Basis: Worley
     Features per cell: geometric
-      Mean: 1.4867344
+      Mean: 1.486734
     Cell distance norm: max-norm
     Worley pattern: 1430
     Worley fade: reverse power-2

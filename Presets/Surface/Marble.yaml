@@ -27,10 +27,11 @@ Node: Fractalizer
     Lacunarity: 0.596231579780578
     Highpass filter: 0.807386815547943
     Mix operator: layer
+      Layer combiner: max
       Layer width: 0.339810401201248
       Layer shape: sigmoid
         Sigmoid hardness: 1
-      Layer combiner: max
+      Layer norm: max
       Layer persist: 0.668604671955108
     Walk operator: bounce
       Displace response: line

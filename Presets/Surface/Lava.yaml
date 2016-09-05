@@ -37,12 +37,11 @@ Node: Fractalizer
     Basis: mix
       Frequency factor: 0.469481468200683
       Mix operator: layer
+        Layer combiner: sum
         Layer width: 1
         Layer shape: sigmoid
           Sigmoid hardness: 3
-        Layer combiner: sum
-        Layer norm: 4-norm
-        Layer persist: 0
+        Layer norm: 1-norm
       Base:
         Basis: Worley
           Features per cell: Poisson

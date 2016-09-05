@@ -12,8 +12,8 @@ Palette:
   Saturation range: 0.80232560634613
   Saturation minimum: 0.0868366882205
   Saturation bias: 0.162790775299072
-  Brightness: 0.906976699829101
-  Contrast: -0.196279048919677
+  Brightness: 1.2209300994873
+  Contrast: -0.209302365779876
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer
@@ -42,7 +42,7 @@ Node: Fractalizer
       Leopard radius: 0.847291409969329
       Features per cell: one
       Falloff saturation: 0.06279069930315
-      Falloff shape: sine
+      Falloff shape: smooth-2
       Mix operator: sum
       Cell color: palette
         Choices: 5
@@ -57,5 +57,5 @@ Node: Fractalizer
     Shape: none
   Shape: scatter
     Scatter seed: 3573493427
-    Scatter amount: 0.911764681339263
+    Scatter amount: 0.899999976158142
     Scatter tuning: 0.645348846912384

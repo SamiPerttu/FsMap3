@@ -10,10 +10,10 @@ Palette:
   Hue concentration: 0
   Hue damping: 0.31395348906517
   Saturation range: 0.210952058434486
-  Saturation minimum: 0.007636830676347
-  Saturation bias: 0.965036153793335
+  Saturation minimum: 0
+  Saturation bias: 0.930232524871826
   Brightness: 0.348837375640869
-  Contrast: 0
+  Contrast: -0.079999983310699
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Fractalizer

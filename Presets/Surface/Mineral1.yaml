@@ -12,7 +12,7 @@ Palette:
   Saturation range: 0.350928008556365
   Saturation minimum: 0.001412699348293
   Saturation bias: -0.697674334049224
-  Brightness: 0.732558250427246
+  Brightness: 0.593023300170898
   Contrast: 0
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
@@ -22,10 +22,10 @@ Node: Binary
   Z offset: 0.649287700653076
   Operator: displace and mix
     Mix operator: layer
-      Layer width: 0.339810401201248
+      Layer combiner: sum
+      Layer width: 0.147138655185699
       Layer shape: sigmoid
         Sigmoid hardness: 5
-      Layer combiner: sum
       Layer norm: max
     Displace response: power-1/2
       Displace amount: 0.001831719418987
@@ -34,9 +34,9 @@ Node: Binary
       X offset: 0
       Y offset: 1.50684070587158
       Z offset: 0
-      Octaves: 10
+      Octaves: 9
       Frequency: 2.38809132575989
-      Roughness: 0.804309487342834
+      Roughness: 0.741660118103027
       Fractalizer: variable
         Lacunarity: 0.5
         Minimum octaves: 3
@@ -45,9 +45,9 @@ Node: Binary
         Displace variation: 0.869745731353759
         Twist variation: 0.969427049160003
         Mix operator: layer
+          Layer combiner: sum
           Layer width: 0.209017723798751
           Layer shape: reverse power-3
-          Layer combiner: sum
           Layer norm: max
           Layer persist: 0.357943505048751
         Walk operator: twist

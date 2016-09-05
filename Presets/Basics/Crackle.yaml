@@ -26,5 +26,5 @@ Node: Basis
     Features per cell: one
     Cell distance norm: 2-norm
     Worley pattern: 7291
-    Worley fade: reverse power-2
+    Worley fade: line
   Shape: none

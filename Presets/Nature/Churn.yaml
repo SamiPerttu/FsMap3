@@ -27,9 +27,10 @@ Node: Fractalizer
     Lacunarity: 0.549806773662567
     Highpass filter: 0.374112546443939
     Mix operator: layer
+      Layer combiner: sum
       Layer width: 0.371873378753662
       Layer shape: smooth line
-      Layer combiner: sum
+        Line smoothness: 0.566612839698791
       Layer norm: 2-norm
       Layer persist: 0.96387779712677
     Walk operator: twist
@@ -47,3 +48,4 @@ Node: Fractalizer
     Shape: none
   Shape: wave packet
     Packet seed: 8274203
+    Mix amount: 0.808139562606811

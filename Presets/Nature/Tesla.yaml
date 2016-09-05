@@ -12,8 +12,8 @@ Palette:
   Saturation range: 0.855813920497894
   Saturation minimum: 0
   Saturation bias: 0.35409665107727
-  Brightness: -0.10465121269226
-  Contrast: 0.744186162948608
+  Brightness: -0.069767475128173
+  Contrast: 0.697674512863159
 FsMap3 Editor Version 0.3.0:
 Layout: No Tiling
 Node: Unary
@@ -33,15 +33,15 @@ Node: Unary
           Hardness: 1
         Walk operator: shuffle
           Displace response: power-1/2
-            Displace amount: 0.720524609088897
+            Displace amount: 0.535619735717773
           Displace damping: 0.436046510934829
-        Basis seed: 3530248652
+        Basis seed: 3
         Basis: Worley
           Features per cell: geometric
             Mean: 0.8196133919
           Cell distance norm: 2-norm
           Worley pattern: 15932
-          Worley fade: upward arc
+          Worley fade: power-2
         Shape: none
       Shape: vector overdrive
         Overdrive amount: 1

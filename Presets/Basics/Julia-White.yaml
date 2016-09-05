@@ -28,7 +28,7 @@ Node: Basis
     Features per cell: rounded
       Mean: 1.554
     Feature radius: 1.16661763191223
-    Roughness: 0.811133086681366
+    Roughness: 0.706132352352142
     Feature fade: upward arc
     C-origin X: -0.65628969669342
     C-origin Y: -0.240000009536743
@@ -42,3 +42,4 @@ Node: Basis
     Q-scale: 1.1599999666214
   Shape: wave packet
     Packet seed: 2730477
+    Mix amount: 0.57558137178421

@@ -55,5 +55,7 @@ Node: Fractalizer
           Perlin fade: smooth-2
         Shape: wave packet
           Packet seed: 1477186
+          Mix amount: 1
   Shape: wave packet
     Packet seed: 1477186
+    Mix amount: 1

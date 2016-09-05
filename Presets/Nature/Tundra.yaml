@@ -52,3 +52,4 @@ Node: Fractalizer
     Shape: none
   Shape: wave packet
     Packet seed: 5950023
+    Mix amount: 1

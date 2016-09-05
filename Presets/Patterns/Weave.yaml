@@ -12,13 +12,14 @@ Palette:
   Saturation range: 1
   Saturation minimum: 0
   Saturation bias: 0
-  Brightness: 1.39534866809845
-  Contrast: 0.744186162948608
+  Brightness: 1.04651165008545
+  Contrast: 1.13953495025635
 FsMap3 Editor Version 0.3.0:
 Layout: Tile All
 Node: Unary
   Unary op: wave packet
     Packet seed: 3
+    Mix amount: 0
     Node: Basis
       X offset: 4.25005626678467
       Y offset: 2.54380321502686
@@ -29,5 +30,5 @@ Node: Unary
         Weave period: 3
         Weave: threaded
       Shape: vector reflect
-        Reflect fade: worm
-        Reflect amount: 2.93239617347717
+        Reflect fade: smooth-3
+        Reflect amount: 5.74150943756104
