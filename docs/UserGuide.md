@@ -73,11 +73,13 @@ The parameter panel can be resized by dragging the faintly gray vertical divider
 | **+** | zoom in  |
 | **-** | zoom out |
 | **arrow keys** | pan view |
+| **Ctrl-C** | copy texture from current view |
+| **Ctrl-Q** | quit |
 | **Ctrl-R** | randomize all views |
+| **Ctrl-S** | save |
+| **Ctrl-V** | paste texture into current view |
 | **Ctrl-Z** | undo |
 | **Ctrl-Y** | redo |
-| **Ctrl-S** | save |
-| **Ctrl-Q** | quit |
 
 ### Control Panel
 
@@ -154,14 +156,15 @@ The textures are displayed here. Any change to the parameters of a texture trigg
 |---:|:---|:---|
 |![Perlin noise](bases/perlin.png) | Perlin noise | [Perlin noise](http://en.wikipedia.org/wiki/Perlin_noise), as many other noise bases, emulates band-limited noise. This version has unconstrainted gradients and a selectable interpolation fade.|
 |![cubex noise](bases/cubex.png) | cubex noise | *Cubex noise* is similar to Perlin noise. It is slower to calculate but has more options. |
-|![weave](bases/weave.png) | weave | *Weave* is special in that, for now, it is the only 3-basis designed to look 2-dimensional, specifically, a woven or threaded pattern. |
+|![isotropic noise](bases/isotropicNoise.png) | isotropic noise | Isotropic noise is another band-limited noise. It is designed to avoid all directional artifacts: it looks similar whatever angle it is viewed from. This is not true of Perlin noise (or cubex noise below). However, it is slower to calculate than Perlin noise.
 |![radial value noise](bases/radial.png) | radial value noise | *Radial value noise* is yet another noise-like basis. Unlike the others, its features are points, not gradients. The points are distance weighted. |
-|![leopard](bases/leopard.png) | leopard | The *leopard* basis is a bunch of spots mixed together. |
 |![Worley](bases/worley.png) | Worley | The [Worley basis](http://en.wikipedia.org/wiki/Worley_noise) outputs processed distances to nearest feature points. This version is specially adapted to produce 3-dimensional results. The distance metric is selectable. |
 |![colored Worley](bases/coloredWorley.png) | colored Worley | A colored version of the Worley basis. The output is colored according to the nearest cell. |
 |![tiles](bases/jigsaw.png) | tiles | Another colored Worley basis resembling tiles with more straightforward parameters.
-|![peacock](bases/peacock.png) | peacock | The *peacock* basis is like the leopard basis except the spots are now randomly oriented shapes called *potentials*. |
+|![leopard](bases/leopard.png) | leopard | The *leopard* basis is a bunch of spots mixed together. |
+|![peacock](bases/peacock.png) | peacock | The *peacock* basis is like the leopard basis except the spots are now randomly oriented shapes (technically, potential fields). |
 |![Julia](bases/julia.png) | Julia | The *Julia* basis turns some well-known [fractal iteration formulas](http://en.wikipedia.org/wiki/Julia_set) into a tileable 3-texture form. Fractal parameters are interpolated between feature points. |
 |![Julia orbit trap](bases/orbit.png) | Julia orbit trap | *Julia orbit trap* basis. Like the Julia basis but the coloring is done with the orbit trap technique. |
 |![capsule flow](bases/capsuleFlow.png) | capsule flow | *Capsule flow*. The flow bases distributes oriented potentials like the Peacock basis. However, in the flow bases the orientation at each point is sampled from a separate *flow texture*. The capsule flow basis consists of oriented capsules. |
 |![potential flow](bases/potentialFlow.png) | potential flow | The *potential flow* basis consists of shapes oriented according to the flow basis. |
+|![weave](bases/weave.png) | weave | *Weave* is special in that, for now, it is the only 3-basis designed to look 2-dimensional, specifically, a woven or threaded pattern. |

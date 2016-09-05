@@ -146,8 +146,24 @@
 <td style="text-align:left">pan view</td>
 </tr>
 <tr>
+<td style="text-align:right"><strong>Ctrl-C</strong></td>
+<td style="text-align:left">copy texture from current view</td>
+</tr>
+<tr>
+<td style="text-align:right"><strong>Ctrl-Q</strong></td>
+<td style="text-align:left">quit</td>
+</tr>
+<tr>
 <td style="text-align:right"><strong>Ctrl-R</strong></td>
 <td style="text-align:left">randomize all views</td>
+</tr>
+<tr>
+<td style="text-align:right"><strong>Ctrl-S</strong></td>
+<td style="text-align:left">save</td>
+</tr>
+<tr>
+<td style="text-align:right"><strong>Ctrl-V</strong></td>
+<td style="text-align:left">paste texture into current view</td>
 </tr>
 <tr>
 <td style="text-align:right"><strong>Ctrl-Z</strong></td>
@@ -156,14 +172,6 @@
 <tr>
 <td style="text-align:right"><strong>Ctrl-Y</strong></td>
 <td style="text-align:left">redo</td>
-</tr>
-<tr>
-<td style="text-align:right"><strong>Ctrl-S</strong></td>
-<td style="text-align:left">save</td>
-</tr>
-<tr>
-<td style="text-align:right"><strong>Ctrl-Q</strong></td>
-<td style="text-align:left">quit</td>
 </tr>
 </tbody>
 </table><h3 id="control-panel"><a name="control-panel" href="#control-panel"></a>Control Panel</h3><p>From top to bottom:</p><ul>
@@ -213,19 +221,14 @@
 <td style="text-align:left"><em>Cubex noise</em> is similar to Perlin noise. It is slower to calculate but has more options.</td>
 </tr>
 <tr>
-<td style="text-align:right"><img src="bases/weave.png" alt="weave"></td>
-<td style="text-align:left">weave</td>
-<td style="text-align:left"><em>Weave</em> is special in that, for now, it is the only 3-basis designed to look 2-dimensional, specifically, a woven or threaded pattern.</td>
+<td style="text-align:right"><img src="bases/isotropicNoise.png" alt="isotropic noise"></td>
+<td style="text-align:left">isotropic noise</td>
+<td style="text-align:left">Isotropic noise is another band-limited noise. It is designed to avoid all directional artifacts: it looks similar whatever angle it is viewed from. This is not true of Perlin noise (or cubex noise below). However, it is slower to calculate than Perlin noise.</td>
 </tr>
 <tr>
 <td style="text-align:right"><img src="bases/radial.png" alt="radial value noise"></td>
 <td style="text-align:left">radial value noise</td>
 <td style="text-align:left"><em>Radial value noise</em> is yet another noise-like basis. Unlike the others, its features are points, not gradients. The points are distance weighted.</td>
-</tr>
-<tr>
-<td style="text-align:right"><img src="bases/leopard.png" alt="leopard"></td>
-<td style="text-align:left">leopard</td>
-<td style="text-align:left">The <em>leopard</em> basis is a bunch of spots mixed together.</td>
 </tr>
 <tr>
 <td style="text-align:right"><img src="bases/worley.png" alt="Worley"></td>
@@ -243,9 +246,14 @@
 <td style="text-align:left">Another colored Worley basis resembling tiles with more straightforward parameters.</td>
 </tr>
 <tr>
+<td style="text-align:right"><img src="bases/leopard.png" alt="leopard"></td>
+<td style="text-align:left">leopard</td>
+<td style="text-align:left">The <em>leopard</em> basis is a bunch of spots mixed together.</td>
+</tr>
+<tr>
 <td style="text-align:right"><img src="bases/peacock.png" alt="peacock"></td>
 <td style="text-align:left">peacock</td>
-<td style="text-align:left">The <em>peacock</em> basis is like the leopard basis except the spots are now randomly oriented shapes called <em>potentials</em>.</td>
+<td style="text-align:left">The <em>peacock</em> basis is like the leopard basis except the spots are now randomly oriented shapes (technically, potential fields).</td>
 </tr>
 <tr>
 <td style="text-align:right"><img src="bases/julia.png" alt="Julia"></td>
@@ -266,6 +274,11 @@
 <td style="text-align:right"><img src="bases/potentialFlow.png" alt="potential flow"></td>
 <td style="text-align:left">potential flow</td>
 <td style="text-align:left">The <em>potential flow</em> basis consists of shapes oriented according to the flow basis.</td>
+</tr>
+<tr>
+<td style="text-align:right"><img src="bases/weave.png" alt="weave"></td>
+<td style="text-align:left">weave</td>
+<td style="text-align:left"><em>Weave</em> is special in that, for now, it is the only 3-basis designed to look 2-dimensional, specifically, a woven or threaded pattern.</td>
 </tr>
 </tbody>
 </table>
