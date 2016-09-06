@@ -4,7 +4,7 @@
 
 FsMap3 is a function and combinator library for 3-textures, which are formalized as self-maps in 3-space.
 
-FsMap3Gui contains Windows GUIs for viewing, exploring and editing textures.
+FsMap3Gui contains Windows GUIs for viewing, exploring and editing textures. Most prominently, it hosts the FsMap3 Editor program.
 
 FsMap3 and FsMap3Gui are licensed under the terms of the MIT license.
 
@@ -14,11 +14,10 @@ To get an idea of what it can do, check out the [user manual](https://cdn.rawgit
 
 ### State and Roadmap
 
-We are in alpha. The first binary release of FsMap3 Editor is 0.3.0.
+We are in alpha. The current release is FsMap3 Editor 0.4.0. It comes with a proper installer now!
 
 Plans for features include:
 
-* Undo and redo.
 * Crossover tool.
 * Aspect ratio support to enable tiling in different aspect ratios. As we are dealing with 3-textures, aspect ratios are X:Y:Z instead of the usual X:Y.
 * View aspect ratio setting.
