@@ -586,7 +586,7 @@ let doesItTile (dna : Dna) =
   tileX, tileY, tileZ
 
 
-let EditorVersion = "0.3.0"
+let EditorVersion = "0.4.0"
 
 /// Map generator for FsMap3 Editor. This is placed here to enable Editor created textures to be read on any platform.
 let generateEditorMap enableFilter = RichMap3.generate enableFilter (fun dna ->
