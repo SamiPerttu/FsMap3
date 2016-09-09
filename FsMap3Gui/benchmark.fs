@@ -1,5 +1,5 @@
 ﻿/// Benchmarks.
-module FsMap3.Benchmark
+module Fuse.Benchmark
 
 open Common
 

@@ -1,5 +1,5 @@
 ﻿/// Isotropic noise basis.
-module FsMap3.Isonoise
+module Fuse.Isonoise
 
 open Common
 open Mangle

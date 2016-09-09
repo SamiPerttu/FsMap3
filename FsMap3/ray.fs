@@ -1,5 +1,5 @@
 ﻿/// A simple ray tracer.
-module FsMap3.Ray
+module Fuse.Ray
 
 open Common
 open Map3

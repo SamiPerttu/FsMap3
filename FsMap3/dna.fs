@@ -1,5 +1,5 @@
 ﻿// A generic parameter space for procedural generators.
-namespace FsMap3
+namespace Fuse
 
 (*
 Dna System Overview
@@ -11,12 +11,12 @@ Raw data is provided by DnaSource objects. These can implement pseudo-random dat
 or sophisticated sampling and optimization methods. DnaSource has a feedback mechanism for guiding evolution.
 
 As parameters are drawn, their details are recorded in the genotype, including tree structure
-and parameter grouping. The details can be printed or visualized easily (e.g., see the DnaView type).
+and parameter grouping. The details can be printed or visualized easily.
 
 One of the advantages of the approach is that implementation of generators is easy: only the generator function
 needs to be written (and a visualizer, if GUI interaction is desired). Mutation, optimization, serialization
 and so on operate on parameter data, for which generic facilities are available. (In genetic programming,
-this approach is called "Grammar Evolution"). 
+this approach is known as "Grammar Evolution"). 
 
 There is some overhead because we have to generate an object from Dna each time we need it. In optimization
 these overheads are typically insignificant compared to fitness evaluation, and in user interfaces they are
@@ -505,6 +505,19 @@ type [<ReferenceEquality>] Dna =
   static member generate(source : DnaSource, generator : Dna -> _) =
     let dna = Dna.create()
     dna.generate(source, generator)
+
+  /// Generates n unique phenotypes (based on parameter fingerprints) using seed data from the given Rnd.
+  /// Returns an array of phenotypes.
+  static member generateUnique(n, rnd : Rnd, generator : Dna -> _) =
+    let set = HashSet<int64>.create(int)
+    Array.init n (fun _ ->
+      snd <| doFind (fun _ -> Dna.generate(rnd, generator))
+                    (fun (dna, _) -> if set.exists(dna.fingerprint) then
+                                       false
+                                     else
+                                       set.add(dna.fingerprint)
+                                       true)
+      )
 
 
 

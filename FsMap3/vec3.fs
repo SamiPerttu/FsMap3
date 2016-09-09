@@ -1,5 +1,5 @@
 ﻿// Double precision 3-vectors.
-namespace FsMap3
+namespace Fuse
 
 open System.Numerics
 
@@ -53,6 +53,9 @@ type Vec3 = struct
   /// Returns the largest of the components.
   member inline v.maximum = max3 v.x v.y v.z
 
+  /// Converts the vector to single precision.
+  member inline v.vec3f = Vec3f(float32 v.x, float32 v.y, float32 v.z)
+
   /// Returns the vector as an array.
   member v.toArray = [| v.x; v.y; v.z |]
 
@@ -61,9 +64,6 @@ type Vec3 = struct
 
   /// Transforms the components of the vector with the given function.
   member inline v.map(f : float -> float) = Vec3(f v.x, f v.y, f v.z)
-
-  /// Converts the vector to single precision.
-  member inline v.vec3f = Vec3f(float32 v.x, float32 v.y, float32 v.z)
 
   /// Returns the vector normalized.
   member inline v.normalize =
@@ -173,14 +173,17 @@ end
 
 
 [<AutoOpen>]
-module Vec3Patterns =
-  /// Active pattern that deconstructs 3-vectors.
-  let inline (|Vec3|) (v : Vec3) = (v.x, v.y, v.z)
+module Vec3Extensions =
+
+  type System.Numerics.Vector3 with
+    /// Converts the vector to double precision.
+    member v.vec3 = Vec3(float v.x, float v.y, float v.z)
 
 
 
 [<AutoOpen>]
-module Vector3Extensions2 =
+module Vec3Pattern =
 
-  type Vector3 with
-    member inline v.vec3 = Vec3(float v.x, float v.y, float v.z)
+  /// Active pattern that deconstructs 3-vectors.
+  let inline (|Vec3|) (v : Vec3) = (v.x, v.y, v.z)
+

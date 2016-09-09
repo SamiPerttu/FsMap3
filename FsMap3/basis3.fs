@@ -1,5 +1,5 @@
 ﻿/// Foundations for procedural 3-textures. Cell topologies and layouts.
-module FsMap3.Basis3
+module Fuse.Basis3
 
 open Common
 open Mangle
@@ -232,7 +232,7 @@ let hifiLayout seed (f : float32) =
     fiy = 0
     fiz = 0
     offset = Vec3f.fromSeed(int a)
-    rotation = Convert.unitQuaternion (int (a >>> 32)) (int b) (int (b >>> 32))
+    rotation = Convert.unitQuaternionf (int (a >>> 32)) (int b) (int (b >>> 32))
     runf = fun instance v ->
       let data = (!threadLocalBasisData).allocate()
       let v = instance.f * (v * instance.rotation) + instance.offset

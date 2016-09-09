@@ -1,6 +1,6 @@
 ﻿// Hash maps via hopscotch open addressing. Among open addressing techniques
 // this is about as fast as cuckoo hashing, but far simpler.
-namespace FsMap3
+namespace Fuse
 
 open Common
 
@@ -45,7 +45,7 @@ type HashConfig =
 
 /// A hash map using hopscotch open addressing.
 [<ReferenceEquality>]
-type HashMap<'k, 'v when 'k : equality> =
+type HashMap<'k, 'v when 'k :> System.IEquatable<'k>> =
   {
     /// The hash function.
     hashf : 'k -> int
@@ -328,7 +328,7 @@ type HashMap<'k, 'v when 'k : equality> =
     for i = 0 to this.stash.last do f this.stash.[i].key this.stash.[i].value
 
 
-  /// Calls the supplied function for each item in the table. Additionally, numbers the items
+  /// Calls the supplied function for each item in the table. Additionally, numbers the invocations
   /// starting from zero. The ordering is arbitrary.
   member inline this.iteri(f : int -> 'k -> 'v -> unit) =
     let mutable n = 0
@@ -413,7 +413,7 @@ type HashMap<'k, 'v when 'k : equality> =
   // DIAGNOSTICS
   
   member this.check() =
-    Log.infof "HashMap.check(): size %d, capacity %d." this.size this.capacity
+    Log.infof "HashMap.check: size %d, capacity %d." this.size this.capacity
     // Check that hop information is correct.
     for i = 0 to this.capacity - 1 do
       let hop = this.table.[i].hop
@@ -424,19 +424,13 @@ type HashMap<'k, 'v when 'k : equality> =
           enforce (this.table.[j].isEmpty || this.bucket(this.hash(this.table.[j].key)) <> i) "HashMap: Hop flag is 0, yet entry matches the bucket."
         else
           enforce (this.table.[j].isOccupied && this.bucket(this.hash(this.table.[j].key)) = i) "HashMap: Hop flag is 1 but entry does not match the bucket."
-    Log.info "HashMap.check(): OK."
-
-
-
-/// An empty structure.
-[<NoEquality; NoComparison>]
-type EmptyStruct = struct end
+    Log.info "HashMap.check: OK."
 
 
 
 /// A hash (multi)set.
 [<ReferenceEquality>]
-type HashSet<'k when 'k : equality> =
+type HashSet<'k when 'k :> System.IEquatable<'k>> =
   {
     map : HashMap<'k, EmptyStruct>
   }
@@ -472,3 +466,135 @@ type HashSet<'k when 'k : equality> =
   static member create(hashf, ?autoTrim) : HashSet<'k> = { HashSet.map = HashMap.create(hashf, ?autoTrim = autoTrim) }
 
 
+
+/// Implements System.IEquatable for a hashable reference type using reference equality.
+/// This can be used as a wrapper to create valid key types for hash maps and hash sets.
+[<NoComparison; CustomEquality>]
+type RefEq<'a when 'a : equality> = struct
+  val x : 'a
+  new(x) = { x = x }
+  member inline this.Value = this.x
+  member inline this.value = this.x
+  override this.Equals(that) =
+    match that with
+    | :? RefEq<'a> as that -> this.x === that.x
+    | _ -> false
+  override this.GetHashCode() = hash this.x
+  interface System.IEquatable<RefEq<'a>> with
+    member this.Equals(that : RefEq<'a>) = this.x === that.x
+end
+
+
+
+/// A hash map for a reference key type with reference equality.
+[<NoComparison; NoEquality>]
+type HashRefMap<'k, 'v when 'k : not struct and 'k : equality> =
+  {
+    map : HashMap<'k RefEq, 'v>
+  }
+
+  member inline this.size = this.map.size
+
+  member inline this.capacity = this.map.capacity
+
+  member inline this.reset() = this.map.reset()
+
+  member inline this.find(key) = this.map.find(RefEq(key))
+
+  member inline this.Item with get key = this.map.[RefEq(key)] and set key value = this.map.[RefEq(key)] <- value
+
+  member inline this.at(key, defaultf) = this.map.at(RefEq(key), defaultf)
+
+  member inline this.insert(key, value) = this.map.insert(RefEq(key), value)
+
+  member inline this.remove(key) = this.map.remove(RefEq(key))
+
+  member inline this.iter(f) = this.map.iter(fun ref v -> f !ref v)
+
+  static member create(?autoTrim) : HashRefMap<'k, 'v> =
+    let autoTrim = autoTrim >? true
+    { HashRefMap.map = HashMap.create(hash, autoTrim = autoTrim) }
+
+
+
+/// A hash set for a reference type with reference equality.
+[<ReferenceEquality>]
+type HashRefSet<'k when 'k : not struct and 'k : equality> =
+  {
+    map : HashMap<'k RefEq, EmptyStruct>
+  }
+  /// The number of items in the set.
+  member inline this.size = this.map.size
+  /// Returns whether the set contains the key.
+  member inline this.exists(key) = this.map.find(RefEq(key)).isSome
+  /// Adds a key to the set. Duplicates are not checked for; entering duplicates is legal but may reduce performance.
+  member inline this.add(key) = this.map.insert(RefEq(key), EmptyStruct())
+  /// Removes a key from the set. Throws an exception if it is not found.
+  member inline this.remove(key) = this.map.remove(RefEq(key))
+  /// Retains only keys that match the predicate.
+  member inline this.filter(predicate) = this.map.filter(fun ref _ -> predicate !ref)
+  /// Calls a function for each key in the set.
+  member inline this.iter(f) = this.map.iter(fun ref _ -> f !ref)
+  /// Empties the set. Contents are deallocated.
+  member inline this.reset() = this.map.reset()
+  /// Adds the key to the set, if it is not added yet.
+  member inline this.set(key) = if this.map.find(RefEq(key)).isNone then this.add(key)
+  /// Removes the key from the set, if it is contained in it.
+  member inline this.unset(key) = if this.map.find(RefEq(key)).isSome then this.remove(key)
+  /// Creates an empty hash set.
+  static member create(?autoTrim : bool) : HashRefSet<'k> = { HashRefSet.map = HashMap.create(hash, autoTrim = (autoTrim >? true)) }
+
+
+
+module Hopscotch =
+
+  /// Creates a closure that creates a running enumeration of values of 'a by memoization.
+  /// The enumeration begins from 0. Requires equality. Not reentrant!
+  let inline enumerate<'a when 'a : equality and 'a :> System.IEquatable<'a>> =
+    let table = HashMap<'a, int>.create(hash >> Mangle.mangle32)
+    let next = createCounter(0)
+    fun (a : 'a) -> table.at(a, fun _ -> next.tick)
+
+
+
+module HopscotchTest =
+
+  let testperm = Array.ofSeq (Rnd(1).shuffle [| 1 .. 1000001 |])
+
+  let testmap n r =
+    let map = HashMap.create(hash)
+    for i = 1 to n do map.insert(testperm.[i], i)
+    for j = 1 to r do
+      for i = 1 to n do
+        if map.[testperm.[i]] <> i then failwithf "Internal error %d." i
+    map.check()
+
+  let testdic n r =
+    let map = System.Collections.Generic.Dictionary<int, int>()
+    for i = 1 to n do map.Add(testperm.[i], i)
+    for j = 1 to r do
+      for i = 1 to n do
+        if map.[testperm.[i]] <> i then failwithf "Internal error %d." i
+    printfn "Ok."
+
+
+(*
+open Hopscotch
+#time
+testmap 100 500000
+testdic 100 500000
+testmap 1000 50000
+testdic 1000 50000
+testmap 10000 5000
+testdic 10000 5000
+testmap 100000 500
+testdic 100000 500
+testmap 300000 200
+testdic 300000 200
+testmap 680000 100
+testdic 680000 100
+testmap 1000000 50
+testdic 1000000 50
+testmap 800000 1
+testdic 800000 1
+*)

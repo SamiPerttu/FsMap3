@@ -1,5 +1,5 @@
 ﻿/// Dna parameter hashes and related definitions.
-module FsMap3.DnaParameterHash
+module Fuse.DnaParameterHash
 
 open Common
 open Mangle
@@ -16,7 +16,19 @@ let valueBinner (bins : int) (dna : Dna) i =
 
 
 
-/// A parameter hash function partitions parameters into equivalence classes that we call codes. It is given
+(*
+Parameter hashes always track backwards to find (more) context to hash. Otherwise causality is violated.
+For example, if we follow a parent link up the tree, we might look at parameters in the same node as the parent,
+but we would only track backwards, as any later parameters in the parent node would be drawn after the child.
+
+It would be possible to create another model to evaluate the quality of a genotype after generation,
+when all parameters are available. The argument here is that we want to avoid evaluation of the phenotype
+to the last, as it is likely to be a quite expensive process. However, the amount of extra information
+that could be gleaned from the full genotype may be too small to realize tangible benefits.
+*)
+
+
+/// A parameter hash function divides parameters into equivalence classes that we call codes. It is given
 /// a Hash128 object for hashing, Dna, and the parameter being hashed. It returns true if a code was obtained.
 type DnaParameterHash = Hash128 -> Dna -> int -> bool
 
@@ -342,4 +354,64 @@ let runHash (hash : Hash128) dna i (parameterHash : DnaParameterHash) =
     hash.hashEnd()
     true
   else false
+
+
+/// Computes a distance between two genotypes, as seen through the given parameter hash.
+/// Returns distance in unit range. This is a simple pairwise match - if the parameter hash
+/// can produce intra-Dna duplicates, then a more advanced measure such as edit distance may be needed
+/// to handle each duplicate set.
+let dnaDistance (dnaA : Dna) (dnaB : Dna) (parameterHash : DnaParameterHash) =
+  let hash = Hash128.create()
+
+  let runDna (dna : Dna) =
+    // We handle ordered and categorical parameters separately.
+    let ord = Darray<Pair<int64, float>>.create()
+    let cat = Darray<Pair<int64, uint>>.create()
+    for i = 0 to dna.last do
+      let parameter = dna.parameter(i)
+      if parameter.format = DnaParameterFormat.Ordered then
+        if runHash hash dna i parameterHash then ord.add(Pair(hash.a64, float parameter.value / float (max 1u parameter.maxValue)))
+      else
+        if runHash hash dna i parameterHash then cat.add(Pair(hash.a64, parameter.value))
+    ord.sortBy id
+    cat.sortBy id
+    (ord, cat)
+
+  let aord, acat = runDna dnaA
+  let bord, bcat = runDna dnaB
+
+  let mutable distance = 0.0
+
+  // Calculate ordered parameter distances.
+  let mutable a = 0
+  let mutable b = 0
+  while a < aord.size && b < bord.size do
+    if aord.[a].x = bord.[b].x then
+      // The square root norm is a pragmatic guess at a suitable distance function.
+      distance <- distance + 2.0 * sqrt(abs(aord.[a].y - bord.[b].y))
+      a <- a + 1
+      b <- b + 1
+    else
+      distance <- distance + 1.0
+      if aord.[a].x < bord.[b].x then a <- a + 1 else b <- b + 1
+  distance <- distance + float (aord.size - a + bord.size - b)
+
+  // Calculate categorical parameter distances.
+  let mutable a = 0
+  let mutable b = 0
+  while a < acat.size && b < bcat.size do
+    if acat.[a].x = bcat.[b].x then
+      // We grant a small structural bonus here, as the keys are the same, even though the values do not match.
+      if acat.[a].y <> bcat.[b].y then distance <- distance + 1.8
+      a <- a + 1
+      b <- b + 1
+    else
+      distance <- distance + 1.0
+      if acat.[a].x < bcat.[b].x then a <- a + 1 else b <- b + 1
+  distance <- distance + float (acat.size - a + bcat.size - b)
+
+  if distance > 0.0 then
+    distance / float (aord.size + bord.size + acat.size + bcat.size)
+  else
+    0.0
 

@@ -1,5 +1,7 @@
-﻿/// This central module contains common definitions.
-module FsMap3.Common
+﻿/// This central module contains essential definitions that adapt F# to our taste.
+/// It also contains other useful definitions that do not have their own module.
+/// Every other module should open this module.
+module Fuse.Common
 
 open System
 open LanguagePrimitives
@@ -10,6 +12,35 @@ type uint = uint32
 
 /// Converts the argument to a uint32.
 let inline uint x = uint32 x
+
+
+
+// Fix the equality operator to inline structural equality tests. The implementation is from
+// a blog post by Zeckul, "How to avoid boxing value types in F# equality comparisons".
+// The default equality operator employs Object.Equals, which unfortunately entails boxing of value
+// types in equality tests. The System.IEquatable interface was introduced in .NET 2.0 to optimize
+// such tests in some situations. That is the interface our replacement operator targets.
+// There are a few drawbacks to our approach:
+// -It does not work with enums.
+// -It does not work inside definitions or definition chains for the types being defined.
+// -It does not take effect in third-party code, for example, generic functions in prominent modules
+//  such as FSharp.Core.List still use Object.Equals.
+// The IL code emitted for the new equality operators consists of a CALLVIRT opcode of the respective
+// System.IEquatable<'a> interface. The call can be replaced by the JIT runtime with inlined code.
+#nowarn "86"
+let inline fastEquals<'a when 'a :> System.IEquatable<'a>> (x : 'a) (y : 'a) = x.Equals y
+
+/// Fast equality operator that inlines structural equality tests. Does not cover dissimilar types.
+let inline ( = ) x y = fastEquals x y
+
+/// Fast inequality operator that inlines structural inequality tests. Does not cover dissimilar types.
+let inline ( <> ) x y = not (fastEquals x y)
+
+/// Legacy equality operator that employs generic equality.
+let inline ( =. ) x y = FSharp.Core.Operators.(=) x y
+
+/// Legacy inequality operator that employs generic equality.
+let inline ( <>. ) x y = FSharp.Core.Operators.(<>) x y
 
 
 
@@ -236,10 +267,10 @@ let inline maxValueOf x = NumericTraits.maxValue(Unchecked.defaultof<NumericTrai
 
 
 
-/// Stops the program if the condition is false.
+/// Raises an exception if the condition is false.
 let inline enforce condition errorMessage = if condition = false then failwith errorMessage
 
-/// Stops the program if the condition is false. The error message accepts printf style formatting.
+/// Raises an exception if the condition is false. The error message accepts printf style formatting.
 let inline enforcef condition errorFormat =
   Printf.kprintf (fun errorMessage -> if condition = false then failwith errorMessage) errorFormat
 
@@ -298,10 +329,10 @@ let inline max0 x = max 0G x
 let inline clamp a b x = max a (min b x)
 
 /// Clamps x such that 0 <= x <= 1.
-let inline clamp01 x = max GenericZero (min GenericOne x)
+let inline clamp01 x = max 0G (min 1G x)
 
 /// Clamps x such that -1 <= x <= 1.
-let inline clamp11 x = max -GenericOne (min GenericOne x)
+let inline clamp11 x = max -1G (min 1G x)
 
 /// Remaps the range [-1, 1] to [0, 1]. Preserves interval type.
 let inline map11to01 (x : 'a) : 'a = (x + 1G) * Q 1 2
@@ -340,7 +371,7 @@ let inline mini a b = forceSigned a; mini0 (a - b) + b
 let inline clampi a b x = forceSigned a; maxi a (mini b x)
 
 /// Sign function for signed integers that uses bit manipulation tricks.
-let inline signi x = forceSigned x; ((-x >>> -1) &&& GenericOne) + (x >>> -1)
+let inline signi x = forceSigned x; ((-x >>> -1) &&& 1G) + (x >>> -1)
 
 /// Absolute function for signed integers. A special version using bit manipulation tricks.
 /// The smallest signed value cannot be negated; the standard function raises an exception,
@@ -348,13 +379,17 @@ let inline signi x = forceSigned x; ((-x >>> -1) &&& GenericOne) + (x >>> -1)
 let inline absi x = forceSigned x; let y = x >>> -1 in (x &&& ~~~y) - (x &&& y)
 
 /// Negative indicator function for signed integers. Returns 1 if x < 0, and 0 otherwise.
-let inline negativei x = forceSigned x; (x >>> -1) &&& GenericOne
+let inline negativei x = forceSigned x; (x >>> -1) &&& 1G
 
 /// Positive indicator function for signed integers. Returns 1 if x > 0, and 0 otherwise.
-let inline positivei x = forceSigned x; (-x >>> -1) &&& GenericOne
+let inline positivei x = forceSigned x; (-x >>> -1) &&& 1G
 
 /// Non-zero indicator function for signed integers. Returns 0 if x = 0, and 1 otherwise.
-let inline nonzeroi x = forceSigned x; ((x ||| -x) >>> -1) &&& GenericOne
+let inline nonzeroi x = forceSigned x; ((x ||| -x) >>> -1) &&& 1G
+
+/// Protected integer division. Returns 0 if the denominator is zero or if the numerator is the minimum of its type.
+/// The latter is necessary to guard against exceptions when dividing the smalled signed value.
+let inline pdiv x y = forceIntegral x; if x = minValueOf x || y = 0G then 0G else x / y
 
 /// Square function.
 let inline squared x = x * x
@@ -366,6 +401,8 @@ let inline cubed x = x * x * x
 let inline cbrt x = x ** Q 1 3
 
 /// Linear interpolation. Interpolates between a (when x = 0) and b (when x = 1).
+// Note: we like this formulation better than a + x * (b - a) because, for floating point types,
+// it is guaranteed to evaluate to b when x = 1.
 let inline lerp (a : 'a) (b : 'a) x : 'a = (1G - x) * a + x * b
 
 /// Clamped linear interpolation.
@@ -399,7 +436,7 @@ let inline cubicSpline (p0 : 'a) (p1 : 'a) (p2 : 'a) (p3 : 'a) (x : 'a) : 'a =
 /// Signed integer Euclidean modulo function, which returns only positive values
 /// (operator % returns negative values as well). b > 0.
 let inline emod a b =
-  assert (b > GenericZero)
+  assert (b > 0G)
   forceSigned a
   let m = a % b
   m + ((m >>> -1) &&& b)
@@ -407,7 +444,7 @@ let inline emod a b =
 /// Floating point Euclidean modulo function, which returns only positive values
 /// (operator % returns negative values as well). b > 0.
 let inline emodf a b =
-  assert (b > GenericZero)
+  assert (b > 0G)
   let c = a / b
   (c - floor c) * b
 
@@ -438,17 +475,17 @@ let inline sinTaylor (x : 'a) : 'a =
   let x2 = squared x
   x * (1G - x2 * Q 1 6 * (1G - x2 * Q 1 20 * (1G - x2 * Q 1 42)))
 
-/// Periodic sin approximation based on Common.sinTaylor. ~4 times faster than sin.
+/// Periodic sin function approximation based on Common.sinTaylor. ~4 times faster than sin.
 let inline sinFast (x : 'a) : 'a =
   let phi = x - G pi12
   let k = floor (phi * Q 1 tau)
   let a = phi - k * G tau
   sinTaylor (abs (a - G pi) - G pi12)
 
-/// Periodic sin approximation based on Common.sinTaylor with a period of unity.
+/// Periodic sin function approximation based on Common.sinTaylor with a period of unity.
 let inline sinrFast (x : 'a) : 'a = sinFast(x * G tau)
 
-/// Periodic cos approximation based on Common.sinTaylor. ~4 times faster than cos.
+/// Periodic cos function approximation based on Common.sinTaylor. ~4 times faster than cos.
 let inline cosFast (x : 'a) : 'a =
   let k = floor (x * Q 1 tau)
   let a = x - k * G tau
@@ -460,28 +497,34 @@ let inline cosrFast (x : 'a) : 'a = cosFast(x * G tau)
 /// Sine function scaled to [0, 1].
 let inline sin0 (x : 'a) : 'a = (sin x + 1G) * Q 1 2
 
-/// Sine function with a period of unity. The argument is thus phase in cycles.
+/// Sine function with a period of unity. The argument is thus phase in revolutions.
 let inline sinr (x : 'a) : 'a = sin(x * G tau)
 
-/// Sine function scaled to [0, 1] with a period of unity. The argument is thus phase in cycles.
+/// Sine function scaled to [0, 1] with a period of unity. The argument is thus phase in revolutions.
 let inline sinr0 (x : 'a) : 'a = (sinr x + 1G) * Q 1 2
 
 /// Cosine function scaled to [0, 1].
 let inline cos0 (x : 'a) : 'a = (cos x + 1G) * Q 1 2
 
-/// Cosine function with a period of unity. The argument is thus phase in cycles.
+/// Cosine function with a period of unity. The argument is thus phase in revolutions.
 let inline cosr (x : 'a) : 'a = cos(x * G tau)
 
-/// Cosine function scaled to [0, 1] with a period of unity. The argument is thus phase in cycles.
+/// Cosine function scaled to [0, 1] with a period of unity. The argument is thus phase in revolutions.
 let inline cosr0 (x : 'a) : 'a = (cosr x + 1G) * Q 1 2
 
-/// Triangle wave. The argument is phase in radians.
-/// The shape approximates the sine function.
+/// Triangle wave. The argument is phase in radians. The shape approximates the sine function.
 let inline tri (x : 'a) : 'a =
   let x = fract(x * Q 1 tau - Q 1 4) in abs (x - Q 1 2) * 4G - 1G
 
 /// Triangle wave with a period of unity. The shape approximates the sine function.
 let inline trir (x : 'a) : 'a = tri(x * G tau)
+
+/// Square wave (non-bandlimited) scaled to [0, 1] with a period of unity. The argument is thus phase in revolutions.
+let inline sqrr0 (x : 'a) : 'a = floor (fract (x + G(0.25)) * 2G)
+
+/// Square wave (non-bandlimited) with a period of unity. The argument is thus phase in revolutions.
+/// The shape approximates the sine function.
+let inline sqrr (x : 'a) : 'a = sqrr0 x * 2G - 1G
 
 /// The average of the two arguments.
 let inline average (x : 'a) (y : 'a) : 'a = (x + y) * Q 1 2
@@ -506,13 +549,16 @@ let inline softsign (x : 'a) : 'a = x / (1G + abs x)
 let inline softsignd (x : 'a) : 'a = 1G / squared(1G + abs x)
 
 /// Rounds (non-negative) x up to a multiple of n. For integral types. x >= 0, n > 0.
-let inline ceilmod (x : 'a) (n : 'a) : 'a = forceIntegral x; ((x + n - 1G) / n) * n
+let inline ceilmod (n : 'a) (x : 'a) : 'a = forceIntegral x; ((x + n - 1G) / n) * n
 
 /// Truncates x toward zero to a multiple of n. For integral types.
-let inline truncmod (x : 'a) (n : 'a) : 'a = forceIntegral x; (x / n) * n
+let inline truncmod (n : 'a) (x : 'a) : 'a = forceIntegral x; (x / n) * n
 
 /// Kronecker delta function. Returns 1 if the arguments are equal and 0 otherwise.
 let inline kronecker a b = if a = b then 1G else 0G
+
+/// If-then-else as a function.
+let inline ifThenElse condition thenValue elseValue = if condition then thenValue else elseValue
 
 /// Not-a-number values can be troublesome because they propagate in arithmetic operations.
 /// This function returns whether x is NaN.
@@ -521,21 +567,6 @@ let inline isNaN x = x <> x
 /// Returns whether a floating point number is finite, that is, not NaN
 /// (which is neither finite nor non-finite) nor either of the infinities.
 let inline isFinite x = G -infinity < x && x < G infinity
-
-/// Binomial coefficient: (choose n k), where n >= k, is the number of k-element subsets in an n-element set.
-let choose n k =
-  let k = if k < n / 2 then k else n - k
-  // Use int64 for a bit of headroom.
-  let mutable result = 1L
-  for i = 1 to k do
-    // The division is always without remainder here.
-    result <- result * int64 (n - k + i) / int64 i
-  int result
-
-/// Binary entropy: the amount of information in a binary random variable with the given p.
-/// The result is returned in bits and ranges from 0 to 1.
-let entropy (p : float) =
-  if p > 0.0 && p < 1.0 then (p * log p + (1.0 - p) * log(1.0 - p)) / -ln2 else 0.0
 
 /// Exponentiation a ** b to a non-negative integer power in O(log b). Always returns 1 if b = 0.
 /// This is much faster than the standard pown function, apparently because the latter is generic.
@@ -612,6 +643,12 @@ let inline scheduleCall (f : 'a -> unit) (argument : 'a) =
 /// Popular alias for MailboxProcessor.
 type Agent<'T> = MailboxProcessor<'T>
 
+type MailboxProcessor<'T> with
+  member inline this.messages = this.CurrentQueueLength
+  member inline this.receive() = this.Receive()
+  member inline this.receive(timeout) = this.Receive(timeout)
+  member inline this.post(msg) = this.Post(msg)
+
 
 
 /// Returns the label of a discriminated union case. Throws an exception if the argument is not
@@ -633,6 +670,12 @@ let createUnionFromLabel (unionType : System.Type) (label : string) =
 let (|Regex|_|) pattern input =
   let m = System.Text.RegularExpressions.Regex.Match(input, pattern)
   if m.Success then Some(List.tail [for group in m.Groups -> group.Value]) else None
+
+
+
+/// An IDisposable object expression for when you have a task that needs to be executed when control leaves
+/// local scope - even if an exception is raised. Example: use __ = usable (fun _ -> importantCleanup()).
+let usable (task : _ -> unit) = { new IDisposable with member this.Dispose() = task() }
 
 
 
@@ -658,6 +701,12 @@ let inline signum x = Signum.Invoke x
 
 
 
+/// An empty structure.
+[<NoEquality; NoComparison; Struct>]
+type EmptyStruct = struct end
+
+
+
 /// Pair as a value type. Use this in lieu of a tuple when speed is essential.
 type Pair<'a, 'b> = struct
   val a : 'a
@@ -673,6 +722,76 @@ end
 
 /// Active pattern that deconstructs pairs. Does not incur memory allocation.
 let inline (|Pair|) (pair : Pair<_, _>) = (pair.a, pair.b)
+
+
+
+/// Associative pair as a value type. Equality and comparison operators are defined
+/// via the first element only, which must support them.
+[<CustomEquality; CustomComparison>]
+type Apair<'a, 'b> when 'a : comparison and 'a :> IEquatable<'a> = struct
+  val a : 'a
+  val b : 'b
+  new(a, b) = { a = a; b = b }
+  member inline this.tuple = (this.a, this.b)
+  member inline this.fst = this.a
+  member inline this.snd = this.b
+  member inline this.x = this.a
+  member inline this.y = this.b
+  override this.ToString() = sprintf "(%A, %A)" this.a this.b
+  override this.Equals(that) =
+    match that with
+    | :? Apair<'a, 'b> as that -> this.a = that.a
+    | _ -> false
+  override this.GetHashCode() = hash this.a
+  interface System.IComparable with
+    member this.CompareTo(that) =
+        match that with
+        | :? Apair<'a, 'b> as that -> compare this.a that.a
+        | _ -> failwith "Apair.compare: Cannot compare dissimilar types."
+  interface System.IEquatable<Apair<'a, 'b>> with
+    member this.Equals(that : Apair<'a, 'b>) = this.a = that.a
+end
+
+
+
+/// Triple as a value type.
+type Triple<'a, 'b, 'c> = struct
+  val a : 'a
+  val b : 'b
+  val c : 'c
+  new(a, b, c) = { a = a; b = b; c = c }
+  member inline this.tuple = (this.a, this.b, this.c)
+  member inline this.fst = this.a
+  member inline this.snd = this.b
+  member inline this.trd = this.c
+  member inline this.x = this.a
+  member inline this.y = this.b
+  member inline this.z = this.c
+  override this.ToString() = sprintf "(%A, %A, %A)" this.a this.b this.c
+end
+
+/// Active pattern that deconstructs triples. Does not incur memory allocation.
+let inline (|Triple|) (triple : Triple<_, _, _>) = (triple.a, triple.b, triple.c)
+
+
+
+/// Quadruplet as a value type.
+type Quad<'a, 'b, 'c, 'd> = struct
+  val a : 'a
+  val b : 'b
+  val c : 'c
+  val d : 'd
+  new(a, b, c, d) = { a = a; b = b; c = c; d = d }
+  member inline this.tuple = (this.a, this.b, this.c, this.d)
+  member inline this.fst = this.a
+  member inline this.snd = this.b
+  member inline this.trd = this.c
+  member inline this.fth = this.d
+  override this.ToString() = sprintf "(%A, %A, %A, %A)" this.a this.b this.c this.d
+end
+
+/// Active pattern that deconstructs quadruplets. Does not incur memory allocation.
+let inline (|Quad|) (quad : Quad<_, _, _, _>) = (quad.a, quad.b, quad.c, quad.d)
 
 
 
@@ -739,6 +858,13 @@ let createLcg seed =
   { Counter.value = seed |> minstd |> minstd; f = minstd }
 
 
+/// Converts a number to normalized scientific notation as (mantissa, exponent).
+/// Note that comparison operations on results do not obey arithmetic ordering -
+/// proper arithmetic ordering would require a separate sign field (or a mixed sign radix).
+let inline scientific x =
+  if x = 0.0 then Pair(0.0, 0.0) else let e = floor(log10 (abs x)) in Pair(x / exp10 e, e)
+
+
 
 /// Calls the (stateful) generator until the return value fulfills the predicate. Returns the accepted value.
 let inline doFind (generator : unit -> 'a) (predicate : 'a -> bool) =
@@ -754,15 +880,27 @@ let inline doWhile (body : unit -> _) (condition : _ -> bool) =
 
 
 
+// Lazy extensions.
+type Lazy<'T> with
+  member inline this.value = this.Value
+
+
+
 // List extensions.
 type List<'a> with
+  /// The size of the list.
   member inline this.size = this.Length
+  member inline this.isEmpty = this.IsEmpty
+  member inline this.head = this.Head
+  member inline this.tail = this.Tail
 
 
 
 // String extensions.
 type String with
+  /// The length of the string.
   member inline this.size = this.Length
+  /// The index of the last character in the string.
   member inline this.last = this.Length - 1
 
 
@@ -771,30 +909,21 @@ type String with
 type ``[]``<'a> with
   /// The size of the array.
   member inline a.size = a.Length
-  /// The index of the last element in the array.
+  /// The index of the last item in the array.
   member inline a.last = a.Length - 1
   /// Fills the array with items from an indexed function.
   member inline a.fill(f : int -> _) = for i = 0 to a.last do a.[i] <- f i
   /// Fills the array with a constant value.
   member inline a.fill(x) = Array.fill a 0 a.size x
-  /// Swaps two array items. Does not check that the indices differ.
+  /// Swaps two array items.
   member inline a.swap(i, j) = let tmp = a.[i] in a.[i] <- a.[j] ; a.[j] <- tmp
-  /// Modifies array items according to a function - performing, effectively, an in-place map operation.
+  /// Modifies array items with a function, performing an in-place map operation.
   member inline a.modify(f) = for i = 0 to a.last do a.[i] <- f a.[i]
-  /// Sums the array using the given projection.
-  member inline a.sumBy(projection) = Array.sumBy projection a
-  /// Reduces the array using the given projection and binary operator.
-  member inline a.reduceBy(projection, binop) =
-    enforce (a.size > 0) "Array.reduceBy: Empty array."
-    let mutable x = projection a.[0]
-    for i = 1 to a.last do x <- binop x (projection a.[i])
-    x
-  /// Calls the function for each item in the array.
-  member inline a.iter(f) = for i = 0 to a.last do f a.[i]
   /// Scrubs the whole array with the default value of the item type.
   member inline a.scrub() = Array.fill a 0 a.size nullValue
   /// Item access.
   member inline a.at(i) = a.[i]
+
 
 
 /// Type that enables sharing of empty arrays.
@@ -802,14 +931,50 @@ type EmptyArray<'a>() =
   static member val item : 'a[] = [| |]
 
 
-
 // Array module extensions.
 module Array =
   /// Creates an empty array.
   let inline createEmpty<'a> = EmptyArray<'a>.item
   /// Fills the whole array with a value.
-  let inline setAll (a : 'a array) (v : 'a) = Array.fill a 0 a.size v
+  let inline setAll v (a : 'a array) = Array.fill a 0 a.Length v
   /// Scrubs the whole array with the default value of the item type.
-  let inline scrub (a : 'a array) = setAll a Unchecked.defaultof<'a>
-  /// Swaps two array items. Does not check that the indices differ.
-  let inline swap (a : 'a array) i j = a.swap(i, j)
+  let inline scrub (a : 'a array) = setAll Unchecked.defaultof<'a> a
+  /// Modifies array items with a function, performing an in-place map operation.
+  let inline modify f (a : 'a[]) = for i = 0 to a.last do a.[i] <- f a.[i]
+  /// Swaps two array items.
+  let inline swap i j (a : 'a array) = a.swap(i, j)
+  /// Creates a singleton array.
+  let inline createSingle x = [| x |]
+  /// Reduces the array using the given projection and binary operator.
+  let inline reduceBy projection binop (a : 'a[]) =
+    enforce (a.size > 0) "Array.reduceBy: Empty array."
+    let mutable x = projection a.[0]
+    for i = 1 to a.last do x <- binop x (projection a.[i])
+    x
+
+
+
+type System.Type with 
+
+  /// Returns a nicely formatted name of the type. From an F# snippet by Tomas Petricek.
+  member this.niceName =
+    let builder = System.Text.StringBuilder()
+    let rec build (t : System.Type) =
+      if t.IsGenericType then 
+        // Remove the `1 part from generic names.
+        let tick = t.Name.IndexOf('`')
+        let name = t.Name.Substring(0, tick) 
+        Printf.bprintf builder "%s" t.Name
+        Printf.bprintf builder "<"
+        // Print generic type arguments recursively.
+        let args = t.GetGenericArguments()
+        for i = 0 to args.last do
+          if i <> 0 then Printf.bprintf builder ", "
+          build args.[i]
+        Printf.bprintf builder ">"
+      else
+        // Print ordinary type name.
+        Printf.bprintf builder "%s" t.Name
+    build this
+    builder.ToString()
+

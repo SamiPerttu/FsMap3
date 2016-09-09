@@ -1,5 +1,5 @@
 ﻿/// Hashing functions. We call this "mangling" to avoid overloading the term "hashing" too much.
-module FsMap3.Mangle
+module Fuse.Mangle
 
 open Common
 open Bits
@@ -130,6 +130,19 @@ let mangleString (s : string) =
   stream32end h
 
 
+/// 128-bit hash that returns a 64-bit result.
+let mangle128 (x : int64) (y : int64) =
+  // Algorithm from CityHash by Geoff Pike and Jyrki Alakuijala.
+  let C = 0x9ddfea08eb382d69UL
+  let x = uint64 x
+  let y = uint64 y
+  let a = (x ^^^ y) * C
+  let a = a ^^^ (a >>> 47)
+  let b = (x ^^^ a) * C
+  let b = (b ^^^ (b >>> 47)) * C
+  int64 b
+
+
 
 type MCONF =
   static member inline DBITS = 12
@@ -146,7 +159,7 @@ let directionArray =
   |> Array.map (fun i ->
     let x = ((i &&& m) <<< 32 - b) ||| (mangle32 i &&& M)
     let y = (((i >>> b) &&& m) <<< 32 - b) ||| (mangle32b i &&& M)
-    Convert.unitVec3 x y
+    Convert.unitVec3f x y
     )
 
 // A stratified set of random 3-rotations.
@@ -161,7 +174,7 @@ let rotationArray =
     let x = ((i &&& m) <<< 32 - b) ||| (mangle32c i &&& M)
     let y = (((i >>> b) &&& m) <<< 32 - b) ||| (mangle32 i &&& M)
     let z = (((i >>> b * 2) &&& m) <<< 32 - b) ||| (mangle32b i &&& M)
-    Convert.unitQuaternion x y z
+    Convert.unitQuaternionf x y z
     )
 
 

@@ -1,5 +1,5 @@
 ﻿// Windows Presentation Foundation utilities and extensions.
-namespace FsMap3
+namespace Fuse
 
 open System
 open System.Windows

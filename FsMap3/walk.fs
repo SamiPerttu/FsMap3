@@ -1,5 +1,5 @@
 ﻿// Walk operators.
-namespace FsMap3
+namespace Fuse
 
 open Common
 open Map3

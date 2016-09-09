@@ -1,7 +1,6 @@
 ﻿/// Fade curves interpolate between 0 and 1 in [0, 1].
-/// Also some functions that transform fade functions into other types.
-[<RequireQualifiedAccess>]
-module FsMap3.Fade
+[<RequireQualifiedAccess; ReflectedDefinition>]
+module Fuse.Fade
 
 open Common
 
@@ -71,7 +70,7 @@ let inline uparc (x : 'a) : 'a = 1G - sqrt(max 0G (1G - squared x))
 /// A quarter circle fade that slopes downwards. Inverse function of Fade.uparc.
 let inline downarc (x : 'a) : 'a = sqrt(max 0G (2G * x - squared x))
 
-/// Skewed fade, starts faster (positive skew) if bias > 0 or slower (negative skew) if bias < 0.
+/// Skewed fade, climbs faster initially (positive skew) if bias > 0 or slower (negative skew) if bias < 0.
 /// Linear fade when bias = 0.
 let inline skew (bias : 'a) : 'a -> 'a =
   if bias >= 0G then
@@ -197,3 +196,4 @@ let inline area (f : 'a -> 'a) : 'a =
   for i = 1 to n do
     sum <- sum + f (Q (i - 1) (n - 1))
   sum / G n
+

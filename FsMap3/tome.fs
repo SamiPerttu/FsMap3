@@ -1,5 +1,5 @@
 ﻿/// String utilities.
-module FsMap3.Tome
+module Fuse.Tome
 
 open Common
 

@@ -1,4 +1,4 @@
-﻿namespace FsMap3
+﻿namespace Fuse
 
 open Common
 open DnaParameterHash

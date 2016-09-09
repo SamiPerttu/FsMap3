@@ -1,5 +1,5 @@
 ﻿/// Bit manipulation utilities and tricks.
-module FsMap3.Bits
+module Fuse.Bits
 
 open Common
 
@@ -243,26 +243,26 @@ open LanguagePrimitives
 
 /// Rounds x down to a power of two. Returns 0 for 0.
 let inline genericFloorPower2 x =
-  let mutable p = GenericZero
+  let mutable p  = 0G
   let mutable p' = x
-  let mutable n = 1
+  let mutable n  = 1
   while p' <> p do
-    p <- p'
+    p  <- p'
     p' <- p' ||| (p' >>> n)
-    n <- n + n
+    n  <- n + n
   p' ^^^ (p' >>> 1)
 
 
 /// Rounds x up to a power of two. Throws an exception if the result would overflow.
 let inline genericCeilPower2 x =
-  if x <= GenericOne then GenericOne else
-    let mutable p = GenericZero
-    let mutable p' = x - GenericOne
-    if (p' <<< 1) < x then raise <| System.OverflowException()
+  if x <= 1G then 1G else
+    let mutable p  = 0G
+    let mutable p' = x - 1G
+    if (p' <<< 1) < x then System.OverflowException() |> raise
     let mutable n = 1
     while p' <> p do
       p <- p'
       p' <- p' ||| (p' >>> n)
       n <- n + n
-    p' + GenericOne
+    p' + 1G
 

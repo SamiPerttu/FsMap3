@@ -1,5 +1,5 @@
 ﻿/// Cell coloring functions.
-module FsMap3.CellColor
+module Fuse.CellColor
 
 open Common
 open Mangle

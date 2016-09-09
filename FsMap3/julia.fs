@@ -1,5 +1,5 @@
 ﻿/// Fractal iteration parameter interpolation basis.
-module FsMap3.Julia
+module Fuse.Julia
 
 open Common
 open Mangle

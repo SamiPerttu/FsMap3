@@ -1,5 +1,5 @@
 ﻿/// Startup code.
-module FsMap3.Main
+module Fuse.Main
 
 open Common
 

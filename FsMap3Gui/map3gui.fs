@@ -1,5 +1,5 @@
 ﻿/// Map3 GUI stuff.
-module FsMap3.Map3Gui
+module Fuse.Map3Gui
 
 open System
 open System.Windows
@@ -49,7 +49,7 @@ let show size (map : Map3) =
   canvas.add(image)
 
   window.setPixelContent(canvas)
-  window.KeyDown.Add(fun args -> if args.Key = System.Windows.Input.Key.Escape then window.Close())
+  window.KeyDown.Add(fun args -> if args.Key =. System.Windows.Input.Key.Escape then window.Close())
   window.Show()
 
 

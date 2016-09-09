@@ -1,4 +1,4 @@
-﻿module FsMap3.Map3Cache
+﻿module Fuse.Map3Cache
 
 open Common
 open Mangle

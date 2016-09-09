@@ -1,5 +1,5 @@
 ﻿// Human friendly serialization of Dna genotypes.
-namespace FsMap3
+namespace Fuse
 
 open Common
 

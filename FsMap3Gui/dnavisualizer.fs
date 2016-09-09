@@ -1,5 +1,5 @@
 ﻿/// DnaView parameter visualizers.
-module FsMap3.DnaVisualizer
+module Fuse.DnaVisualizer
 
 open System.Windows
 open System.Windows.Media

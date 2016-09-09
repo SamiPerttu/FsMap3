@@ -1,4 +1,4 @@
-﻿module FsMap3.RayGui
+﻿module Fuse.RayGui
 
 open Common
 open Ray
@@ -54,7 +54,7 @@ let visualize windowSize material =
   let image = new Image(Width = float windowSize, Height = float windowSize)
   canvas.add(image)
   window.Content <- canvas
-  window.KeyDown.Add(fun args -> if args.Key = System.Windows.Input.Key.Escape then window.Close())
+  window.KeyDown.Add(fun args -> if args.Key =. System.Windows.Input.Key.Escape then window.Close())
   window.Closed.Add(fun _ -> alive := false)
   window.Show()
 

@@ -1,5 +1,5 @@
 ﻿/// Busy animation.
-module FsMap3.BusyImage
+module Fuse.BusyImage
 
 open Common
 

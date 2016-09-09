@@ -1,5 +1,5 @@
 ﻿/// Fractalizers are map combinators that compute an output by repeated sampling of maps.
-module FsMap3.Fractalizer
+module Fuse.Fractalizer
 
 open Common
 open Mangle

@@ -1,5 +1,5 @@
 ﻿/// Map3 normalization and filtering by sampling.
-module FsMap3.Map3Info
+module Fuse.Map3Info
 
 open Common
 open Basis3
@@ -145,7 +145,7 @@ type Map3Info with
           let estimatorX = Mat.MomentEstimator()
           let estimatorY = Mat.MomentEstimator()
           let estimatorZ = Mat.MomentEstimator()
-          sampleArray.iter(fun v ->
+          sampleArray |> Array.iter(fun v ->
             estimatorX.add(float v.x)
             estimatorY.add(float v.y)
             estimatorZ.add(float v.z)
@@ -158,10 +158,10 @@ type Map3Info with
         elif computeSlopes then
           let slopeArray = Array.init N (fun i -> gradientArray.[i].length)
           let rank90 = float N * 0.90 |> int
-          let i90 = Fun.quickselect 0 (N - 1) slopeArray.at (Array.swap slopeArray) rank90
+          let i90 = Fun.quickselect 0 (N - 1) slopeArray.at (curry slopeArray.swap) rank90
           let slope90 = slopeArray.[i90]
           let rank99 = float N * 0.99 |> int
-          let i99 = Fun.quickselect 0 (N - 1) slopeArray.at (Array.swap slopeArray) rank99
+          let i99 = Fun.quickselect 0 (N - 1) slopeArray.at (curry slopeArray.swap) rank99
           let slope99 = slopeArray.[i99]
           Someval(slope90), Someval(slope99)
         else

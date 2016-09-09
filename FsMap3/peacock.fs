@@ -1,5 +1,5 @@
 ﻿/// The peacock basis.
-module FsMap3.Peacock
+module Fuse.Peacock
 
 open Common
 open Mangle

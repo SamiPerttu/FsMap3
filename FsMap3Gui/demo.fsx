@@ -2,7 +2,7 @@
 #r @"bin\Release\FsMap3.dll"
 #r @"bin\Release\FsMap3Gui.exe"
 
-open FsMap3
+open Fuse
 open Common
 open Map3
 open Basis3

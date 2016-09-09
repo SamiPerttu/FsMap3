@@ -1,4 +1,4 @@
-﻿module FsMap3.EditorAbout
+﻿module Fuse.EditorAbout
 
 open Common
 

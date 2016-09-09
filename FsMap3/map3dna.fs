@@ -1,5 +1,5 @@
 ﻿/// Procedural generation of Map3 and related functions.
-module FsMap3.Map3Dna
+module Fuse.Map3Dna
 
 open Common
 open Mangle
@@ -73,7 +73,7 @@ let genCellColor (dna : Dna) =
       C(0.5, "fixed gradient", fun _ ->
         let amount = 2.0f * dna.float32("Amount")
         let rnd = Rnd(dna.data("Angle seed"))
-        let gradient = Convert.unitVec3 rnd.tick rnd.tick
+        let gradient = Convert.unitVec3f rnd.tick rnd.tick
         fun x (v : Vec3f) ->
           baseColor x v * (1.0f + v *. gradient * amount)
         )

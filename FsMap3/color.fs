@@ -1,5 +1,5 @@
 ﻿/// Color spaces and conversions.
-namespace FsMap3
+namespace Fuse
 
 open Common
 
@@ -13,6 +13,11 @@ type ColorSpace =
 
 
 module Color =
+
+  /// A distance function for linear RGB values recommended by someone on Usenet.
+  /// It computes Euclidean distance between (roughly) gamma-corrected RGB coordinates.
+  let inline rgbDistance (a : Vec3) (b : Vec3) = (sqrt a - sqrt b).length
+
 
   /// Gamma converts a linear component value to sRGB.
   let gammaConvert x =
@@ -117,6 +122,11 @@ module Color =
     let CH1 = C * cosrFast H / (1.0f + C)
     let CH2 = exp (C * sinrFast H)
     let CV = C * V
+    // Original - V is a little bit on the lowish side.
+    //let R = -0.13661939063 + CH1 * 1.0254504025 + V * 0.8887657987 + CH2 * 0.1404878269 - CV * 0.22558629703
+    //let G = -0.06665101167 - CH1 * 0.3521260182 + V * 0.9363955443 + CH2 * 0.0267202001 - CV * 0.07914511401
+    //let B = +0.64061183186 - CH1 * 0.1703769390 + V * 0.7830775712 - CH2 * 0.6006639740 + CV * 0.04047916710
+    // Tweaked - amplify V a little bit.
     let R = -0.13661939063f + CH1 * 1.0254504025f + V * 0.9777657987f + CH2 * 0.1404878269f - CV * 0.24758629703f
     let G = -0.06665101167f - CH1 * 0.3521260182f + V * 1.0296955443f + CH2 * 0.0267202001f - CV * 0.08724511401f
     let B = +0.64061183186f - CH1 * 0.1703769390f + V * 0.8613775712f - CH2 * 0.6006639740f + CV * 0.04047916710f

@@ -1,5 +1,5 @@
 ﻿/// Cubex noise.
-module FsMap3.Cubex
+module Fuse.Cubex
 
 open Common
 open Mangle

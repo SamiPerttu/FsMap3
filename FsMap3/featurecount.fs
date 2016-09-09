@@ -1,5 +1,5 @@
 ﻿/// Texture cell feature count functions.
-module FsMap3.FeatureCount
+module Fuse.FeatureCount
 
 open Common
 

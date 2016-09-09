@@ -1,5 +1,5 @@
 ﻿// Rectangular grids of items.
-namespace FsMap3
+namespace Fuse
 
 open Common
 
@@ -66,5 +66,4 @@ type Grid<'a> =
     sizeX = sizeX
     sizeY = sizeY
   }
-
 

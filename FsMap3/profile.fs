@@ -1,5 +1,5 @@
 ﻿/// Profiling utilities.
-module FsMap3.Profile
+module Fuse.Profile
 
 open Common
 

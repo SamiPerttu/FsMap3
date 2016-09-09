@@ -1,4 +1,4 @@
-﻿module FsMap3.Test
+﻿module Fuse.Test
 
 open Common
 

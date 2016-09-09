@@ -1,6 +1,6 @@
 ﻿/// Generic algorithms parametrized with functions.
 [<RequireQualifiedAccess>]
-module FsMap3.Fun
+module Fuse.Fun
 
 open Common
 
@@ -551,5 +551,4 @@ let inline editDistance sourceSize (getSource : int -> 'a) targetSize (getTarget
                        (d.[i0, j0] + matchCost (getSource i0) (getTarget j0))
 
   d.[sourceSize, targetSize]
-
 

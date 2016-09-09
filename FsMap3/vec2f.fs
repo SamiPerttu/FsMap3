@@ -1,5 +1,5 @@
 ﻿// Single precision 2-vectors.
-namespace FsMap3
+namespace Fuse
 
 open Common
 
@@ -156,9 +156,7 @@ type Vec2f = struct
   static member inline genericNumber(x : int64, _ : Vec2f) = Vec2f(float32 x)
   static member inline genericNumber(x : string, _ : Vec2f) = Vec2f(float32 x)
 
-  override v.ToString() = "Vec2f(" + string (float v.x) + ", " + string (float v.y) + ")"
+  override v.ToString() = "Vec2f(" + Pretty.string (float v.x) + ", " + Pretty.string (float v.y) + ")"
 
 end
-
-
 

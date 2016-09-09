@@ -1,5 +1,5 @@
 ﻿// Single precision 3-vectors.
-namespace FsMap3
+namespace Fuse
 
 open System.Numerics
 
@@ -63,6 +63,9 @@ module Vector3Extensions =
 
     /// L-norm of the vector.
     member inline v.norm(L : float32) = (abs v.x ** L + abs v.y ** L + abs v.z ** L) ** (1.0f / L)
+
+    /// Raises components to the given power.
+    member inline v.power(a : float32) = Vector3(v.x ** a, v.y ** a, v.z ** a)
 
     /// Reduces the components of a vector with a binary operator.
     member inline v.reduce(op : float32 -> float32 -> float32) = op (op v.x v.y) v.z
@@ -172,15 +175,9 @@ module Vector3Extensions =
 
 
 
-/// Single precision floating point 3-vector. SIMD accelerated when possible.
-type Vec3f = Vector3
-
-
-
-(*
-/// Single precision 3-vector structure. Use this if System.Numerics.Vectors is not available.
+/// 32-bit floating point 3-vector structure. Our custom version - not SIMD accelerated.
 [<NoComparison>]
-type Vec3f = struct
+type Vec3e = struct
 
   val x : float32
   val y : float32
@@ -226,7 +223,7 @@ type Vec3f = struct
   member inline v.sum = v.x + v.y + v.z
 
   /// Transforms the components of the vector with a function.
-  member inline v.map(f : float32 -> float32) = Vec3f(f v.x, f v.y, f v.z)
+  member inline v.map(f : float32 -> float32) = Vec3e(f v.x, f v.y, f v.z)
 
   /// Reduces the components of a vector with a binary operator.
   member inline v.reduce(op : float32 -> float32 -> float32) = op (op v.x v.y) v.z
@@ -239,120 +236,120 @@ type Vec3f = struct
     let length = v.length2
     if length > 0.0f then
       let Z = 1.0f / sqrt length
-      Vec3f(v.x * Z, v.y * Z, v.z * Z)
+      Vec3e(v.x * Z, v.y * Z, v.z * Z)
     else v
 
   /// The zero vector.
-  static member inline zero = Vec3f(0.0f)
+  static member inline zero = Vec3e(0.0f)
 
   /// The zero vector.
-  static member inline Zero = Vec3f(0.0f)
+  static member inline Zero = Vec3e(0.0f)
 
   /// The one vector.
-  static member inline one = Vec3f(1.0f)
+  static member inline one = Vec3e(1.0f)
 
   /// The one vector.
-  static member inline One = Vec3f(1.0f)
+  static member inline One = Vec3e(1.0f)
 
   /// The unit X vector.
-  static member inline unitX = Vec3f(1.0f, 0.0f, 0.0f)
+  static member inline unitX = Vec3e(1.0f, 0.0f, 0.0f)
 
   /// The unit Y vector.
-  static member inline unitY = Vec3f(0.0f, 1.0f, 0.0f)
+  static member inline unitY = Vec3e(0.0f, 1.0f, 0.0f)
 
   /// The unit Z vector.
-  static member inline unitZ = Vec3f(0.0f, 0.0f, 1.0f)
+  static member inline unitZ = Vec3e(0.0f, 0.0f, 1.0f)
 
-  static member inline ( ~- ) (a : Vec3f) = Vec3f(-a.x, -a.y, -a.z)
-  static member inline ( + ) (a : Vec3f, b : Vec3f) = Vec3f(a.x + b.x, a.y + b.y, a.z + b.z)
-  static member inline ( + ) (a : Vec3f, b : float32) = Vec3f(a.x + b, a.y + b, a.z + b)
-  static member inline ( + ) (a : float32, b : Vec3f) = Vec3f(a + b.x, a + b.y, a + b.z)
-  static member inline ( - ) (a : Vec3f, b : Vec3f) = Vec3f(a.x - b.x, a.y - b.y, a.z - b.z)
-  static member inline ( - ) (a : Vec3f, b : float32) = Vec3f(a.x - b, a.y - b, a.z - b)
-  static member inline ( - ) (a : float32, b : Vec3f) = Vec3f(a - b.x, a - b.y, a - b.z)
-  static member inline ( / ) (a : Vec3f, b : Vec3f) = Vec3f(a.x / b.x, a.y / b.y, a.z / b.z)
-  static member inline ( / ) (a : Vec3f, b : float32) = Vec3f(a.x / b, a.y / b, a.z / b)
-  static member inline ( / ) (a : float32, b : Vec3f) = Vec3f(a / b.x, a / b.y, a / b.z)
-  static member inline ( * ) (a : Vec3f, b : Vec3f) = Vec3f(a.x * b.x, a.y * b.y, a.z * b.z)
-  static member inline ( * ) (a : Vec3f, b : float32) = Vec3f(a.x * b, a.y * b, a.z * b)
-  static member inline ( * ) (a : float32, b : Vec3f) = Vec3f(a * b.x, a * b.y, a * b.z)
+  static member inline ( ~- ) (a : Vec3e) = Vec3e(-a.x, -a.y, -a.z)
+  static member inline ( + ) (a : Vec3e, b : Vec3e) = Vec3e(a.x + b.x, a.y + b.y, a.z + b.z)
+  static member inline ( + ) (a : Vec3e, b : float32) = Vec3e(a.x + b, a.y + b, a.z + b)
+  static member inline ( + ) (a : float32, b : Vec3e) = Vec3e(a + b.x, a + b.y, a + b.z)
+  static member inline ( - ) (a : Vec3e, b : Vec3e) = Vec3e(a.x - b.x, a.y - b.y, a.z - b.z)
+  static member inline ( - ) (a : Vec3e, b : float32) = Vec3e(a.x - b, a.y - b, a.z - b)
+  static member inline ( - ) (a : float32, b : Vec3e) = Vec3e(a - b.x, a - b.y, a - b.z)
+  static member inline ( / ) (a : Vec3e, b : Vec3e) = Vec3e(a.x / b.x, a.y / b.y, a.z / b.z)
+  static member inline ( / ) (a : Vec3e, b : float32) = Vec3e(a.x / b, a.y / b, a.z / b)
+  static member inline ( / ) (a : float32, b : Vec3e) = Vec3e(a / b.x, a / b.y, a / b.z)
+  static member inline ( * ) (a : Vec3e, b : float32) = Vec3e(a.x * b, a.y * b, a.z * b)
+  static member inline ( * ) (a : float32, b : Vec3e) = Vec3e(a * b.x, a * b.y, a * b.z)
+  static member inline ( * ) (a : Vec3e, b : Vec3e) = Vec3e(a.x * b.x, a.y * b.y, a.z * b.z)
   /// Dot product.
-  static member inline Dot(a : Vec3f, b : Vec3f) = a.x * b.x + a.y * b.y + a.z * b.z
+  static member inline Dot(a : Vec3e, b : Vec3e) = a.x * b.x + a.y * b.y + a.z * b.z
   /// Cross product.
-  static member inline Cross(u : Vec3f, v : Vec3f) = 
+  static member inline Cross(u : Vec3e, v : Vec3e) = 
     let x = u.y * v.z - u.z * v.y
     let y = u.z * v.x - u.x * v.z
     let z = u.x * v.y - u.y * v.x
-    Vec3f(x, y, z)
+    Vec3e(x, y, z)
 
-  static member inline Abs (v : Vec3f) = v.map(abs)
-  static member inline Ceiling (v : Vec3f) = v.map(ceil)
-  static member inline Cos (v : Vec3f) = v.map(cos)
-  static member inline Exp (v : Vec3f) = v.map(exp)
-  static member inline Floor (v : Vec3f) = v.map(floor)
-  static member inline Log (v : Vec3f) = v.map(log)
-  static member inline Pow (v : Vec3f, b : float32) = Vec3f(v.x ** b, v.y ** b, v.z ** b)
-  static member inline Pow (u : Vec3f, v : Vec3f) = Vec3f(u.x ** v.x, u.y ** v.y, u.z ** v.z)
-  static member inline Round (v : Vec3f) = v.map(round)
-  static member inline Sin (v : Vec3f) = v.map(sin)
-  static member inline Sqrt (v : Vec3f) = v.map(sqrt)
-  static member inline Tan (v : Vec3f) = v.map(tan)
-  static member inline Tanh (v : Vec3f) = v.map(tanh)
-  static member inline Truncate (v : Vec3f) = v.map(truncate)
+  static member inline Abs (v : Vec3e) = v.map(abs)
+  static member inline Ceiling (v : Vec3e) = v.map(ceil)
+  static member inline Cos (v : Vec3e) = v.map(cos)
+  static member inline Exp (v : Vec3e) = v.map(exp)
+  static member inline Floor (v : Vec3e) = v.map(floor)
+  static member inline Log (v : Vec3e) = v.map(log)
+  static member inline Pow (v : Vec3e, b : float32) = Vec3e(v.x ** b, v.y ** b, v.z ** b)
+  static member inline Pow (u : Vec3e, v : Vec3e) = Vec3e(u.x ** v.x, u.y ** v.y, u.z ** v.z)
+  static member inline Round (v : Vec3e) = v.map(round)
+  static member inline Sin (v : Vec3e) = v.map(sin)
+  static member inline Sqrt (v : Vec3e) = v.map(sqrt)
+  static member inline Tan (v : Vec3e) = v.map(tan)
+  static member inline Tanh (v : Vec3e) = v.map(tanh)
+  static member inline Truncate (v : Vec3e) = v.map(truncate)
 
   /// Builds a vector from an integer seed with components in the range [min, max]. Each component has 10 bits of precision.
   static member fromSeed(seed : int, min : float32, max : float32) =
     let m = 0x3ff
     let Z = (max - min) / float32 m
-    Vec3f(float32 ((seed >>> 20) &&& m) * Z + min, float32 ((seed >>> 10) &&& m) * Z + min, float32 (seed &&& m) * Z + min)
+    Vec3e(float32 ((seed >>> 20) &&& m) * Z + min, float32 ((seed >>> 10) &&& m) * Z + min, float32 (seed &&& m) * Z + min)
 
   /// Builds a vector in the unit cube from an integer seed. Each component has 10 bits of precision.
-  static member fromSeed(seed : int) = Vec3f.fromSeed(seed, 0.0f, 1.0f)
+  static member fromSeed(seed : int) = Vec3e.fromSeed(seed, 0.0f, 1.0f)
 
   /// Builds a vector from an indexed function.
-  static member inline create(f : int -> float32) = Vec3f(f 0, f 1, f 2)
+  static member inline create(f : int -> float32) = Vec3e(f 0, f 1, f 2)
 
   /// Returns the result of a component binary operation.
-  static member inline bimap(v : Vec3f, u : Vec3f, f : float32 -> float32 -> float32) = Vec3f(f v.x u.x, f v.y u.y, f v.z u.z)
+  static member inline bimap(v : Vec3e, u : Vec3e, f : float32 -> float32 -> float32) = Vec3e(f v.x u.x, f v.y u.y, f v.z u.z)
 
   /// Returns the result of a component ternary operation.
-  static member inline trimap(v : Vec3f, u : Vec3f, w : Vec3f, f : float32 -> float32 -> float32 -> float32) = Vec3f(f v.x u.x w.x, f v.y u.y w.y, f v.z u.z w.z)
+  static member inline trimap(v : Vec3e, u : Vec3e, w : Vec3e, f : float32 -> float32 -> float32 -> float32) = Vec3e(f v.x u.x w.x, f v.y u.y w.y, f v.z u.z w.z)
 
   /// Clamps components of v between components of u0 and u1.
-  static member inline clamp u0 u1 v = Vec3f.trimap(u0, u1, v, clamp)
+  static member inline clamp u0 u1 v = Vec3e.trimap(u0, u1, v, clamp)
 
   /// Linear interpolation of vectors.
   static member inline lerp u0 u1 x = lerp u0 u1 x
 
   /// Euclidean distance between v and u.
-  static member inline distance(v : Vec3f, u : Vec3f) = (v - u).length
+  static member inline distance(v : Vec3e, u : Vec3e) = (v - u).length
 
   /// Euclidean distance squared between v and u.
-  static member inline distance2(v : Vec3f, u : Vec3f) = (v - u).length2
+  static member inline distance2(v : Vec3e, u : Vec3e) = (v - u).length2
 
   /// Component minimum. Note that we cannot implement this as operator min
   /// as in F# that one is defined via the comparison operator.
-  static member inline minimize (v : Vec3f) (u : Vec3f) = Vec3f.bimap(v, u, min)
+  static member inline minimize (v : Vec3e) (u : Vec3e) = Vec3e.bimap(v, u, min)
 
   /// Component maximum. Note that we cannot implement this as operator max
   /// as in F# that one is defined via the comparison operator.
-  static member inline maximize (v : Vec3f) (u : Vec3f) = Vec3f.bimap(v, u, max)
+  static member inline maximize (v : Vec3e) (u : Vec3e) = Vec3e.bimap(v, u, max)
 
   /// Distance to line. The line is defined by an origin point and a unit length direction vector.
-  member p.lineDistance(origin : Vec3f, direction : Vec3f) =
+  member p.lineDistance(origin : Vec3e, direction : Vec3e) =
     let d = origin - p
     (d - (d *. direction) * direction).length
 
   /// Sine map with a period of unity. Uses a Taylor approximation.
   member v.sinr =
-    let vpi12 = Vec3f(G pi12)
-    let s = v - Vec3f(Q 1 4)
+    let vpi12 = Vec3e(G pi12)
+    let s = v - Vec3e(0.25f)
     let phi = (s - s.map(floor)) * G tau
     sinTaylor (abs (phi - vpi12 * 2G) - vpi12)
 
   /// Cosine map with a period of unity. Uses a Taylor approximation.
   member v.cosr =
-    let vpi12 = Vec3f(G pi12)
+    let vpi12 = Vec3e(G pi12)
     let phi = (v - v.map(floor)) * G tau
     sinTaylor (abs (phi - vpi12 * 2G) - vpi12)
 
@@ -364,15 +361,101 @@ type Vec3f = struct
   member v.cos =
     let v' = v * Q 1 tau in v'.cosr
 
-  override v.ToString() = "Vec3f(" + string v.x + ", " + string v.y + ", " + string v.z + ")"
+  override v.ToString() = "Vec3e(" + Pretty.string v.x + ", " + Pretty.string v.y + ", " + Pretty.string v.z + ")"
 
 end
-*)
+
+
+
+/// Single precision floating point 3-vector. SIMD accelerated when possible.
+type Vec3f = Vector3
+
 
 
 [<AutoOpen>]
-module Vec3fPatterns =
-
+module Vec3fPattern =
   /// Active pattern that deconstructs 3-vectors.
   let inline (|Vec3f|) (v : Vec3f) = (v.x, v.y, v.z)
 
+
+
+
+module Vec3fTest =
+
+  let testSimd() =
+
+    let n = 5000
+
+    let rnd = createLcg 1
+    let a1 = Array.init n (fun _ -> Vec3f.fromSeed(rnd.tick))
+    let a2 = Array.init n (fun i -> Vec3e(a1.[i].x, a1.[i].y, a1.[i].z))
+    let a3 = Array.init n (fun i -> Vector3(a1.[i].x, a1.[i].y, a1.[i].z))
+
+    let t0 = Common.timeNow()
+    let mutable x1d = 0.0f
+    for i = 0 to n - 1 do
+      for j = 0 to n - 1 do
+        x1d <- x1d + a1.[i] *. a1.[j]
+        x1d <- x1d + a1.[i] *. a1.[i]
+        x1d <- x1d + a1.[j] *. a1.[i]
+        x1d <- x1d + a1.[j] *. a1.[j]
+    let t1d = Common.timeNow() - t0
+
+    let t0 = Common.timeNow()
+    let mutable x1m = Vec3f.zero
+    for i = 0 to n - 1 do
+      for j = 0 to n - 1 do
+        x1m <- x1m + a1.[i] * a1.[j]
+        x1m <- x1m + a1.[i] * a1.[i]
+        x1m <- x1m + a1.[j] * a1.[i]
+        x1m <- x1m + a1.[j] * a1.[j]
+    let t1m = Common.timeNow() - t0
+
+    let t0 = Common.timeNow()
+    let mutable x2d = 0.0f
+    for i = 0 to n - 1 do
+      for j = 0 to n - 1 do
+        x2d <- x2d + a2.[i] *. a2.[j]
+        x2d <- x2d + a2.[i] *. a2.[i]
+        x2d <- x2d + a2.[j] *. a2.[i]
+        x2d <- x2d + a2.[j] *. a2.[j]
+    let t2d = Common.timeNow() - t0
+
+    let t0 = Common.timeNow()
+    let mutable x2m = Vec3e.zero
+    for i = 0 to n - 1 do
+      for j = 0 to n - 1 do
+        x2m <- x2m + a2.[i] * a2.[j]
+        x2m <- x2m + a2.[i] * a2.[i]
+        x2m <- x2m + a2.[j] * a2.[i]
+        x2m <- x2m + a2.[j] * a2.[j]
+    let t2m = Common.timeNow() - t0
+
+    let t0 = Common.timeNow()
+    let mutable x3d = 0.0f
+    for i = 0 to n - 1 do
+      for j = 0 to n - 1 do
+        x3d <- x3d + Vector3.Dot(a3.[i], a3.[j])
+        x3d <- x3d + Vector3.Dot(a3.[i], a3.[i])
+        x3d <- x3d + Vector3.Dot(a3.[j], a3.[i])
+        x3d <- x3d + Vector3.Dot(a3.[j], a3.[j])
+    let t3d = Common.timeNow() - t0
+
+    let t0 = Common.timeNow()
+    let mutable x3m = Vector3.Zero
+    for i = 0 to n - 1 do
+      for j = 0 to n - 1 do
+        x3m <- x3m + a3.[i] * a3.[j]
+        x3m <- x3m + a3.[i] * a3.[i]
+        x3m <- x3m + a3.[j] * a3.[i]
+        x3m <- x3m + a3.[j] * a3.[j]
+    let t3m = Common.timeNow() - t0
+
+    printfn "Unaccelerated dot time : %f | value %f" t2d x2d
+    printfn "Accelerated dot time   : %f | value %f" t1d x1d
+    printfn "Raw dot time           : %f | value %f" t3d x3d
+
+    printfn "Unaccelerated mul time : %f | value %A" t2m x2m
+    printfn "Accelerated mul time   : %f | value %A" t1m x1m
+    printfn "Raw mul time           : %f | value %A" t3m x3m
+  

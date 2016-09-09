@@ -1,5 +1,5 @@
 ﻿// Rough-and-ready actions for easy biasing of procedural generators.
-namespace FsMap3
+namespace Fuse
 
 open Common
 

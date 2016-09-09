@@ -1,5 +1,5 @@
 ﻿/// Map3 functions and combinators.
-module FsMap3.Map3
+module Fuse.Map3
 
 open Common
 open Mangle
@@ -59,6 +59,17 @@ let sliceChart (n : int) (v : Vec3f) =
   let z = floor (x * tiles) / squared tiles + floor (y * tiles) / tiles
   let x = fract (x * tiles)
   let y = fract (y * tiles)
+  Vec3f(x, y, z)
+
+
+/// Flat XY plane pattern that displays (slightly slanted) XY plane contents in successive rows of strips.
+let sliceStrip (rows : int) (v : Vec3f) =
+  let rows = float32 rows
+  let x = fract v.x
+  let y = fract v.y
+  let z = (floor (y * rows) + x) / rows
+  let x = fract (x * rows)
+  let y = fract (y * rows)
   Vec3f(x, y, z)
 
 

@@ -1,5 +1,5 @@
 ﻿// Undo/redo.
-namespace FsMap3
+namespace Fuse
 
 open Common
 

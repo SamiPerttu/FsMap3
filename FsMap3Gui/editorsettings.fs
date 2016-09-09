@@ -1,4 +1,4 @@
-﻿namespace FsMap3
+﻿namespace Fuse
 
 open System
 open System.Xml

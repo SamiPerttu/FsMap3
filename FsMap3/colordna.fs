@@ -1,4 +1,4 @@
-﻿module FsMap3.ColorDna
+﻿module Fuse.ColorDna
 
 open Common
 

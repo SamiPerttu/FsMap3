@@ -1,5 +1,5 @@
 ﻿/// Orbit trapped iteration fractals.
-module FsMap3.Orbit
+module Fuse.Orbit
 
 open Common
 open Mangle

@@ -1,5 +1,5 @@
 ﻿/// Fade function generators.
-module FsMap3.FadeDna
+module Fuse.FadeDna
 
 open Common
 

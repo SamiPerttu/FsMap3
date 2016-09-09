@@ -1,5 +1,5 @@
 ﻿/// Potential functions in 3-space.
-module FsMap3.Potential
+module Fuse.Potential
 
 open Common
 
@@ -12,11 +12,12 @@ type Potential3 = Vec3f -> float32
 (*
 Notes.
 -The Y axis is 'up'.
--If a potential function has no power parameters or all power parameters set to 2, then
+-If a potential function has no power parameters or all power parameters are set to 2, then
  it is a volume of revolution about the Y axis.
--Even if some power parameter does not equal 2, all potential functions are symmetric about the X and Z axes,
- and X and Z axes are interchangeable.
--For the supershapes, as any power parameter drops below 1, the maximum gradient magnitude starts to climb rapidly.
+-Even if some power parameter does not equal 2, all potential functions are symmetric
+ about the X and Z axes, and X and Z axes are interchangeable.
+-For the supershapes, as any power parameter drops below 1, the maximum gradient magnitude
+ starts to climb rapidly.
 -The potentials have been adjusted to near unity radius, some more closely than others.
 -The range of the potentials has been adjusted so that the minimum value is zero
  or a positive number very close to zero.
@@ -113,7 +114,7 @@ let roman (v : Vec3f) =
 
 
 
-/// Calculates the gradient of potential function f at v.
+/// Calculates the gradient of potential function f at v via a finite difference approximation.
 let gradient (f : Potential3) (v : Vec3f) =
   let epsilon = 1.0e-3f
   let v0 = f v
@@ -124,7 +125,8 @@ let gradient (f : Potential3) (v : Vec3f) =
 
 
 
-/// Calculates the normal of potential function f at v. Returns the zero vector if the normal is not well defined.
+/// Calculates the normal of potential function f at v via a finite difference approximation.
+/// Returns the zero vector if the normal is not well defined.
 let normal (f : Potential3) (v : Vec3f) =
   let epsilon = 1.0e-3f
   let v0 = f v
@@ -151,4 +153,42 @@ let sampleVolume n (f : Potential3) =
           samples <- samples + 1
           if f v < 1.0f then hits <- hits + 1
   float32 hits / float32 samples
+
+
+
+/// Samples the potential function and prints some information about it.
+let sampleStatsf samples (f : Potential3) =
+  let rnd = Rnd(timeSeed())
+  let mutable inside = 0
+  let mutable minPotential = infinityf
+  let mutable maxGradient = -infinityf
+  let mutable radius = 0.0f
+  for __ = 1 to samples do
+    let v = Common.doFind (fun _ -> rnd.vec3f(map01to11)) (fun v -> v.length <= 1.0f)
+    let p = f v
+    if p < 1.0f then
+      inside <- inside + 1
+      radius <- max radius v.length
+      maxGradient <- max maxGradient (gradient f v).length
+    minPotential <- min p minPotential
+  printfn "Statistics after %d samples:" samples
+  printfn "Volume             %.2f%%" (float inside / float samples * 100.0)
+  printfn "Radius             %f" radius
+  printfn "Minimum potential  %f" minPotential
+  printfn "Maximum gradient   %f" maxGradient
+
+
+
+/// Obtains the radius of a potential function via sampling. A valid potential has at most unity radius.
+/// This has been used to adjust some of the functions above.
+let sampleRadiusf (f : Potential3) =
+  let n = 20000000
+  let mutable radius = 0.0f
+  let rnd = Rnd(1)
+  for __ = 1 to n do
+    let r = (max 0.5f radius) * (1G + Fade.geometric 3.0f (rnd.float32()))
+    let v = r * rnd.unitVec3f()
+    let p = f v
+    if p < 1G then radius <- r
+  printfn "Radius: %.15f" radius
 

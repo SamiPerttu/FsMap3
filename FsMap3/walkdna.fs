@@ -1,4 +1,4 @@
-﻿module FsMap3.WalkDna
+﻿module Fuse.WalkDna
 
 open Common
 

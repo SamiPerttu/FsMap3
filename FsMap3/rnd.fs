@@ -1,5 +1,5 @@
 ﻿// Random number generation.
-namespace FsMap3
+namespace Fuse
 
 open Common
 
@@ -164,19 +164,19 @@ type Rnd(?seed) =
       // Full integer range was specified.
       this.int()
 
-  /// Generates a float32 in the left-closed interval [0, 1[.    
+  /// Generates a float in the left-closed interval [0, 1[.    
   member this.float() = Convert.float01 LeftClosed this.tick
 
-  /// Generates a float32 in the left-closed interval [0, a[.
+  /// Generates a float in the left-closed interval [0, a[.
   member this.float(a) = a * Convert.float01 LeftClosed this.tick
 
-  /// Generates a float32 in the closed interval [a, b].
+  /// Generates a float in the closed interval [a, b].
   member this.float(a, b) = Convert.float01 Closed this.tick |> lerp a b
 
-  /// Generates a float32 in the desired interval type in unit range.
+  /// Generates a float in the desired interval type in unit range.
   member this.float(interval) = Convert.float01 interval this.tick
 
-  /// Generates a float32 in the desired interval type between 0 and a
+  /// Generates a float in the desired interval type between 0 and a
   /// (note that if a < 0 then left-closed becomes right-closed and vice versa).
   member this.float(interval, a) = a * Convert.float01 interval this.tick
 
@@ -188,7 +188,7 @@ type Rnd(?seed) =
   member this.float32() = Convert.float01 LeftClosed this.tick |> float32
 
   /// Generates a float32 in the left-closed interval [0, a[.
-  member this.float32(a) = a * float32 (Convert.float01 LeftClosed this.tick)
+  member this.float32(a) = Convert.float01 LeftClosed this.tick |> float32 |> (*) a
 
   /// Generates a float32 in the closed interval [a, b].
   member this.float32(a, b) = Convert.float01 Closed this.tick  |> float32 |> lerp a b
@@ -198,14 +198,17 @@ type Rnd(?seed) =
 
   /// Generates a float32 in the desired interval type between 0 and a
   /// (note that if a < 0 then left-closed becomes right-closed and vice versa).
-  member this.float32(interval, a) = a * float32 (Convert.float01 interval this.tick)
+  member this.float32(interval, a) = Convert.float01 interval this.tick |> float32 |> (*) a
 
-  /// Generates a float in the desired interval type between a and b
+  /// Generates a float32 in the desired interval type between a and b
   /// (note that if b < a then left-closed becomes right-closed and vice versa).
   member this.float32(interval, a, b) = Convert.float01 interval this.tick |> float32 |> lerp a b
 
   /// Returns true with probability p.
   member this.boolean(p) = this.float() < p
+
+  /// Flips a fair coin. Returns true or false.
+  member this.flip = this.uint() &&& 128u = 0u
 
   /// Chooses a with frequency fa and b with frequency fb (fa, fb >= 0).
   member this.choose(fa, a, fb, b) =
@@ -225,6 +228,58 @@ type Rnd(?seed) =
     let x = this.float(fa + fb + fc + fd)
     if x < fa then a elif x < fa + fb then b elif x < fa + fb + fc then c else d
 
+  /// Chooses an element from a finite sequence in a single pass. The probability of an element
+  /// being chosen is proportional to its frequency, which is obtained from the given function.
+  /// Zero frequencies are allowed, as long as at least one element has a non-zero frequency.
+  member this.chooseFrom(sequence : #seq<'a>, frequencyf : 'a -> float) =
+    let foldf (Pair(x, F : float) as state) (x' : 'a) =
+      let f = frequencyf x'
+      if f > 0.0 then
+        let F' = F + f
+        Pair((if this.float(F') < F then x else x'), F')
+      else state
+    let (Pair(x, F)) = Seq.fold foldf (Pair(Unchecked.defaultof<'a>, 0.0)) sequence
+    enforce (F > 0.0) "Rnd.chooseFrom: All frequencies are zero."
+    x
+
+  /// Chooses an element from a range of integers, given a frequency function.
+  /// If all frequencies are zero, returns a random choice.
+  member this.chooseFrom(i0, i1, frequencyf : int -> float) =
+    enforce (i0 <= i1) "Rnd.chooseFrom: Empty range."
+    let mutable F = 0.0
+    let mutable x = i0
+    for i = i0 to i1 do
+      let f = frequencyf i
+      if f > 0.0 then
+        let F' = F + f
+        x <- if this.float(F') < F then x else i
+        F <- F'
+    if F > 0.0 then x else this.exact(i0, i1)
+
+  /// Samples the Gaussian distribution N(0, 1).
+  member this.gaussian() = (Convert.gaussian this.tick this.tick).fst
+
+  /// Returns a pair of standard normal Gaussians for the price of one.
+  member this.gaussianPair() = Convert.gaussian this.tick this.tick
+
+  /// Samples the geometric distribution Geom(p) where p is the probability of success (p > 0).
+  /// The mean of the samples is (1 - p) / p. Thus, p = 1 / (1 + mean).
+  member this.geometric(p) = Convert.geometric p this.tick
+
+  /// Samples the Poisson distribution Pois(lambda) using Knuth's iterative algorithm (lambda > 0).
+  /// The running time is O(lambda). Not suitable for large values of lambda.
+  member this.poisson(lambda) =
+    let L = exp(-lambda)
+    let mutable p = 1.0
+    let mutable k = 0
+    while p > L do
+      p <- p * this.float(Interval.Closed)
+      k <- k + 1
+    k - 1
+
+  /// Optimized method for sampling the Poisson distribution Pois(1). The maximum returned value is 12.
+  member this.poisson1() = Convert.poisson1 this.utick
+
   /// Generates a float that is exponentially (by which we mean log-linearly) distributed
   /// in the closed interval between minimum and maximum (minimum, maximum > 0).
   /// For example, exp(1.0, 4.0) generates values in [1, 2] and [2, 4] with equal probability.
@@ -235,29 +290,60 @@ type Rnd(?seed) =
   /// Generates a float32 that is exponentially (by which we mean log-linearly) distributed
   /// in the closed interval between minimum and maximum (minimum, maximum > 0).
   /// For example, exp(1.0, 4.0) generates values in [1, 2] and [2, 4] with equal probability.
-  member this.expf(minimum, maximum) =
+  member this.exp(minimum, maximum) =
     assert (minimum > 0G && maximum > 0G)
     exp(this.float32(log minimum, log maximum)) 
 
+  /// Samples the exponential probability distribution with the given mean.
+  /// Note that this is different from Rnd.exp.
+  member this.exponential(mean) = -log(this.float(RightClosed)) / mean
+
+  /// Samples the Rayleigh distribution with the given deviation.
+  member this.rayleigh(deviation) = sqrt(-0.5 / deviation * log(this.float(RightClosed)))
+
+  /// Samples the Weibull distribution with shape parameter k > 0 and scale parameter lambda > 0.
+  member this.weibull(k, lambda) = -lambda * log(-this.float(RightClosed)) ** (1.0 / k)
+    
   /// Returns a 3-vector with each component uniformly distributed in the unit interval.
+  member this.vec3() = Vec3(this.float(), this.float(), this.float())
+
+  /// Returns a float32 3-vector with each component uniformly distributed in the unit interval.
   member this.vec3f() = Vec3f(this.float32(), this.float32(), this.float32())
+
+  /// Returns a 3-vector with each component transformed from the unit interval with the supplied function.
+  member this.vec3(f : float -> float) = Vec3(f <| this.float(), f <| this.float(), f <| this.float())
 
   /// Returns a 3-vector with each component transformed from the unit interval with the supplied function.
   member this.vec3f(f : float32 -> float32) = Vec3f(f <| this.float32(), f <| this.float32(), f <| this.float32())
 
   /// Returns a 3-vector with each component transformed from the unit interval of the given type
   /// with the supplied function.
+  member this.vec3(interval : Interval, f : float -> float) = Vec3(f <| this.float(interval), f <| this.float(interval), f <| this.float(interval))
+
+  /// Returns a 3-vector with each component transformed from the unit interval of the given type
+  /// with the supplied function.
   member this.vec3f(interval : Interval, f : float32 -> float32) = Vec3f(f <| this.float32(interval), f <| this.float32(interval), f <| this.float32(interval))
 
-  /// Returns a unit length 3-vector.
-  member this.unitVec3f() = Convert.unitVec3 this.tick this.tick
+  /// Returns a 2-vector with the components uniformly distributed in the unit interval.
+  member this.vec2() = Vec2(this.float(), this.float())
 
-  /// Shuffles a sequence and returns it as an array.
+  /// Shuffles a sequence. Returns the result as an array.
   member this.shuffle(sequence : #seq<_>) =
     let a = Array.ofSeq sequence
-    let n = a.size
-    for i = 0 to n - 2 do
-      let j = i + this.int(n - i)
+    for i = 0 to a.size - 2 do
+      let j = i + this.int(a.size - i)
       if j > i then a.swap(i, j)
     a
+
+  /// Returns a unit length 2-vector.
+  member this.unitVec2() = Vec2.direction(this.float(pi2))
+
+  /// Returns a unit length 3-vector.
+  member this.unitVec3() = Convert.unitVec3 this.tick this.tick
+
+  /// Returns a unit length 3-vector.
+  member this.unitVec3f() = Convert.unitVec3f this.tick this.tick
+
+  /// Returns a unit length 4-vector as a quaternion.
+  member this.unitQuaternion() = Convert.unitQuaternion this.tick this.tick this.tick
 

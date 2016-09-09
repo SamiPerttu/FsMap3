@@ -1,5 +1,5 @@
 ﻿/// Implicit flow basis functions.
-module FsMap3.Impflow
+module Fuse.Impflow
 
 open Common
 open Mangle

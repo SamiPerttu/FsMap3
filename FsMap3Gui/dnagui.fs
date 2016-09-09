@@ -1,5 +1,5 @@
 ﻿/// Dna GUI components.
-namespace FsMap3
+namespace Fuse
 
 open System
 open System.Windows
@@ -50,7 +50,7 @@ type DnaView() =
   let expandMap = HashMap<int64, bool>.create(int)
 
   /// Tree item -> structural hash. This is used to update expandMap above.
-  let structMap = HashMap<TreeViewItem, int64>.create(hash)
+  let structMap = HashRefMap<TreeViewItem, int64>.create()
 
   /// Extra indexed info on current Dna parameters.
   let itemArray = Darray<DnaItem>.create()

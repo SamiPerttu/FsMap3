@@ -1,4 +1,4 @@
-﻿namespace FsMap3
+﻿namespace Fuse
 
 open System
 open System.Windows
@@ -102,7 +102,7 @@ type [<NoComparison; NoEquality>] EditorView<'a> =
 
   member this.setVisibility(visibility) =
     this.image.Visibility <- visibility
-    if visibility = Visibility.Collapsed then this.idle()
+    if visibility =. Visibility.Collapsed then this.idle()
 
   member this.focus(visibility) =
     this.focusShape.apply(Array.iter (fun shape -> shape.Visibility <- visibility))

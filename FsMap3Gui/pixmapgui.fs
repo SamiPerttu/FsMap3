@@ -1,5 +1,5 @@
 ﻿// Pixmap and IPixmapSource related GUIs.
-namespace FsMap3
+namespace Fuse
 
 open System.Windows
 open System.Windows.Media
@@ -77,7 +77,7 @@ module PixmapExtensions =
       let image = Controls.Image(Width = float this.width, Height = float this.height, Source = this.bitmapSource())
       canvas.add(image)
       window.setPixelContent(canvas)
-      window.KeyDown.Add(fun args -> if args.Key = System.Windows.Input.Key.Escape then window.Close())
+      window.KeyDown.Add(fun args -> if args.Key =. System.Windows.Input.Key.Escape then window.Close())
       window.Show()
 
 

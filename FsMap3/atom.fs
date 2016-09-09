@@ -1,9 +1,9 @@
 ﻿/// Shared, lock-free variables and atomic operations.
-namespace FsMap3.Atom
+namespace Fuse.Atom
 
 open System.Threading
 
-open FsMap3
+open Fuse
 open Common
 
 
@@ -175,6 +175,30 @@ type SharedCounter<'a> =
     enforce (seed > 0) "Atom.createSharedLcg: Seed must be greater than zero."
     // Do a little "burn-in" for the initial value.
     { Counter.value = minstd (minstd seed); f = minstd }
+
+
+
+/// Adapter on top of Atom.Int that converts between int and a user type. The user type must implement
+/// the static methods encode and decode.
+[<NoComparison; NoEquality>]
+type Coded<'a when 'a : (static member encode : int -> 'a) and 'a : (static member decode : 'a -> int)> = struct
+  val mutable i : Int
+  member inline this.encode x = (^a : (static member encode : int -> ^a) (x))
+  member inline this.decode x = (^a : (static member decode : 'a -> int) (x))
+
+  member inline this.value = this.encode !this.i
+  member inline this.Value = this.value
+  member inline this.set(x) = this.i.set(this.decode(x))
+  member inline this.modify(f) = this.i.modify(this.encode >> f >> this.decode)
+  member inline this.pre(f) = this.encode <| this.i.pre(this.encode >> f >> this.decode)
+  member inline this.post(f) = this.encode <| this.i.post(this.encode >> f >> this.decode)
+  member inline this.update(v0, v1) = this.i.update(this.decode(v0), this.decode(v1))
+
+  static member inline create(v) =
+    let mutable c = Unchecked.defaultof<'a Coded>
+    c.i <- Int(c.decode v)
+    c
+end
 
 
 

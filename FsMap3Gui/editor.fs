@@ -1,5 +1,5 @@
 ﻿// FsMap3 Editor.
-namespace FsMap3
+namespace Fuse
 
 open System
 open System.Windows
@@ -975,7 +975,7 @@ type Editor =
             presetWindow.Close()
 
         nameBox.PreviewKeyDown.Add(fun (args : Input.KeyEventArgs) ->
-          if args.Key = Input.Key.Return then
+          if args.Key =. Input.Key.Return then
             saveIt()
             args.Handled <- true
           )
@@ -1097,9 +1097,9 @@ type Editor =
           dragShape.Margin <- Thickness(Left = float (source.x - size), Top = float (source.y - size))
           dragShape.Width <- 2.0 * float size
           dragShape.Height <- 2.0 * float size
-          if dragShape.Visibility = Visibility.Collapsed && Vec2f.distance(source, target) >= dragMinimum then
+          if dragShape.Visibility =. Visibility.Collapsed && Vec2f.distance(source, target) >= dragMinimum then
             dragShape.Visibility <- Visibility.Visible
-          elif dragShape.Visibility = Visibility.Visible && Vec2f.distance(source, target) < dragMinimum then
+          elif dragShape.Visibility =. Visibility.Visible && Vec2f.distance(source, target) < dragMinimum then
             dragShape.Visibility <- Visibility.Collapsed
           args.Handled <- true
 

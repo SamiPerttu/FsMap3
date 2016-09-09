@@ -1,5 +1,5 @@
 ﻿/// Poisson disc sampling patterns.
-module FsMap3.Poisson
+module Fuse.Poisson
 
 open Common
 

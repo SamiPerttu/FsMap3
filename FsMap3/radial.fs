@@ -1,5 +1,5 @@
 ﻿/// Radial weighted value noise basis.
-module FsMap3.Radial
+module Fuse.Radial
 
 open Common
 open Mangle

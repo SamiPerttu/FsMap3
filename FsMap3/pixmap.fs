@@ -1,5 +1,5 @@
 ﻿// 3-channel single precision pixel images.
-namespace FsMap3
+namespace Fuse
 
 open Common
 
@@ -39,6 +39,28 @@ type Pixmap =
   member inline this.size = this.a.size
   member inline this.last = this.a.last
   member inline this.at(i) = this.a.[i]
+
+
+  /// Adds a bilinearly filtered pixel. Accepts coordinates located outside Pixmap boundaries.
+  member this.addLinear(x, y, v : Vec3f) =
+    let fx, fy = floor x, floor y
+    let ix, iy = int fx, int fy
+    let dx, dy = x - fx, y - fy
+    let xd, yd = 1.0 - dx, 1.0 - dy
+    let i00 = this.offset(ix, iy)
+    let i01 = i00 + this.offsetX(1)
+    let i10 = i00 + this.offsetY(1)
+    let i11 = i10 + this.offsetX(1)
+    if ix >= 0 && ix < this.sizeX then
+      if iy >= 0 && iy < this.sizeY then
+        this.a.[i00] <- this.a.[i00] + v * float32 (xd * yd)
+      if (iy + 1) >= 0 && (iy + 1) < this.sizeY then
+        this.a.[i10] <- this.a.[i10] + v * float32 (xd * dy)
+    if (ix + 1) >= 0 && (ix + 1) < this.sizeX then
+      if iy >= 0 && iy < this.sizeY then
+        this.a.[i01] <- this.a.[i01] + v * float32 (dx * yd)
+      if (iy + 1) >= 0 && (iy + 1) < this.sizeY then
+        this.a.[i11] <- this.a.[i11] + v * float32 (dx * dy)
 
 
   /// Retrieves a pixel value with bicubic filtering. Pixmap height and width must be greater than 1.

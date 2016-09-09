@@ -1,5 +1,5 @@
 ﻿/// Leopard basis.
-module FsMap3.Leopard
+module Fuse.Leopard
 
 open Common
 open Mangle

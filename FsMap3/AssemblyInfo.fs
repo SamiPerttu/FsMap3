@@ -1,4 +1,4 @@
-﻿namespace FsMap3.AssemblyInfo
+﻿namespace Fuse.AssemblyInfo
 
 open System.Reflection
 open System.Runtime.CompilerServices

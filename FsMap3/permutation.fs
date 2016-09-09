@@ -1,5 +1,5 @@
 ﻿// Pseudo-random permutations in constant space.
-namespace FsMap3
+namespace Fuse
 
 open Common
 

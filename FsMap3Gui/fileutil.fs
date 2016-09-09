@@ -1,4 +1,4 @@
-﻿module FsMap3.FileUtil
+﻿module Fuse.FileUtil
 
 open System
 open System.Windows

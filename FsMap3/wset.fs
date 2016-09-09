@@ -1,5 +1,5 @@
 ﻿// Weighted sets.
-namespace FsMap3
+namespace Fuse
 
 open Common
 

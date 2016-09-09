@@ -1,5 +1,5 @@
 ﻿/// The Worley cellular basis.
-module FsMap3.Worley
+module Fuse.Worley
 
 open Common
 open Mangle

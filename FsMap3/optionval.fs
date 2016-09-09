@@ -1,6 +1,5 @@
 ﻿// Option as a value type.
-[<AutoOpen>]
-module FsMap3.Optionval
+namespace Fuse
 
 open Common
 
@@ -36,19 +35,23 @@ type Optionval<'T> = struct
 end
 
 
-/// Constructs an Optionval structure with no value.
-let inline Noneval<'T> = Optionval(false, Unchecked.defaultof<'T>)
+
+[<AutoOpen>]
+module OptionvalModule =
+
+  /// Constructs an Optionval structure with no value.
+  let inline Noneval<'T> = Optionval(false, Unchecked.defaultof<'T>)
 
 
-/// Construct an Optionval structure with a value.
-let inline Someval(value) = Optionval(true, value)
+  /// Construct an Optionval structure with a value.
+  let inline Someval(value) = Optionval(true, value)
 
 
-/// Constructs an Optionval structure that is logically Noneval but has a fallback value that can be accessed.
-/// For low level optimization.
-let inline Fallbackval(value) = Optionval(false, value)
+  /// Constructs an Optionval structure that is logically Noneval but has a fallback value that can be accessed.
+  /// For low level optimization.
+  let inline Fallbackval(value) = Optionval(false, value)
 
 
-/// Active pattern for matching option structures.
-let (|Someval|Noneval|) (x : _ Optionval) = if x.isSome then Someval(x.value) else Noneval
+  /// Active pattern for matching option structures.
+  let (|Someval|Noneval|) (x : _ Optionval) = if x.isSome then Someval(x.value) else Noneval
 

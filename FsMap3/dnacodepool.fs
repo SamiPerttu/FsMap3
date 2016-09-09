@@ -1,5 +1,5 @@
 ﻿// Memory for storing Dna parameter codes.
-namespace FsMap3
+namespace Fuse
 
 open Common
 open Mangle

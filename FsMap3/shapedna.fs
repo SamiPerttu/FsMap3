@@ -1,4 +1,4 @@
-﻿module FsMap3.ShapeDna
+﻿module Fuse.ShapeDna
 
 open Common
 open Map3

@@ -1,5 +1,5 @@
 ﻿/// The capsule flow basis.
-module FsMap3.Capflow
+module Fuse.Capflow
 
 open Common
 open Basis3

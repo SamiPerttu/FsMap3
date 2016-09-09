@@ -1,5 +1,5 @@
 ﻿/// Perlin noise.
-module FsMap3.Perlin
+module Fuse.Perlin
 
 open Common
 open Mangle

@@ -1,5 +1,5 @@
 ﻿/// Some concurrent and thread-safe data structures.
-module FsMap3.Concurrent
+module Fuse.Concurrent
 
 open Common
 

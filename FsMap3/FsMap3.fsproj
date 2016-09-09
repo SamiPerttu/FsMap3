@@ -63,6 +63,7 @@
     <Compile Include="log.fs" />
     <Compile Include="grid.fs" />
     <Compile Include="vec2f.fs" />
+    <Compile Include="vec2.fs" />
     <Compile Include="poisson.fs" />
     <Compile Include="vec3f.fs" />
     <Compile Include="vec3.fs" />
