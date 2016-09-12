@@ -22,6 +22,7 @@ Plans for features include:
 * Aspect ratio support to enable tiling in different aspect ratios. As we are dealing with 3-textures, aspect ratios are X:Y:Z instead of the usual X:Y.
 * View aspect ratio setting.
 * Native `.dds` export, both 2-D and 3-D.
+* Export dialog with more options, such as adaptive antialiasing.
 * Screen space textures, i.e., 2-textures. Unconstrained 3-textures are very powerful but their planar slices are hard to control.
 * Nicer node tree editing features.
 * Multi-channel editing for, e.g., surface reflection models.
