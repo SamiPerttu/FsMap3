@@ -965,10 +965,14 @@ type Editor =
         let saveIt() = 
           if nameBox.Text.size > 0 then
             let file = nameBox.Text + ".yaml"
-            let directory = if submenuBox.Text.size > 0 then System.IO.Path.Combine(presetDirectory, submenuBox.Text) else presetDirectory
-            if System.IO.Directory.Exists(directory) = false then
-              System.IO.Directory.CreateDirectory(directory) |> ignore
-            let path = System.IO.Path.Combine(directory, file)
+            let submenuDirectory = if submenuBox.Text.size > 0 then System.IO.Path.Combine(presetDirectory, submenuBox.Text) else presetDirectory
+            let path = System.IO.Path.Combine(submenuDirectory, file)
+            try
+              let directory = System.IO.Path.GetDirectoryName(path)
+              if System.IO.Directory.Exists(directory) = false then
+                System.IO.Directory.CreateDirectory(directory) |> ignore
+            with
+              | ex -> MessageBox.Show(ex.ToString()) |> ignore
             if FileUtil.confirmDelete "overwrite" path then
               saveYaml false true path
               recreatePresets()
