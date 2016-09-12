@@ -511,7 +511,10 @@ type [<ReferenceEquality>] Dna =
   static member generateUnique(n, rnd : Rnd, generator : Dna -> _) =
     let set = HashSet<int64>.create(int)
     Array.init n (fun _ ->
-      snd <| doFind (fun _ -> Dna.generate(rnd, generator))
+      snd <| doFind (fun _ ->
+                      let dna = Dna.create()
+                      dna, dna.generate(RandomSource(rnd), generator)
+                      )
                     (fun (dna, _) -> if set.exists(dna.fingerprint) then
                                        false
                                      else
@@ -670,35 +673,3 @@ and RandomSource(sourceRnd : Rnd) =
     rnd.uint(0u, dna.[i].maxValue) |> priorTransform |> Fun.binarySearchClosest 0u dna.[i].maxValue valueTransform
   override this.chooseFloat(dna, i, valueTransform, priorTransform) =
     rnd.uint(0u, dna.[i].maxValue) |> priorTransform |> Fun.binarySearchClosest 0u dna.[i].maxValue valueTransform
-
-
-
-/// Specimen is an individual generated from Dna, with an attached fitness value.
-[<NoEquality; NoComparison>]
-type Specimen<'a> =
-  {
-    dna : Dna
-    phenotype : 'a
-    fitness : float
-  }
-
-  /// Creates a specimen.
-  static member create(dna, phenotype : 'a) = { Specimen.dna = dna; phenotype = phenotype; fitness = 0.0 }
-
-  /// Creates a specimen with fitness.
-  static member create(dna, phenotype : 'a, fitness) =
-    enforce (isNaN fitness = false) "Specimen.create: NaN fitness values are prohibited."
-    { Specimen.dna = dna; phenotype = phenotype; fitness = fitness }
-
-  /// Generates a specimen from the source.
-  static member generate(source : DnaSource, generatef : Dna -> 'a, ?fitnessf : 'a -> float) =
-    let dna = Dna.create()
-    let pheno = dna.generate(source, generatef)
-    Specimen.create(dna, pheno, fitnessf.map((|>) pheno) >? 0.0)
-
-  /// Generates a random specimen using the given Rnd.
-  static member generate(rnd : Rnd, generatef : Dna -> 'a, ?fitnessf : 'a -> float) =
-    let dna = Dna.create()
-    let pheno = dna.generate(RandomSource(rnd), generatef)
-    Specimen.create(dna, pheno, fitnessf.map((|>) pheno) >? 0.0)
-

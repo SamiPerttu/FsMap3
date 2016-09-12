@@ -120,6 +120,15 @@ type Choices<'a>([<System.ParamArray>] v : C<'a> array) =
     enforce (number.isSome) "Choices.numberOf: No matching choices."
     !number
 
+  /// Creates n choices from indexed function f with supplied indices in [0, n[.
+  static member create(n, f : int -> Choice<'a>) =
+    let choices = Choices()
+    for i = 0 to n - 1 do
+      let choice = f i
+      choices.add(choice.weight, choice.name, choice.value)
+    choices
+
+
 
   interface IChoices with
     member this.choiceCount = this.size

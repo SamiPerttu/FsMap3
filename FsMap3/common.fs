@@ -319,6 +319,9 @@ let inline snd3 (a, b, c) = b
 /// The third element of a triple.
 let inline thd3 (a, b, c) = c
 
+/// Returns the two arguments sorted in increasing order. If they are equal then argument order is maintained.
+let inline sort2 a b = if b < a then b, a else a, b
+
 /// Minimum of zero and the argument.
 let inline min0 x = min 0G x
 
@@ -517,7 +520,10 @@ let inline tri (x : 'a) : 'a =
   let x = fract(x * Q 1 tau - Q 1 4) in abs (x - Q 1 2) * 4G - 1G
 
 /// Triangle wave with a period of unity. The shape approximates the sine function.
-let inline trir (x : 'a) : 'a = tri(x * G tau)
+let inline trir (x : 'a) : 'a = tri (x * G tau)
+
+/// Triangle wave scaled to [0, 1] with a period of unity.
+let inline trir0 (x : 'a) : 'a = (trir x + 1G) * Q 1 2
 
 /// Square wave (non-bandlimited) scaled to [0, 1] with a period of unity. The argument is thus phase in revolutions.
 let inline sqrr0 (x : 'a) : 'a = floor (fract (x + G(0.25)) * 2G)

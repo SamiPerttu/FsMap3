@@ -66,7 +66,7 @@ type AxisInfo =
     canvas.add(header, x0, y)
     let circle = Ellipse(Width = size, Height = size, StrokeThickness = 0.8, Fill = Brushes.Transparent, IsHitTestVisible = false)
     canvas.add(circle, 1.0, y - 0.5)
-    let arrow = Polygon(Points = Wpf.regularPolygon(3, 1.0f, float32 size * 0.5f, 2.0f, G tau * Q 3 4, 2.0f), IsHitTestVisible = false)
+    let arrow = Polygon(Points = Wpf.regularPolygon(3, 1.0, float size * 0.5, 2.0, tau * Q 3 4, 2.0), IsHitTestVisible = false)
     canvas.add(arrow, 0.5, y)
     let center = Label(Padding = Thickness(0.0), FontSize = fontSize)
     canvas.add(center, x1, y)

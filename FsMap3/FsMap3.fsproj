@@ -89,6 +89,9 @@
     <Compile Include="parameteraction.fs" />
     <Compile Include="interactivesource.fs" />
     <Compile Include="recombinationsource.fs" />
+    <Compile Include="profile.fs" />
+    <Compile Include="atom.fs" />
+    <Compile Include="concurrent.fs" />
     <Compile Include="pixmap.fs" />
     <Compile Include="potential.fs" />
     <Compile Include="color.fs" />
@@ -113,8 +116,6 @@
     <Compile Include="impflow.fs" />
     <Compile Include="julia.fs" />
     <Compile Include="orbit.fs" />
-    <Compile Include="atom.fs" />
-    <Compile Include="concurrent.fs" />
     <Compile Include="fadedna.fs" />
     <Compile Include="walkdna.fs" />
     <Compile Include="shapedna.fs" />
@@ -122,7 +123,6 @@
     <Compile Include="richmap3filter.fs" />
     <Compile Include="map3dna.fs" />
     <Compile Include="ray.fs" />
-    <Compile Include="profile.fs" />
     <Compile Include="test.fs" />
     <Content Include="packages.config" />
   </ItemGroup>

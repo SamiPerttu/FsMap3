@@ -210,21 +210,26 @@ type Rnd(?seed) =
   /// Flips a fair coin. Returns true or false.
   member this.flip = this.uint() &&& 128u = 0u
 
+  /// Picks an item from the array.
+  member this.pick(a : 'a[]) =
+    enforce (a.size > 0) "Rnd.pick: Array is empty."
+    a.[this.int(a.size)]
+
   /// Chooses a with frequency fa and b with frequency fb (fa, fb >= 0).
   member this.choose(fa, a, fb, b) =
-    assert(fa >= 0.0 && fb >= 0.0)
+    assert (fa >= 0.0 && fb >= 0.0)
     if this.float(fa + fb) < fa then a else b
 
   /// Chooses a with frequency fa, b with frequency fb, and c with frequency fc (fa, fb, fc >= 0).
   member this.choose(fa, a, fb, b, fc, c) =
-    assert(fa >= 0.0 && fb >= 0.0 && fc >= 0.0)
+    assert (fa >= 0.0 && fb >= 0.0 && fc >= 0.0)
     let x = this.float(fa + fb + fc)
     if x < fa then a elif x < fa + fb then b else c
 
   /// Chooses a with frequency fa, b with frequency fb, c with frequency fc,
   /// and d with frequency fd (fa, fb, fc, fd >= 0).
   member this.choose(fa, a, fb, b, fc, c, fd, d) =
-    assert(fa >= 0.0 && fb >= 0.0 && fc >= 0.0)
+    assert (fa >= 0.0 && fb >= 0.0 && fc >= 0.0)
     let x = this.float(fa + fb + fc + fd)
     if x < fa then a elif x < fa + fb then b elif x < fa + fb + fc then c else d
 

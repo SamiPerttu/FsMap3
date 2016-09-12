@@ -39,6 +39,8 @@ type Pixmap =
   member inline this.size = this.a.size
   member inline this.last = this.a.last
   member inline this.at(i) = this.a.[i]
+  member inline this.set(i, v) = this.a.[i] <- v
+  member inline this.add(i, v) = this.a.[i] <- this.a.[i] + v
 
 
   /// Adds a bilinearly filtered pixel. Accepts coordinates located outside Pixmap boundaries.

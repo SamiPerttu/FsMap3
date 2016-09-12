@@ -85,7 +85,7 @@ type CodePool =
     storeHash : DnaParameterHash
     retrieveHash : DnaParameterHash
     hashMap : HashMap<int64, CodeMemory>
-    maxValuesPerKey : int
+    mutable maxValuesPerKey : int
     hash128 : Hash128
   }
 
